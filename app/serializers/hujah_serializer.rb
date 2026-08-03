@@ -1,5 +1,5 @@
 class HujahSerializer
-  include FastJsonapi::ObjectSerializer
+  include JSONAPI::Serializer
 
   attributes :body, :agree_count, :neutral_count, :disagree_count, :vote, :slug
 
