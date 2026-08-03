@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/bin/clang++ -Wno-error=implicit-function-declaration -Wno-error=incompatible-function-pointer-types -Wno-error=int-conversion -Wno-error=implicit-int -Wno-error=deprecated-non-prototype "$@"
