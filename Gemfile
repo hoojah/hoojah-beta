@@ -3,7 +3,7 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 ruby '2.7.8'
 
-gem 'rails', '~> 6.0.6'
+gem 'rails', '~> 6.1.7'
 # Pin: concurrent-ruby 1.3.5 dropped its transitive `require "logger"`, which
 # Rails 6.0 relies on (ActiveSupport::LoggerThreadSafeLevel). Remove once on Rails >= 7.1.
 gem 'concurrent-ruby', '1.3.4'
