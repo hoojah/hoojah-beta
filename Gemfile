@@ -1,17 +1,11 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby '2.7.8'
+ruby '3.3.12'
 
-gem 'rails', '~> 7.0.8'
-# Pin: concurrent-ruby 1.3.5 dropped its transitive `require "logger"`, which
-# Rails 6.0 relies on (ActiveSupport::LoggerThreadSafeLevel). Remove once on Rails >= 7.1.
-gem 'concurrent-ruby', '1.3.4'
-# Pin: ffi 1.13.1 (via sassc) can't resolve size_t on arm64; 1.17+ needs Ruby >= 3.0.
-# 1.16.x is the newest arm64-capable line still supporting Ruby 2.7. Relax as Ruby bumps.
-gem 'ffi', '~> 1.16.3'
+gem 'rails', '~> 7.1.5'
 gem 'pg', '>= 0.18', '< 2.0'
-gem 'puma', '~> 4.1'
+gem 'puma', '~> 6.4'
 gem 'sass-rails', '>= 6'
 # shakapacker v6: maintained webpacker successor that keeps the Webpacker constant,
 # webpacker.yml filename, and pack helpers -> minimal churn. The React/webpack JS
