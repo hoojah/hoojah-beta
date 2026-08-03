@@ -18,6 +18,13 @@ gem 'jsonapi-serializer'
 gem 'slug'
 gem 'bootsnap', '>= 1.4.2', require: false
 
+# Rails 8 default infrastructure (adopted in Phase 8 modernization).
+gem 'solid_queue'
+gem 'solid_cache'
+gem 'solid_cable'
+gem 'kamal', require: false
+gem 'thruster', require: false
+
 group :development, :test do
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
   gem 'rspec-rails', '~> 7.0'

@@ -79,6 +79,7 @@ GEM
       public_suffix (>= 2.0.2, < 8.0)
     base64 (0.3.0)
     bcrypt (3.1.22)
+    bcrypt_pbkdf (1.1.2)
     bigdecimal (4.1.2)
     bindex (0.8.1)
     bootsnap (1.24.6)
@@ -91,15 +92,22 @@ GEM
     crass (1.0.7)
     date (3.5.1)
     diff-lcs (1.6.2)
+    dotenv (3.2.0)
     drb (2.2.3)
+    ed25519 (1.4.0)
     erb (6.0.6)
     erubi (1.13.1)
+    et-orbi (1.4.1)
+      tzinfo
     factory_bot (6.6.0)
       activesupport (>= 6.1.0)
     factory_bot_rails (6.5.1)
       factory_bot (~> 6.5)
       railties (>= 6.1.0)
     ffi (1.17.4)
+    fugit (1.13.0)
+      et-orbi (~> 1.4)
+      raabro (~> 1.4)
     globalid (1.4.0)
       activesupport (>= 6.1)
     i18n (1.15.2)
@@ -119,6 +127,17 @@ GEM
       bigdecimal (>= 3.1, < 5)
     jsonapi-serializer (2.2.0)
       activesupport (>= 4.2)
+    kamal (2.12.0)
+      activesupport (>= 7.0)
+      base64 (~> 0.2)
+      bcrypt_pbkdf (~> 1.0)
+      concurrent-ruby (~> 1.2)
+      dotenv (~> 3.1)
+      ed25519 (~> 1.4)
+      net-ssh (~> 7.3)
+      sshkit (>= 1.23.0, < 2.0)
+      thor (~> 1.3)
+      zeitwerk (>= 2.6.18, < 3.0)
     listen (3.10.0)
       logger
       rb-fsevent (~> 0.10, >= 0.10.3)
@@ -147,12 +166,18 @@ GEM
       net-protocol
     net-protocol (0.2.2)
       timeout
+    net-scp (4.1.0)
+      net-ssh (>= 2.6.5, < 8.0.0)
+    net-sftp (4.0.0)
+      net-ssh (>= 5.0.0, < 8.0.0)
     net-smtp (0.5.1)
       net-protocol
+    net-ssh (7.3.3)
     nio4r (2.7.5)
     nokogiri (1.19.4)
       mini_portile2 (~> 2.8.2)
       racc (~> 1.4)
+    ostruct (0.6.3)
     pg (1.6.3)
     pp (0.6.4)
       prettyprint
@@ -161,6 +186,7 @@ GEM
     public_suffix (7.0.5)
     puma (6.6.1)
       nio4r (~> 2.0)
+    raabro (1.5.0)
     racc (1.8.1)
     rack (3.2.6)
     rack-cors (3.0.0)
@@ -258,6 +284,22 @@ GEM
       activerecord (> 3.0.0)
       activesupport (> 3.0.0)
       rake
+    solid_cable (4.0.2)
+      actioncable (>= 7.2)
+      activejob (>= 7.2)
+      activerecord (>= 7.2)
+      railties (>= 7.2)
+    solid_cache (1.0.10)
+      activejob (>= 7.2)
+      activerecord (>= 7.2)
+      railties (>= 7.2)
+    solid_queue (1.6.0)
+      activejob (>= 7.1)
+      activerecord (>= 7.1)
+      concurrent-ruby (>= 1.3.1)
+      fugit (~> 1.11)
+      railties (>= 7.1)
+      thor (>= 1.3.1)
     sprockets (4.2.2)
       concurrent-ruby (~> 1.0)
       logger
@@ -266,7 +308,16 @@ GEM
       actionpack (>= 6.1)
       activesupport (>= 6.1)
       sprockets (>= 3.0.0)
+    sshkit (1.25.1)
+      base64
+      logger
+      net-scp (>= 1.1.2)
+      net-sftp (>= 2.1.2)
+      net-ssh (>= 2.8.0)
+      ostruct
     thor (1.5.0)
+    thruster (0.1.23)
+    thruster (0.1.23-arm64-darwin)
     tilt (2.8.0)
     timeout (0.6.1)
     tsort (0.2.0)
@@ -286,6 +337,7 @@ GEM
     zeitwerk (2.8.3)
 
 PLATFORMS
+  arm64-darwin-25
   ruby
 
 DEPENDENCIES
@@ -296,6 +348,7 @@ DEPENDENCIES
   jbuilder (~> 2.7)
   json-schema
   jsonapi-serializer
+  kamal
   listen (~> 3.3)
   pg (>= 0.18, < 2.0)
   puma (~> 6.4)
@@ -305,6 +358,10 @@ DEPENDENCIES
   sass-rails (>= 6)
   shakapacker (~> 6.6)
   slug
+  solid_cable
+  solid_cache
+  solid_queue
+  thruster
   tzinfo-data
   web-console (>= 3.3.0)
 
