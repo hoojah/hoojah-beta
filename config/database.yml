@@ -11,8 +11,28 @@ test:
   <<: *default
   database: hoojah_test
 
+# Rails 8 multi-database: primary app DB plus dedicated Solid Cache/Queue/Cable DBs.
 production:
-  <<: *default
-  database: hoojah_production
-  username: hoojah
-  password: <%= ENV['HOOJAH_DATABASE_PASSWORD'] %>
+  primary:
+    <<: *default
+    database: hoojah_production
+    username: hoojah
+    password: <%= ENV['HOOJAH_DATABASE_PASSWORD'] %>
+  cache:
+    <<: *default
+    database: hoojah_production_cache
+    username: hoojah
+    password: <%= ENV['HOOJAH_DATABASE_PASSWORD'] %>
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *default
+    database: hoojah_production_queue
+    username: hoojah
+    password: <%= ENV['HOOJAH_DATABASE_PASSWORD'] %>
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: hoojah_production_cable
+    username: hoojah
+    password: <%= ENV['HOOJAH_DATABASE_PASSWORD'] %>
+    migrations_paths: db/cable_migrate

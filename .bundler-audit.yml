@@ -1,0 +1,6 @@
+# Accepted/deferred advisories. See docs/superpowers/SECURITY-FINDINGS.md for rationale.
+ignore:
+  # shakapacker 6.6.0 EnvironmentPlugin secret leak into client bundles.
+  # JS build is not active during the upgrade; shakapacker is removed entirely in
+  # Project 2 (React -> Hotwire on importmap+Propshaft). Remove this ignore after Project 2.
+  - GHSA-96qw-h329-v5rg

@@ -1,5 +1,5 @@
 class NotificationSerializer
-  include FastJsonapi::ObjectSerializer
+  include JSONAPI::Serializer
 
   attributes :body, :category, :read
 

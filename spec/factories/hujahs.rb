@@ -1,7 +1,7 @@
 FactoryBot.define do
   factory :hujah do
     association :user
-    body { "This is a generic hoojah" }
+    sequence(:body) { |n| "This is a generic hoojah #{n}" }
     agree_count  { 0 }
     neutral_count { 0 }
     disagree_count { 0 }

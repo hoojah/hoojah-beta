@@ -1,5 +1,5 @@
 class UserSerializer
-  include FastJsonapi::ObjectSerializer
+  include JSONAPI::Serializer
   attributes :username, :full_name, :photo, :location, :headline, :link
 
   attribute :hujah_count do |user|

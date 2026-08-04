@@ -1,7 +1,7 @@
 class Notification < ApplicationRecord
   belongs_to :user
 
-  enum category: {
+  enum :category, {
     admin: 0,
     announcement: 1,
     flag: 2,

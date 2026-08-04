@@ -44,20 +44,26 @@ Rails.application.configure do
   # config.action_cable.allowed_request_origins = [ 'http://example.com', /http:\/\/example.*/ ]
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  # config.force_ssl = true
+  config.force_ssl = true
+  # TLS is terminated at the Kamal/Thruster proxy; trust the forwarded scheme.
+  config.assume_ssl = true
 
   # Use the lowest log level to ensure availability of diagnostic information
   # when problems arise.
-  config.log_level = :debug
+  config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+
+  # Only accept requests for the configured host(s) (set APP_HOST at deploy).
+  config.hosts << ENV["APP_HOST"] if ENV["APP_HOST"].present?
 
   # Prepend all log lines with the following tags.
   config.log_tags = [ :request_id ]
 
   # Use a different cache store in production.
-  # config.cache_store = :mem_cache_store
+  config.cache_store = :solid_cache_store
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
-  # config.active_job.queue_adapter     = :resque
+  config.active_job.queue_adapter = :solid_queue
+  config.solid_queue.connects_to = { database: { writing: :queue } }
   # config.active_job.queue_name_prefix = "hoojah_production"
 
   config.action_mailer.perform_caching = false
