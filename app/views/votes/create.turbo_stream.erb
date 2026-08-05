@@ -1,0 +1,8 @@
+<%# Replaces the shared vote widget in place. The target id — dom_id(@hujah, :vote_bars)
+    => "vote_bars_hujah_<id>" — is the SAME scheme the _vote_bars partial wraps itself
+    in, in both the feed and the show page. %>
+<%= turbo_stream.replace dom_id(@hujah, :vote_bars) do %>
+  <%= render "hujahs/vote_bars",
+        hujah: @hujah,
+        current_user_vote: @hujah.current_user_vote(logged_in: true, current_user_id: current_user.id) %>
+<% end %>
