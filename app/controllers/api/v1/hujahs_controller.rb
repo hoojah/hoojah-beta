@@ -12,9 +12,6 @@ class Api::V1::HujahsController < Api::V1::BaseController
     authorize Hujah
     hujah = current_user.hujahs.create(hujah_params)
     if hujah
-      if hujah.has_parent?
-        Notification.create!(user_id: hujah.parent.user.id, category: 3, hujah_id: hujah.parent.id, subject_user_id: current_user.id)
-      end
       render json: hujah
     else
       render json: hujah.errors
