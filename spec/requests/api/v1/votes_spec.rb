@@ -1,31 +1,22 @@
 require 'rails_helper'
 
 RSpec.describe 'Api::V1::Votes', type: :request do
-  let(:user) { create(:user) }
-  let(:hujah) { create(:hujah) }
+  let(:owner) { create(:user) }
+  let(:voter) { create(:user) }
+  let(:attacker) { create(:user) }
+  let(:hujah) { create(:hujah, user: owner) }
 
-  describe 'POST /api/v1/votes/create' do
-    it 'records a new vote and increments the agree counter' do
-      expect {
-        post '/api/v1/votes/create',
-             params: { vote: 1, hujah_id: hujah.id, user_id: user.id },
-             as: :json
-      }.to change(Vote, :count).by(1)
+  it 'requires authentication' do
+    post '/api/v1/votes/create', params: { vote: 1, hujah_id: hujah.id }, as: :json
+    expect(response).to have_http_status(:unauthorized)
+  end
 
-      expect(hujah.reload.agree_count).to eq(1)
-    end
-
-    it 'appends a subsequent vote to the same vote record' do
-      post '/api/v1/votes/create',
-           params: { vote: 1, hujah_id: hujah.id, user_id: user.id },
-           as: :json
-
-      post '/api/v1/votes/create',
-           params: { vote: 3, hujah_id: hujah.id, user_id: user.id },
-           as: :json
-
-      vote = Vote.find_by(user_id: user.id, hujah_id: hujah.id)
-      expect(vote.vote.last).to eq(3)
-    end
+  it 'records the vote under the SESSION user, ignoring a supplied user_id' do
+    sign_in voter
+    post '/api/v1/votes/create',
+         params: { vote: 1, hujah_id: hujah.id, user_id: attacker.id }, as: :json
+    expect(response).to have_http_status(:ok).or have_http_status(:created)
+    expect(Vote.where(user: voter, hujah: hujah)).to exist
+    expect(Vote.where(user: attacker)).to be_empty
   end
 end

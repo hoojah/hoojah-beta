@@ -1,4 +1,6 @@
 class Api::V1::VotesController < Api::V1::BaseController
+  before_action :authenticate_user!, only: :create
+
   def index
     votes = Vote.all.order(updated_at: :desc)
     render json: votes
@@ -54,19 +56,19 @@ class Api::V1::VotesController < Api::V1::BaseController
   private
 
   def vote_params
-    params.permit(:vote, :hujah_id, :user_id)
+    params.permit(:vote, :hujah_id)
   end
 
   def vote
-    @vote ||= Vote.find_by(user_id: params[:user_id], hujah_id: params[:hujah_id])
+    @vote ||= Vote.find_by(user_id: current_user.id, hujah_id: params[:hujah_id])
   end
 
   def user
-    @user = User.find(vote_params[:user_id])
+    current_user
   end
 
   def hujah
-    @hujah = Hujah.find(vote_params[:hujah_id])
+    @hujah ||= Hujah.find(params[:hujah_id])
   end
 
   def user_has_voted?
