@@ -43,8 +43,13 @@ Pundit authorization, and a JSON `Api::V1` API for native clients — https://be
   turns (each notifies the other) → either party concludes → a public, read-only transcript
   at `/debates/:slug`. Debates surface in a **Debates** lens on the hoojah page. Turn
   authorization is turn-scoped (`DebateTurnPolicy` — only the current-turn user may post);
-  active debates are participants-only, concluded ones public. Request-driven Turbo Streams
-  (broadcasting deferred); rack-attack throttled.
+  active debates are participants-only, concluded ones public. **Real-time** turns broadcast
+  live over an **authorized `DebateChannel`** (the app's first Action Cable use — the socket
+  re-checks `DebatePolicy#show?` at subscribe time, not just the page). A concluded debate gets
+  a **spectator verdict** ("who argued better?" — challenger / opponent / draw; one immutable
+  vote per visible spectator, compute-on-read tally). An idle active debate (no turn for 7 days)
+  is **auto-concluded** by a daily `ConcludeStaleDebatesJob` (Solid Queue recurring). rack-attack
+  throttled.
 - **Dashboard** — an owner-only `/dashboard` showing the signed-in user's own aggregate
   stats (votes received, arguments received) and a per-hoojah vote distribution, computed
   on read from the denormalized `hujahs` counters with **zero new tables**. Owner-only by
@@ -154,5 +159,13 @@ Code style is enforced with **StandardRB** (`bundle exec standardrb`).
   notification bodies, `Api::V1` reads, reply-create) with a 3-state follow button and a
   private→public auto-accept. Deferred: the `/follow_requests` inbox page; full `Api::V1`
   visibility parity (serializer children/notifications); see HANDOVER.
+- **Project 2 Slice 8 — done (program complete):** the three deferred **Debate increments** —
+  spectator **verdict** (`debate_verdicts`, compute-on-read tally, visible-spectator-only, one
+  immutable vote); **real-time** turns via an authorized `DebateChannel` (subscribe-time
+  `DebatePolicy#show?` re-check; viewer-scoped composer/actions partials; id-dedup so the
+  synchronous controller response and the async broadcast coexist); and **timeout auto-conclude**
+  (`DebateTurn touch: true` + `conclude!(by: nil)` notifies both + a daily `ConcludeStaleDebatesJob`).
+  This completes the "land everything" roadmap. Deferred: `debate_won` badge, changeable verdict,
+  live tally for non-voters, two-session real-time test; see HANDOVER.
 - **Project 3:** Hotwire Native (mobile).
 - **Security:** remaining app-logic findings in `SECURITY-FINDINGS.md`.
