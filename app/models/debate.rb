@@ -1,5 +1,6 @@
 class Debate < ApplicationRecord
   extend FriendlyId
+
   friendly_id :slug_source, use: :slugged
 
   belongs_to :hujah
@@ -22,7 +23,11 @@ class Debate < ApplicationRecord
   def current_turn_user
     return nil unless active?
     last = turns.order(:position).last
-    last.nil? ? challenger : ((last.user_id == challenger_id) ? opponent : challenger)
+    if last.nil?
+      challenger
+    else
+      ((last.user_id == challenger_id) ? opponent : challenger)
+    end
   end
 
   def current_round = (turns.count / 2) + 1

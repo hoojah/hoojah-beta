@@ -38,6 +38,13 @@ Pundit authorization, and a JSON `Api::V1` API for native clients — https://be
 - **@mentions** — `@handle` in a hoojah body renders an injection-safe link to
   `/u/:handle` (tokenized before `simple_format`/`auto_link` so an `@` inside an email or
   URL is never linkified) and notifies each mentioned user once on create.
+- **Debate** — a one-on-one, turn-based debate escalated from an argument. Challenge the
+  argument's author (native `<dialog>` stance picker) → they accept/decline → alternating
+  turns (each notifies the other) → either party concludes → a public, read-only transcript
+  at `/debates/:slug`. Debates surface in a **Debates** lens on the hoojah page. Turn
+  authorization is turn-scoped (`DebateTurnPolicy` — only the current-turn user may post);
+  active debates are participants-only, concluded ones public. Request-driven Turbo Streams
+  (broadcasting deferred); rack-attack throttled.
 
 Modals use native `<dialog>` plus a custom `close_dialog` Turbo Stream action.
 
@@ -91,5 +98,8 @@ Code style is enforced with **StandardRB** (`bundle exec standardrb`).
 - **Project 2 Slice 2 — done:** compose/respond, profiles, notifications, flag, share, and
   Pundit adoption all shipped (see HANDOVER for the deferred list).
 - **Project 2 Slice 3 — done:** follow/unfollow, Following feed, @mentions (see HANDOVER).
+- **Project 2 Slice 4 — done:** one-on-one Debate MVP (challenge → accept/decline →
+  alternating turns → conclude → public transcript; Debates lens). Deferred: debate
+  Increments 2a verdict / 2b real-time / 3 timeout (see HANDOVER).
 - **Project 3:** Hotwire Native (mobile).
 - **Security:** remaining app-logic findings in `SECURITY-FINDINGS.md`.
