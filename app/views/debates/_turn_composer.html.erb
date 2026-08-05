@@ -1,0 +1,13 @@
+<%# The turn-posting form. Shown only to the current_turn_user; everyone else sees
+    a "waiting" note. Minimal placeholder — full styling + Stimulus in Phase 4.
+    Local: debate. Wrapped in the pinned dom_id so the Turbo-Stream replace lands. %>
+<div id="<%= dom_id(debate, :composer) %>">
+  <% if debate.active? && debate.current_turn_user == current_user %>
+    <%= form_with url: debate_turns_path(debate.slug), method: :post do |f| %>
+      <%= f.text_area :body, rows: 3, required: true, "aria-label": "Your turn" %>
+      <%= f.submit "Post turn" %>
+    <% end %>
+  <% elsif debate.active? %>
+    <p class="text-grey">Waiting for @<%= debate.current_turn_user&.username %>…</p>
+  <% end %>
+</div>

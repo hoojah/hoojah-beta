@@ -1,0 +1,9 @@
+<%# accept / decline / conclude all replace the pinned status region in place.
+    The composer visibility also changes on accept (challenger's turn begins), so
+    replace it too. %>
+<%= turbo_stream.replace dom_id(@debate, :status) do %>
+  <%= render "debates/debate_status", debate: @debate %>
+<% end %>
+<%= turbo_stream.replace dom_id(@debate, :composer) do %>
+  <%= render "debates/turn_composer", debate: @debate %>
+<% end %>

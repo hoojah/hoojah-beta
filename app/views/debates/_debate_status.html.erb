@@ -1,0 +1,15 @@
+<%# Status + per-participant actions (accept/decline while pending; conclude while
+    active). Minimal placeholder — full styling in Phase 4. Local: debate.
+    Wrapped in the pinned dom_id so accept/decline/conclude replaces land. %>
+<div id="<%= dom_id(debate, :status) %>" class="debate-status px-4 py-2">
+  <span class="debate-state"><%= debate.status.titleize %></span>
+
+  <% if user_signed_in? %>
+    <% if debate.pending? && current_user == debate.opponent %>
+      <%= button_to "Accept", accept_debate_path(debate.slug), method: :patch %>
+      <%= button_to "Decline", decline_debate_path(debate.slug), method: :patch %>
+    <% elsif debate.active? && debate.participant?(current_user) %>
+      <%= button_to "Conclude", conclude_debate_path(debate.slug), method: :patch %>
+    <% end %>
+  <% end %>
+</div>

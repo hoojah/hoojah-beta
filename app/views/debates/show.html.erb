@@ -1,0 +1,23 @@
+<%# Debate transcript screen. Minimal placeholder — full styling in Phase 4.
+    Read-only once concluded; the composer shows only for the current_turn_user. %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <nav class="mb-2">
+    <%= link_to hujah_path(@debate.hujah.slug), class: "fill-primary text-primary no-underline", aria: {label: "Back"} do %>
+      <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
+    <% end %>
+  </nav>
+
+  <h1 class="text-xl leading-snug mb-2">
+    @<%= @debate.challenger.username %> vs @<%= @debate.opponent.username %>
+  </h1>
+
+  <%= render "debates/debate_status", debate: @debate %>
+
+  <div id="<%= dom_id(@debate, :transcript) %>" class="debate-transcript">
+    <%= render partial: "debates/debate_turn", collection: @turns, as: :debate_turn %>
+  </div>
+
+  <%= render "debates/turn_composer", debate: @debate %>
+</main>

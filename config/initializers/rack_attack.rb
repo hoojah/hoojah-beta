@@ -42,4 +42,16 @@ class Rack::Attack
       req.env["warden"]&.user&.id
     end
   end
+  # Cap challenge bursts per user — bounds cross-hoojah challenge spam (Slice 4).
+  throttle("debates/challenge/user", limit: 10, period: 1.minute) do |req|
+    if req.post? && req.path.match?(%r{\A/hoojah/[^/]+/debates\z})
+      req.env["warden"]&.user&.id
+    end
+  end
+  # Cap turn-posting bursts per user.
+  throttle("debates/turns/user", limit: 20, period: 1.minute) do |req|
+    if req.post? && req.path.match?(%r{\A/debates/[^/]+/turns\z})
+      req.env["warden"]&.user&.id
+    end
+  end
 end

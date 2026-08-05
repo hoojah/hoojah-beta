@@ -22,6 +22,11 @@ class HujahsController < ApplicationController
     skip_authorization
     @hujah = Hujah.friendly.find(params[:slug])
     @children = @hujah.children.includes(:user).order(updated_at: :desc)
+    # Debates lens (Slice 4). policy_scope hides others' active/pending/declined
+    # debates but shows concluded ones publicly. This is NOT a separate route —
+    # it renders inline on the hoojah page. policy_scope does not count toward
+    # verify_authorized (skip_authorization above still satisfies it).
+    @debates = policy_scope(@hujah.debates)
   end
 
   def new

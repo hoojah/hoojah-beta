@@ -1,0 +1,6 @@
+<%# One turn in the transcript. Minimal placeholder — full styling in Phase 4.
+    Local: debate_turn. %>
+<div id="<%= dom_id(debate_turn) %>" class="debate-turn px-4 py-2">
+  <span class="font-medium">@<%= debate_turn.user.username %></span>
+  <div class="hujah-body"><%= format_body(debate_turn.body) %></div>
+</div>

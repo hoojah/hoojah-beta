@@ -1,0 +1,7 @@
+<%# A debate's entry in the hoojah "Debates" lens. Minimal placeholder — full
+    styling in Phase 4. Local: debate. %>
+<%= link_to debate_path(debate.slug), id: dom_id(debate, :card),
+      class: "debate-card block px-4 py-2 no-underline" do %>
+  <span>@<%= debate.challenger.username %> vs @<%= debate.opponent.username %></span>
+  <span class="debate-state">· <%= debate.status.titleize %></span>
+<% end %>
