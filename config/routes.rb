@@ -66,6 +66,9 @@ Rails.application.routes.draw do
   # Notifications (Task 4.1). Always the current user's own list (policy_scope, no
   # username in the URL). PATCH marks read + redirects to the hoojah; DELETE removes
   # the card via Turbo-Stream.
+  # Analytics dashboard (Slice 5, Part B). Owner-only by construction: always the
+  # current user's own aggregates (no username in the URL, like /notifications).
+  get "/dashboard", to: "analytics#show", as: :dashboard
   get "/notifications", to: "notifications#index", as: :notifications
   patch "/notifications/:id", to: "notifications#update", as: :notification
   delete "/notifications/:id", to: "notifications#destroy"

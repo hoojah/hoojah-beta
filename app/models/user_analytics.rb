@@ -8,7 +8,7 @@ class UserAnalytics
   K = 5
 
   # One read-only value object per top-level hoojah. No AR, no callbacks.
-  Distribution = Struct.new(:id, :slug, :body, :agree, :neutral, :disagree, keyword_init: true) do
+  Distribution = Struct.new(:id, :slug, :body, :agree, :neutral, :disagree) do
     def total = agree + neutral + disagree
 
     def suppressed? = total < K
