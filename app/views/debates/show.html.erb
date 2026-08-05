@@ -4,6 +4,12 @@
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
+  <%# Transcript + status ride the debate stream (viewer-agnostic); this viewer's
+      composer + actions ride the user-signed stream (participants only). Both flow
+      over the authorized DebateChannel (Task 3.1). %>
+  <%= turbo_stream_from @debate, channel: "DebateChannel" %>
+  <%= turbo_stream_from [@debate, current_user], channel: "DebateChannel" if @debate.participant?(current_user) %>
+
   <nav class="mb-2">
     <%= link_to hujah_path(@debate.hujah.slug), class: "fill-primary text-primary no-underline", aria: {label: "Back"} do %>
       <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
@@ -20,9 +26,16 @@
     </p>
   </header>
 
-  <%= render "debates/debate_status", debate: @debate %>
+  <div class="shadow bg-white px-4 py-3 flex items-center justify-between gap-2">
+    <%= render "debates/debate_status", debate: @debate %>
+    <%= render "debates/debate_actions", debate: @debate, viewer: current_user %>
+  </div>
 
   <%= render "debates/debate_transcript", debate: @debate, turns: @turns %>
 
-  <%= render "debates/turn_composer", debate: @debate %>
+  <%= render "debates/turn_composer", debate: @debate, viewer: current_user %>
+
+  <% if @debate.concluded? %>
+    <%= render "debates/verdict", debate: @debate %>
+  <% end %>
 </main>

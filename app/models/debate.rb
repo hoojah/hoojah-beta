@@ -7,6 +7,7 @@ class Debate < ApplicationRecord
   belongs_to :challenger, class_name: "User"
   belongs_to :opponent, class_name: "User"
   has_many :turns, class_name: "DebateTurn", dependent: :destroy
+  has_many :debate_verdicts, dependent: :destroy
 
   enum :status, {pending: 0, active: 1, concluded: 2, declined: 3}, default: :pending
 
@@ -40,6 +41,7 @@ class Debate < ApplicationRecord
     return false unless pending? && by == opponent
     update!(status: :active)
     notify(challenger, :debate_your_turn)
+    broadcast_state_change
     true
   end
 
@@ -51,25 +53,81 @@ class Debate < ApplicationRecord
   end
 
   def post_turn(by:, body:)
+    turn = nil
     with_lock do
       return false unless active? && by == current_turn_user
-      turns.create!(user: by, body: body, position: (turns.maximum(:position) || 0) + 1)
+      turn = turns.create!(user: by, body: body, position: (turns.maximum(:position) || 0) + 1)
     end
     notify(other(by), :debate_your_turn)
+    # Real-time: append the new turn to everyone on the debate stream, then refresh
+    # each participant's own composer (the mover flips to "waiting", the other to
+    # the turn form) on their user-signed stream.
+    broadcast_append_later_to self, target: dom_id(self, :transcript),
+      partial: "debates/debate_turn", locals: {debate_turn: turn}
+    broadcast_to_each_participant(target: :composer, partial: "debates/turn_composer")
     true
   end
 
-  def conclude!(by:)
-    return false unless active? && participant?(by)
+  # by: nil is the SYSTEM/timeout path (ConcludeStaleDebatesJob) — there is no
+  # actor to exclude, so BOTH participants are notified. A manual conclude always
+  # passes current_user (never nil), so notify(other(by)) is only reached there.
+  def conclude!(by: nil)
+    return false unless active?
+    return false unless by.nil? || participant?(by)
     update!(status: :concluded)
-    notify(other(by), :debate_concluded)
+    if by.nil?
+      notify(challenger, :debate_concluded)
+      notify(opponent, :debate_concluded)
+    else
+      notify(other(by), :debate_concluded)
+    end
     # After the status update commits — both participants earn first_debate.
     UserBadge.award(challenger, "first_debate")
     UserBadge.award(opponent, "first_debate")
+    broadcast_state_change
     true
   end
 
+  # Spectator verdict — a single insert with a METHOD-LEVEL rescue (no
+  # transaction, no counters: the tally is compute-on-read, so there is nothing
+  # to poison). Immutable one-vote-per-spectator; a second vote races the DB
+  # unique index and is swallowed as an idempotent no-op.
+  def cast_verdict(by:, choice:)
+    return false unless concluded? && !participant?(by) && DebateVerdict.choices.key?(choice.to_s)
+    debate_verdicts.create!(user: by, choice: choice)
+    true
+  rescue ActiveRecord::RecordNotUnique
+    false # already voted — idempotent no-op
+  end
+
+  # Compute-on-read tally (renders on one page, not a list). No denormalized
+  # columns on debates.
+  def verdict_tally = debate_verdicts.group(:choice).count
+
   private
+
+  # accept!/conclude! share this: the status label is viewer-agnostic (broadcast to
+  # the whole debate), while the accept/decline/conclude affordances are viewer-scoped
+  # (each participant gets their own on their user-signed stream).
+  def broadcast_state_change
+    broadcast_replace_later_to self, target: dom_id(self, :status),
+      partial: "debates/debate_status", locals: {debate: self}
+    broadcast_to_each_participant(target: :actions, partial: "debates/debate_actions")
+  end
+
+  # Replace a viewer-scoped region for each participant on their own user-signed
+  # `[self, participant]` stream — the single home for the "each participant sees
+  # their own render" broadcast intent (composer on post_turn, actions on state change).
+  def broadcast_to_each_participant(target:, partial:)
+    [challenger, opponent].each do |p|
+      broadcast_replace_later_to [self, p], target: dom_id(self, target),
+        partial: partial, locals: {debate: self, viewer: p}
+    end
+  end
+
+  # `dom_id` isn't an instance method on models; delegate to the canonical helper so
+  # the broadcast targets match the view's `dom_id(@debate, :status)` etc.
+  def dom_id(...) = ActionView::RecordIdentifier.dom_id(...)
 
   def notify_challenge = notify(opponent, :debate_challenge)
 

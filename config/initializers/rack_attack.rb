@@ -60,4 +60,10 @@ class Rack::Attack
       req.env["warden"]&.user&.id
     end
   end
+  # Cap spectator verdict bursts per user (Slice 8).
+  throttle("debate_verdicts/user", limit: 10, period: 1.minute) do |req|
+    if req.post? && req.path.match?(%r{\A/debates/[^/]+/verdicts\z})
+      req.env["warden"]&.user&.id
+    end
+  end
 end

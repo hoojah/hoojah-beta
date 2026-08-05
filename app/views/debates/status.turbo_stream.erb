@@ -1,8 +1,14 @@
-<%# accept / decline / conclude all replace the pinned status region in place.
-    The composer visibility also changes on accept (challenger's turn begins), so
-    replace it too. %>
+<%# accept / decline / conclude all replace the pinned status region in place —
+    post-split, that region spans the label (:status) AND the actor's own
+    accept/decline/conclude buttons (:actions), so replace both SYNCHRONOUSLY here
+    (the async _later broadcast to the actor's own [debate, user] stream targets the
+    same :actions id — id-dedup-safe, an idempotent no-op). The composer visibility
+    also changes on accept (challenger's turn begins), so replace it too. %>
 <%= turbo_stream.replace dom_id(@debate, :status) do %>
   <%= render "debates/debate_status", debate: @debate %>
+<% end %>
+<%= turbo_stream.replace dom_id(@debate, :actions) do %>
+  <%= render "debates/debate_actions", debate: @debate, viewer: current_user %>
 <% end %>
 <%= turbo_stream.replace dom_id(@debate, :composer) do %>
   <%= render "debates/turn_composer", debate: @debate %>

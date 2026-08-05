@@ -1,0 +1,46 @@
+<%# Spectator verdict block on a CONCLUDED debate. Wrapped in the pinned
+    dom_id(debate, :verdict) so the create.turbo_stream replace lands here.
+
+    An eligible, not-yet-voted spectator sees three vote buttons; everyone else
+    (participants, anonymous, already-voted) sees the read-only tally bar built
+    from verdict_tally (compute-on-read) using the _vote_bars width-% idiom.
+
+    Locals: debate. %>
+<%
+  eligible = DebateVerdictPolicy.new(current_user, debate.debate_verdicts.new(user: current_user)).create?
+  voted = current_user.present? && debate.debate_verdicts.exists?(user_id: current_user.id)
+  tally = debate.verdict_tally
+  total = tally.values.sum
+  rows = [["challenger", "primary", "@#{debate.challenger.username}"],
+    ["opponent", "disagree", "@#{debate.opponent.username}"],
+    ["draw", "grey", "Draw"]]
+%>
+<div id="<%= dom_id(debate, :verdict) %>" class="my-4 shadow bg-white p-4">
+  <h2 class="text-sm uppercase tracking-wide text-grey mb-3">Spectator verdict</h2>
+
+  <% if eligible && !voted %>
+    <div class="flex flex-col gap-2">
+      <% rows.each do |choice, color, label| %>
+        <%= button_to debate_verdicts_path(debate.slug), params: {choice: choice},
+              class: "shadow rounded-full px-4 py-2 border-2 border-#{color} text-#{color} bg-white cursor-pointer" do %>
+          <%= label %>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <% rows.each do |choice, color, label| %>
+      <% count = tally[choice].to_i %>
+      <% pct = total.zero? ? 0 : (count * 100.0 / total).round %>
+      <div class="flex items-center mb-3 last:mb-0">
+        <small class="w-28 shrink-0 truncate text-<%= color %>"><%= label %></small>
+        <div class="flex-1 mx-3 h-2 bg-gray-200 rounded overflow-hidden">
+          <div class="h-2 rounded bg-<%= color %>" style="width: <%= pct %>%"></div>
+        </div>
+        <small class="w-10 text-right text-<%= color %>"><%= pct %>%</small>
+      </div>
+    <% end %>
+    <% if total.zero? %>
+      <p class="text-grey text-center text-sm py-1">No verdicts yet.</p>
+    <% end %>
+  <% end %>
+</div>

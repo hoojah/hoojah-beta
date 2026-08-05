@@ -9,7 +9,10 @@ The app runs **Rails 8.1.3.1 on Ruby 3.4.9**, suite is **24 examples / 0 failure
 boots in dev + test. Merge commit: `93a3ff2`. **Not pushed** — run `git push origin master` when ready
 (remote is Bitbucket).
 
-Next up: **Project 2 (React SPA → Hotwire)**, then **Project 3 (Hotwire Native)**. Neither started.
+**Project 2 (React SPA → Hotwire) is COMPLETE** — all 8 slices shipped (Hotwire foundation, features +
+Pundit, social, Debate MVP + increments, privacy + analytics, badges + trending, block, private
+accounts). The **"land everything" roadmap is done** — see "Slice 8 … 🏁 PROGRAM COMPLETE" below.
+Next up: **Project 3 (Hotwire Native)** — not started.
 
 ---
 
@@ -488,6 +491,86 @@ then sees the content), reusing `login_as_system` and switching the acting user 
 - Carried forward: **debate Increments 2a/2b/3** (Slice 8, incl. `debate_won`), **Vote array→scalar**,
   **serializer N+1 / prosopite**, **`config.require_master_key`** (L4), **`rack-cors`** (M1),
   **Project 3 — Hotwire Native**.
+
+---
+
+## Slice 8 (Debate Increments) — DONE — 🏁 PROGRAM COMPLETE
+
+_Branch: `slice-8-debate-increments`. Suite: **271 examples / 0 failures / 2 pending** (+46 over the
+225 Slice-7b baseline: verdict model/policy/request + channel/connection auth + broadcasts + timeout
+job + a cuprite verdict system spec; system dir is **24 examples**, stable across repeated runs).
+brakeman **0**; `standardrb` clean; `bundler-audit` clean. One new table (`debate_verdicts`), two new
+channels, one new job; no new gems, no new Stimulus._
+
+This slice shipped the three deferred Debate increments and **completes the "land everything" roadmap**.
+
+**2a — Spectator verdict (concluded debates only):**
+- `debate_verdicts (debate_id FK, user_id FK, choice integer)` with a **unique `[debate_id, user_id]`**
+  index (no standalone `[debate_id]` index — the composite's leftmost prefix covers it). `choice` enum
+  `{challenger: 0, opponent: 1, draw: 2}`. **Tally is compute-on-read** (`Debate#verdict_tally =
+  debate_verdicts.group(:choice).count`) — **no denormalized columns**, which is what lets
+  `Debate#cast_verdict` be a **single `create!` with a method-level `rescue RecordNotUnique`** (no
+  transaction, nothing to poison). One immutable vote per spectator (changeable deferred); no verdict
+  notifications.
+- `DebateVerdictsController#create` authorizes a **`DebateVerdict` instance** (C1 pattern, so Pundit
+  resolves `DebateVerdictPolicy`, not `DebatePolicy`), `rescue_from Pundit::NotAuthorizedError → 403`,
+  invalid choice → 422. **`DebateVerdictPolicy#create?`** gates spectators-only + concluded-only **AND**
+  `DebatePolicy.new(user, record.debate).show?` — closing the must-fix gap where the write endpoint would
+  otherwise bypass the Slice-7b read/visibility gate. `_verdict` partial (three `button_to` for an
+  eligible not-yet-voted spectator; read-only width-% tally bar for everyone else). rack-attack
+  `debate_verdicts/user` (10/min).
+
+**2b — Real-time turns (the app's FIRST Action Cable use — socket authorization is the security crux):**
+- **`ApplicationCable::Connection`** `identified_by :current_user`, deriving the user from
+  `env["warden"].user(scope: :user)` or `reject_unauthorized_connection` (anonymous sockets rejected at
+  the connection layer). **`DebateChannel < Turbo::StreamsChannel`** re-checks `DebatePolicy#show?` at
+  **subscribe time** — the signed Turbo stream token is a durable/unrevocable credential, so the socket
+  is gated independently of the page. It resolves the `Debate` from `verified_stream_name_from_params`
+  (a tampered/unsigned name verifies to `nil` → rejected), guards `is_a?(Debate)` (a validly-signed
+  other-model GID can't authorize), and `rescue ActiveRecord::RecordNotFound → reject` (a since-deleted
+  debate). Both the channel spec (6) and a dedicated **connection spec** (3, via
+  `ActionCable::Connection::TestCase::Behavior` — `stub_connection` bypasses `connect`) cover it.
+- **`debates/show`** renders `turbo_stream_from @debate, channel: "DebateChannel"` (viewer-agnostic
+  transcript + status — **always** name the channel; a plain `turbo_stream_from` would fall back to the
+  UNAUTHORIZED default channel and defeat the whole fix) **and** `turbo_stream_from [@debate,
+  current_user], channel: "DebateChannel" if @debate.participant?(current_user)` (user-signed composer +
+  actions).
+- **Viewer-scoped partials:** `_debate_status` was **split** into `_debate_status` (state label /
+  declined note — viewer-agnostic) + new **`_debate_actions`** (Accept/Decline/Conclude — takes an
+  explicit **`viewer:` local** via `local_assigns.fetch(:viewer) { current_user }`, NOT the implicit
+  `current_user`, which is undefined in a broadcast render context). `_turn_composer` likewise takes
+  `viewer:`.
+- **Broadcasts** (after `with_lock`, `_later` Solid Queue variants, via a private
+  `broadcast_to_each_participant`): `post_turn` appends the turn to `dom_id(:transcript)` + replaces each
+  participant's `dom_id(:composer)` on their user-signed stream; `accept!`/`conclude!` replace
+  `dom_id(:status)` + per-participant `dom_id(:actions)`. **id-dedup** (`_debate_turn` wraps each row in
+  `dom_id(turn)`) means the Slice-4 **synchronous controller `turbo_stream` responses are kept** and the
+  async broadcast is an idempotent no-op. **Review catch (fixed):** splitting the buttons out of
+  `_debate_status` orphaned the actor's synchronous button update, so `status.turbo_stream.erb` now also
+  replaces `dom_id(:actions)` (guarded by request specs) — otherwise the actor's own buttons would only
+  update via the async broadcast, which **never fires in dev (no worker)**.
+
+**3 — Timeout auto-conclude:**
+- **`DebateTurn belongs_to :debate, touch: true`** so `debates.updated_at` tracks the last **turn**, not
+  just the last status change (else the job would conclude actively-argued debates).
+- **`conclude!(by: nil)` crash fixed** (v1 called `other(nil).id`): `by.nil?` (the SYSTEM/timeout path)
+  notifies **both** participants; a manual conclude always passes `current_user` → `other(by)`.
+  `ConcludeStaleDebatesJob` = `Debate.active.where("updated_at < ?", 7.days.ago).find_each { conclude!(by:
+  nil) }`, wired into `config/recurring.yml` (production, daily 3am). **Dev has no job worker** — the
+  timeout runs in production recurring only (documented; `bin/jobs` runs the worker production-style).
+
+**Deferred (per the roadmap + reviews):** `debate_won` badge (dynamic tally → no coherent finalization);
+changeable verdict; a live verdict-tally / status update for non-actor viewers (only the voter's own bar
+updates; `decline!` and `accept!`-composer are not broadcast — the spec-sanctioned boundary); a
+two-session visual real-time system test (out of cuprite scope — the single-session spec instead asserts
+the `turbo_stream_from` subscription tag renders). Carried forward from the whole program: **Vote
+array→scalar** migration, **serializer N+1 / prosopite**, **`Api::V1` visibility/block parity**,
+**`config.require_master_key`** (L4), **`rack-cors`** (M1), and **Project 3 — Hotwire Native**.
+
+**🏁 Program status:** the "land everything" roadmap is **complete** — Social (follow / Following feed /
+@mentions), Debate (MVP + verdict + real-time + timeout), Privacy + Analytics, Badges + Trending, Block,
+and Private accounts have all shipped. What remains is the explicitly-deferred niceties above and
+**Project 3 (Hotwire Native)**.
 
 ---
 

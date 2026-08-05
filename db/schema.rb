@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_06_120001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_06_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -35,6 +35,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_120001) do
     t.index ["debate_id", "position"], name: "index_debate_turns_on_debate_id_and_position", unique: true
     t.index ["debate_id"], name: "index_debate_turns_on_debate_id"
     t.index ["user_id"], name: "index_debate_turns_on_user_id"
+  end
+
+  create_table "debate_verdicts", force: :cascade do |t|
+    t.integer "choice", null: false
+    t.datetime "created_at", null: false
+    t.bigint "debate_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["debate_id", "user_id"], name: "index_debate_verdicts_on_debate_id_and_user_id", unique: true
+    t.index ["user_id"], name: "index_debate_verdicts_on_user_id"
   end
 
   create_table "debates", force: :cascade do |t|
@@ -157,6 +167,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_120001) do
   add_foreign_key "blocks", "users", column: "blocker_id"
   add_foreign_key "debate_turns", "debates"
   add_foreign_key "debate_turns", "users"
+  add_foreign_key "debate_verdicts", "debates"
+  add_foreign_key "debate_verdicts", "users"
   add_foreign_key "debates", "hujahs"
   add_foreign_key "debates", "users", column: "challenger_id"
   add_foreign_key "debates", "users", column: "opponent_id"
