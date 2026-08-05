@@ -8,7 +8,11 @@ class HujahsController < ApplicationController
     base = if params[:filter] == "following" && user_signed_in?
       Hujah.timeline_for(current_user).includes(:user).order(updated_at: :desc)
     else
-      Hujah.where(parent_id: nil).includes(:user).order(updated_at: :desc)
+      global = Hujah.where(parent_id: nil).includes(:user).order(updated_at: :desc)
+      # Slice 7: signed-in viewers never see a hidden (blocked/blocked-by) author's
+      # top-level hoojahs; anonymous is deliberately unfiltered.
+      global = global.where.not(user_id: current_user.hidden_user_ids) if user_signed_in?
+      global
     end
     @pagy, @hujahs = pagy(:countless, base)
 
@@ -22,6 +26,9 @@ class HujahsController < ApplicationController
     skip_authorization
     @hujah = Hujah.friendly.find(params[:slug])
     @children = @hujah.children.includes(:user).order(updated_at: :desc)
+    # Slice 7: hide replies from a hidden (blocked/blocked-by) author (incl. pre-block
+    # replies; new ones are rejected at create). Signed-in only — anonymous unfiltered.
+    @children = @children.where.not(user_id: current_user.hidden_user_ids) if user_signed_in?
     # Debates lens (Slice 4). policy_scope hides others' active/pending/declined
     # debates but shows concluded ones publicly. This is NOT a separate route —
     # it renders inline on the hoojah page. policy_scope does not count toward
