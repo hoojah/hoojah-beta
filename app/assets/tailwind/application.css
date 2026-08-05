@@ -1,1 +1,18 @@
 @import "tailwindcss";
+
+/*
+ * Theme tokens ported from the retired React app's
+ * `app/javascript/stylesheets/variables.scss` (the Bootstrap SCSS palette).
+ * Registering them here makes `bg-agree`, `text-disagree`, `fill-neutral`,
+ * `border-primary`, etc. available to the Hotwire views (feed, single-hujah,
+ * vote bars, response filter).
+ */
+@theme {
+  --color-primary: #415de6;
+  --color-agree: #fcaf45;
+  --color-neutral: #e1306c;
+  --color-disagree: #833ab4;
+  --color-black: #343a40;
+  --color-grey: #8e8e8e;
+  --color-light-grey: #bac2ca;
+}
