@@ -1,7 +1,13 @@
-<%# A debate's entry in the hoojah "Debates" lens. Minimal placeholder — full
-    styling in Phase 4. Local: debate. %>
+<%# A debate's entry in the hoojah "Debates" lens. Links to the transcript screen.
+    Local: debate. %>
+<% state_color = {"pending" => "agree", "active" => "primary", "concluded" => "grey", "declined" => "light-grey"}[debate.status] || "grey" %>
 <%= link_to debate_path(debate.slug), id: dom_id(debate, :card),
-      class: "debate-card block px-4 py-2 no-underline" do %>
-  <span>@<%= debate.challenger.username %> vs @<%= debate.opponent.username %></span>
-  <span class="debate-state">· <%= debate.status.titleize %></span>
+      class: "debate-card block no-underline shadow bg-white px-4 py-2 flex items-center justify-between" do %>
+  <span class="flex items-center gap-1 text-black fill-neutral min-w-0">
+    <%= lucide_icon("swords", class: "w-4 h-4 shrink-0") %>
+    <span class="truncate">@<%= debate.challenger.username %> vs @<%= debate.opponent.username %></span>
+  </span>
+  <span class="debate-state shrink-0 ml-2 text-xs uppercase tracking-wide text-<%= state_color %>">
+    <%= debate.status.titleize %>
+  </span>
 <% end %>

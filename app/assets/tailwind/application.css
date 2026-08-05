@@ -16,6 +16,15 @@
 @source inline("{bg,text,border,fill}-{agree,neutral,disagree,primary}");
 @source inline("fill-white text-white bg-white");
 
+/*
+ * The debate turn composer auto-grows with its content via the native CSS
+ * `field-sizing` property (no JS auto-grow controller). `rows="3"` stays on the
+ * textarea as the min-height fallback for engines without `field-sizing`.
+ */
+.debate-composer-field {
+  field-sizing: content;
+}
+
 @theme {
   --color-primary: #415de6;
   --color-agree: #fcaf45;

@@ -25,3 +25,11 @@
     </div>
   </div>
 <% end %>
+
+<%# "Challenge to debate" escalates this argument into a one-on-one debate. Shown
+    only to a signed-in viewer who is not the argument's author. Rendered OUTSIDE the
+    card anchor (a <dialog>/<form> can't nest in an <a>); it carries the same
+    response-filter item+vote so it hides in sync with the card. %>
+<% if user_signed_in? && current_user.id != child.user_id %>
+  <%= render "hujahs/challenge_dialog", argument: child, hujah: hujah, stance: stance %>
+<% end %>

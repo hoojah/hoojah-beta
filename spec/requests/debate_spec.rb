@@ -52,4 +52,45 @@ RSpec.describe "Debates", type: :request do
     get "/debates/#{d.slug}"
     expect(response).to have_http_status(:ok)
   end
+
+  describe "views (Phase 4)" do
+    def dom_id(*args) = ActionView::RecordIdentifier.dom_id(*args)
+
+    it "hoojah show renders the Debates lens container and a visible debate card" do
+      d = challenge!
+      d.accept!(by: opponent)
+      d.conclude!(by: challenger) # concluded → visible to anyone via the lens Scope
+      get "/hoojah/#{hujah.slug}"
+      expect(response.body).to include("id=\"#{dom_id(hujah, :debates)}\"")
+      expect(response.body).to include("id=\"#{dom_id(d, :card)}\"")
+    end
+
+    it "argument card shows a Challenge action + dialog for a signed-in non-author" do
+      sign_in challenger # challenger is not the argument's author (opponent is)
+      get "/hoojah/#{hujah.slug}"
+      expect(response.body).to include("Challenge to debate")
+      expect(response.body).to include("id=\"#{dom_id(argument, :challenge_dialog)}\"")
+    end
+
+    it "argument card hides the Challenge action from its own author" do
+      sign_in opponent # opponent authored the argument
+      get "/hoojah/#{hujah.slug}"
+      expect(response.body).not_to include("id=\"#{dom_id(argument, :challenge_dialog)}\"")
+    end
+
+    it "argument card hides the Challenge action from anonymous visitors" do
+      get "/hoojah/#{hujah.slug}"
+      expect(response.body).not_to include("Challenge to debate")
+    end
+
+    it "debate show renders the pinned transcript + composer for the current-turn user" do
+      d = challenge!
+      d.accept!(by: opponent) # challenger's turn
+      sign_in challenger
+      get "/debates/#{d.slug}"
+      expect(response.body).to include("id=\"#{dom_id(d, :transcript)}\"")
+      expect(response.body).to include("id=\"#{dom_id(d, :composer)}\"")
+      expect(response.body).to include("Post turn") # composer form shown to the mover
+    end
+  end
 end

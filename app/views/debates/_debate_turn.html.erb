@@ -1,6 +1,17 @@
-<%# One turn in the transcript. Minimal placeholder — full styling in Phase 4.
-    Local: debate_turn. %>
-<div id="<%= dom_id(debate_turn) %>" class="debate-turn px-4 py-2">
-  <span class="font-medium">@<%= debate_turn.user.username %></span>
-  <div class="hujah-body"><%= format_body(debate_turn.body) %></div>
+<%# One turn in the transcript. Local: debate_turn. Rendered on first paint and
+    appended in place by debate_turns/create.turbo_stream.erb (local-time re-processes
+    stream-inserted <time> nodes automatically). %>
+<div id="<%= dom_id(debate_turn) %>" class="debate-turn shadow bg-white px-4 py-3">
+  <div class="flex items-center min-w-0 mb-1">
+    <%= image_tag debate_turn.user.photo, class: "rounded-full w-8 h-8 mr-2 shrink-0", alt: debate_turn.user.username %>
+    <div class="flex flex-col min-w-0">
+      <span class="text-primary font-medium truncate"><%= debate_turn.user.full_name %></span>
+      <small class="text-grey">
+        @<%= debate_turn.user.username %>
+        <span class="mx-1">·</span>
+        <time datetime="<%= debate_turn.created_at.iso8601 %>" data-local="time-ago"><%= debate_turn.created_at.strftime("%b %-d") %></time>
+      </small>
+    </div>
+  </div>
+  <div class="hujah-body text-black break-words"><%= format_body(debate_turn.body) %></div>
 </div>
