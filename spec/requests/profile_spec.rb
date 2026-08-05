@@ -37,6 +37,24 @@ RSpec.describe "Profile", type: :request do
     expect(response.body).to include("@idol")
   end
 
+  it "lets the owner toggle their account private" do
+    sign_in user
+    patch "/u/rudz", params: {user: {private: "1"}},
+      headers: {"Accept" => "text/vnd.turbo-stream.html"}
+    expect(user.reload).to be_private
+  end
+
+  it "auto-accepts pending follow requests when flipping private -> public" do
+    user.update!(private: true)
+    requester = create(:user, username: "req")
+    pending = requester.active_follows.create!(followed: user, status: :pending)
+    sign_in user
+    patch "/u/rudz", params: {user: {private: "0"}},
+      headers: {"Accept" => "text/vnd.turbo-stream.html"}
+    expect(user.reload).not_to be_private
+    expect(pending.reload).to be_accepted
+  end
+
   it "forbids editing someone else" do
     sign_in create(:user)
     patch "/u/rudz", params: {user: {headline: "hacked"}},

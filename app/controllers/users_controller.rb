@@ -33,7 +33,12 @@ class UsersController < ApplicationController
 
   def update
     authorize @user
+    # Slice 7b (Phase 3.2): when a user flips private→public, auto-accept every pending
+    # follow request in one bulk update (no notification blast). Captured BEFORE the
+    # update so the transition is detectable.
+    was_private = @user.private?
     if @user.update(user_params)
+      @user.passive_follows.pending.update_all(status: :accepted) if was_private && !@user.private?
       respond_to do |format|
         format.turbo_stream # update.turbo_stream.erb — refresh header + close_dialog
         format.html { redirect_to profile_path(@user.username), status: :see_other }
@@ -54,6 +59,6 @@ class UsersController < ApplicationController
 
   # Email stays API-only (the HTML edit form omits it, matching the legacy SPA).
   def user_params
-    params.require(:user).permit(:full_name, :username, :location, :link, :headline, :photo)
+    params.require(:user).permit(:full_name, :username, :location, :link, :headline, :photo, :private)
   end
 end
