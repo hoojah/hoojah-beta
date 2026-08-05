@@ -8,7 +8,7 @@ FactoryBot.define do
     end
 
     full_name { "FullName" }
-    password { 'hoojah' }
-    password_confirmation { 'hoojah' }
+    password { "hoojah88" }
+    password_confirmation { "hoojah88" }
   end
 end

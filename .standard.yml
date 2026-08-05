@@ -1,0 +1,5 @@
+ruby_version: 3.4.9
+ignore:
+  - 'db/schema.rb'
+  - 'db/migrate/**/*'
+  - 'bin/**/*'

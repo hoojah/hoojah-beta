@@ -1,13 +1,9 @@
-
-
 # SEED_DATA = JSON.load File.read('config/seed_data.json')
 PASSWORD = "1234567890"
-
 
 puts "\n============================================="
 puts " 🌱  Seed dummy data"
 puts "============================================="
-
 
 # -------
 #  Users
@@ -17,8 +13,8 @@ print "\nSeeding users..."
 
 # users = SEED_DATA["users"]
 
-#1
-rudzainy = User.create!(
+# 1
+User.create!(
   full_name: "Rudzainy Rahman",
   email: "hello@rudzainy.com",
   username: "rudzainy",
@@ -27,7 +23,7 @@ rudzainy = User.create!(
   photo: "https://res.cloudinary.com/hoojah/image/upload/v1586917414/fkmfd5lfkqdpdfvvh0x3.png"
 )
 
-#2
+# 2
 hoojah = User.create!(
   full_name: "Hoojah",
   email: "hello@hoojah.my",
@@ -37,8 +33,8 @@ hoojah = User.create!(
   photo: "https://res.cloudinary.com/hoojah/image/upload/v1586917414/xecjnelhwisrdo4k8bcl.png"
 )
 
-#3
-kurus = User.create!(
+# 3
+User.create!(
   full_name: "Tom Kurus",
   email: "tom@kurus.com",
   username: "TomKurus",
@@ -47,8 +43,8 @@ kurus = User.create!(
   photo: "https://res.cloudinary.com/hoojah/image/upload/v1586917414/tom_kurus_zpqm7u.png"
 )
 
-#4
-hacks = User.create!(
+# 4
+User.create!(
   full_name: "Tom Hacks",
   email: "tom@hacks.com",
   username: "tomhacks",
@@ -57,8 +53,8 @@ hacks = User.create!(
   photo: "https://res.cloudinary.com/hoojah/image/upload/v1586917414/tom_hacks_sqrexr.png"
 )
 
-#5
-party = User.create!(
+# 5
+User.create!(
   full_name: "Tom Party",
   email: "tom@party.com",
   username: "tomparty",
@@ -67,8 +63,8 @@ party = User.create!(
   photo: "https://res.cloudinary.com/hoojah/image/upload/v1586917414/tom_party_wxfii5.png"
 )
 
-#6
-netherlands = User.create!(
+# 6
+User.create!(
   full_name: "Tom Netherlands",
   email: "tom@netherlands.com",
   username: "TomNetherlands1996",
@@ -77,8 +73,8 @@ netherlands = User.create!(
   photo: "https://res.cloudinary.com/hoojah/image/upload/v1586917414/tom_netherlands_qbszsg.png"
 )
 
-#7
-kurus = User.create!(
+# 7
+User.create!(
   full_name: "Tom Cursed",
   email: "tom@cursed.com",
   username: "TomCursed",
@@ -87,8 +83,8 @@ kurus = User.create!(
   photo: "https://res.cloudinary.com/hoojah/image/upload/v1586917414/tom_kurus_zpqm7u.png"
 )
 
-#8
-hacks = User.create!(
+# 8
+User.create!(
   full_name: "T.Hanks",
   email: "t@hanks.com",
   username: "thanks",
@@ -97,8 +93,8 @@ hacks = User.create!(
   photo: "https://res.cloudinary.com/hoojah/image/upload/v1586917414/tom_hacks_sqrexr.png"
 )
 
-#9
-party = User.create!(
+# 9
+User.create!(
   full_name: "Maya Zaharudin",
   email: "mayazaharudin@gmail.com",
   username: "mayazaharudin",
@@ -107,8 +103,8 @@ party = User.create!(
   photo: "https://res.cloudinary.com/hoojah/image/upload/v1586917414/tom_party_wxfii5.png"
 )
 
-#10
-netherlands = User.create!(
+# 10
+User.create!(
   full_name: "Tom Holly",
   email: "tom@holly.com",
   username: "TomHolly",
@@ -119,18 +115,16 @@ netherlands = User.create!(
 
 print " done! 👍🏻\n"
 
-
 # ---------
 #  Hoojahs
 # ---------
 
 print "\nSeeding hoojahs..."
 
-#1
-hoojah1 = hoojah.hujahs.create!(
+# 1
+hoojah.hujahs.create!(
   body: "Hoojah is a healthier alternative to other mainstream social media platforms for Malaysians to have thoughtful discussions online."
 )
-
 
 # kurus.votes.create!(vote: [1], hujah_id: 1)
 # hoojah1.update(agree_count: hoojah1.agree_count + 1)
@@ -143,7 +137,6 @@ hoojah1 = hoojah.hujahs.create!(
 # kurus.votes.create!(vote: [1], hujah_id: 2)
 # hoojah2.update(agree_count: hoojah2.agree_count + 1)
 
-
 # netherlands.votes.create!(vote: [3], hujah_id: 1)
 # hoojah1.update(disagree_count: hoojah1.disagree_count + 1)
 # #3
@@ -154,7 +147,6 @@ hoojah1 = hoojah.hujahs.create!(
 # )
 # netherlands.votes.create!(vote: [1], hujah_id: 3)
 # hoojah3.update(agree_count: hoojah3.agree_count + 1)
-
 
 # party.votes.create!(vote: [2], hujah_id: 1)
 # hoojah1.update(neutral_count: hoojah1.neutral_count + 1)
@@ -167,7 +159,6 @@ hoojah1 = hoojah.hujahs.create!(
 # party.votes.create!(vote: [1], hujah_id: 4)
 # hoojah4.update(agree_count: hoojah4.agree_count + 1)
 
-
 # hacks.votes.create!(vote: [1], hujah_id: 1)
 # hoojah1.update(agree_count: hoojah1.agree_count + 1)
 # #5
@@ -178,7 +169,6 @@ hoojah1 = hoojah.hujahs.create!(
 # )
 # hacks.votes.create!(vote: [1], hujah_id: 5)
 # hoojah5.update(agree_count: hoojah5.agree_count + 1)
-
 
 # hacks.votes.create!(vote: [1], hujah_id: 3)
 # hoojah3.update(agree_count: hoojah3.agree_count + 1)
@@ -191,7 +181,6 @@ hoojah1 = hoojah.hujahs.create!(
 # hacks.votes.create!(vote: [1], hujah_id: 6)
 # hoojah6.update(agree_count: hoojah6.agree_count + 1)
 
-
 # netherlands.votes.create!(vote: [1], hujah_id: 5)
 # hoojah5.update(agree_count: hoojah5.agree_count + 1)
 # #7
@@ -203,7 +192,6 @@ hoojah1 = hoojah.hujahs.create!(
 # netherlands.votes.create!(vote: [1], hujah_id: 2)
 # hoojah2.update(agree_count: hoojah2.agree_count + 1)
 
-
 # party.votes.create!(vote: [1], hujah_id: 7)
 # hoojah7.update(agree_count: hoojah7.agree_count + 1)
 # #8
@@ -213,14 +201,12 @@ hoojah1 = hoojah.hujahs.create!(
 #   vote: 1
 # )
 
-
 # #9
 # hoojah9 = party.hujahs.create!(
 #   body: "But yeah man, people should not be stopped from posting 💩 or whatever they want. Humans should flag this manually if they think it's not progressing the discussion further, yeah?",
 #   parent_id: 7,
 #   vote: 3
 # )
-
 
 # kurus.votes.create!(vote: [1], hujah_id: 9)
 

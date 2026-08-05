@@ -1,0 +1,9 @@
+<%= turbo_stream.append "hujah-feed" do %>
+  <%= render partial: "hujah_card", collection: @hujahs, as: :hujah %>
+<% end %>
+
+<%= turbo_stream.replace "load-more" do %>
+  <div id="load-more">
+    <%= render "load_more" if @pagy.next %>
+  </div>
+<% end %>

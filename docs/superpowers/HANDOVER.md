@@ -13,6 +13,58 @@ Next up: **Project 2 (React SPA → Hotwire)**, then **Project 3 (Hotwire Native
 
 ---
 
+## Project 2 Slice 1 — Hotwire Foundation — DONE
+
+_Branch: `project-2-hotwire-foundation`. Suite: **50 examples / 0 failures / 2 pending**
+(includes request + Cuprite system specs). brakeman **0**; `standardrb` clean;
+`bundler-audit` clean (no ignores)._
+
+**What shipped:**
+- **Asset/JS foundation:** retired Webpacker/shakapacker/React/Node. Now **importmap-rails +
+  Propshaft + Tailwind (`tailwindcss-rails`)** with Turbo + Stimulus. `bin/dev` (Procfile.dev)
+  runs Puma + `tailwindcss:watch`.
+- **Auth:** hand-rolled sessions replaced with **Devise 5.0.4** (`/login` `/signup` `/logout` +
+  password reset). `password_digest` → `encrypted_password`; existing bcrypt `$2a$12$` hashes
+  round-trip (stretches=12, no pepper). Emails downcased + unique index. `paranoid=true`.
+- **Screens:** server-rendered **feed + single-hujah + threaded responses**, with **Turbo-Stream
+  in-place voting** (`button_to` → thin votes controller → `Hujah#cast_vote` → `_vote_bars` replace).
+  Client-side response filter + local-time via Stimulus/importmap.
+- **Security hardening:** closed the **votes IDOR** (voter derived from `current_user`, not
+  `params[:user_id]`), the **hujah-destroy IDOR** (authenticate + owner-only), and the users-`:id`
+  **mass-assignment**. Added **rack-attack** throttles (login/signup/password/votes),
+  **invisible_captcha** honeypot on signup, and an explicit **CSP with a nonce** (Cloudinary + Drift
+  hosts; no `unsafe-inline` on `script-src`). API controllers use `null_session` CSRF via
+  `Api::V1::BaseController`.
+
+**Still open / deferred — carry these forward:**
+- **Slice 2 scope:** compose/new-hujah form (+ Cloudinary upload + parent-reply), user profile,
+  **notifications index + its IDOR fix**, flag modal, social-share menu.
+- **Pundit** (Slice 1 authorizes with `before_action`, not policies).
+- **prosopite** N+1 detection; the feed/show queries were not yet audited for N+1.
+- **Vote model:** `vote` is still an **array** column appended per cast — collapse to a scalar
+  (latest stance) in a dedicated migration.
+- **Cloudinary URL host validation** on user-supplied photo/link fields.
+- **`config.require_master_key`** still commented (finding **L4**) — enable once the deploy provides
+  `config/master.key`.
+- **`rack-cors` origin tightening** (finding **M1**) — currently permissive; tighten before Project 3
+  (native clients).
+
+**Prod-migration awareness (flagged in Phase 1 review):** on a LARGE populated `users` table the
+Devise migration's `change_column_null` backfill and the (here **non-concurrent**)
+`reset_password_token` unique index would take heavy locks. Fine on this dataset, but re-plan these as
+concurrent/batched before a big-table production deploy. (The `email` unique index is already
+`algorithm: :concurrently`.)
+
+**Faithfulness note (flagged in Phase 4 review):** feed cards now use the per-stance `_vote_bars`
+layout (denser, inline-votable) rather than the old compact 3-segment feed bar — a deliberate
+single-partial consolidation (feed and show share one widget). Confirm with the owner whether the
+compact feed bar should be restored for the feed later.
+
+**CI/deploy note:** `app/assets/builds/tailwind.css` is **gitignored**; `tailwindcss:build` runs via
+the `assets:precompile` hook — every deploy must run `assets:precompile` so the compiled bundle exists.
+
+---
+
 ## ⚠️ Environment quirks — you MUST know these to run anything
 
 This machine is arm64 / Darwin 25 with modern clang. The repo carries build helpers:

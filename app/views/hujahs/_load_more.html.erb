@@ -1,0 +1,4 @@
+<%= link_to "Load more",
+      root_path(page: @pagy.next),
+      data: { turbo_stream: true },
+      class: "block text-center text-primary font-medium py-3" %>

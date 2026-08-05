@@ -1,0 +1,49 @@
+<%# Faithful port of the legacy SPA `Hujah/card_header.js`: avatar + full_name + @handle,
+    plus a share menu (native <details>, no JS needed). Optional `parent:` local
+    renders the "Response to ..." parent stub (port of card_parent.js). %>
+<% if local_assigns[:parent].present? %>
+  <%= link_to hujah_path(parent.slug), class: "block no-underline" do %>
+    <div class="shadow-sm border-b border-light-grey px-4 py-1 flex items-center">
+      <%= image_tag parent.user.photo, class: "rounded-full w-8 h-8 mr-2", alt: parent.user.username %>
+      <div class="flex flex-col min-w-0">
+        <small class="text-grey">
+          Response to <span class="text-primary"><%= parent.user.full_name %></span>'s hoojah
+        </small>
+        <div class="text-grey text-sm truncate max-w-[350px]"><%= strip_tags(parent.body) %></div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
+<div class="px-4 pt-3 pb-0 flex justify-between items-center">
+  <div class="flex items-center min-w-0">
+    <%= link_to "#", class: "shrink-0" do %>
+      <%= image_tag hujah.user.photo, class: "rounded-full w-11 h-11 mr-3", alt: hujah.user.username %>
+    <% end %>
+    <div class="flex flex-col min-w-0">
+      <%= link_to hujah.user.full_name, "#", class: "text-primary font-medium no-underline truncate" %>
+      <small class="text-grey">
+        @<%= hujah.user.username %>
+        <span class="mx-1">·</span>
+        <time datetime="<%= hujah.created_at.iso8601 %>" data-local="time-ago"><%= hujah.created_at.strftime("%b %-d") %></time>
+      </small>
+    </div>
+  </div>
+
+  <% share_url = hujah_url(hujah.slug) %>
+  <% message = "\"#{strip_tags(hujah.body)} (by @#{hujah.user.username})\" Do you AGREE? NEUTRAL? DISAGREE?" %>
+  <details class="relative shrink-0">
+    <summary class="list-none cursor-pointer fill-light-grey text-light-grey" aria-label="Share this hoojah">
+      <%= lucide_icon("share-2", class: "w-4 h-4") %>
+    </summary>
+    <div class="absolute right-0 mt-1 w-52 bg-white shadow rounded p-2 z-10">
+      <h6 class="text-xs text-grey px-2 pb-1">Share this hoojah via</h6>
+      <%= link_to "Facebook", "https://www.facebook.com/sharer/sharer.php?u=#{CGI.escape(share_url)}", target: "_blank", rel: "noopener", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
+      <%= link_to "Twitter", "https://twitter.com/intent/tweet?url=#{CGI.escape(share_url)}&text=#{CGI.escape(message)}&via=hoojah_my", target: "_blank", rel: "noopener", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
+      <%= link_to "WhatsApp", "https://wa.me/?text=#{CGI.escape("#{message} #{share_url}")}", target: "_blank", rel: "noopener", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
+      <%= link_to "Telegram", "https://t.me/share/url?url=#{CGI.escape(share_url)}&text=#{CGI.escape(message)}", target: "_blank", rel: "noopener", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
+      <%= link_to "Reddit", "https://www.reddit.com/submit?url=#{CGI.escape(share_url)}&title=#{CGI.escape(message)}", target: "_blank", rel: "noopener", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
+      <%= mail_to "hello@hoojah.my", "Email", subject: message, class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
+    </div>
+  </details>
+</div>

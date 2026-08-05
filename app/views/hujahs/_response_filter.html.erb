@@ -1,0 +1,45 @@
+<%# Port of the legacy SPA response-filter tab group. The filtering itself is driven by
+    `response_filter_controller.js` (Task 4.4) — purely client-side show/hide, no
+    fetch/re-render. Markup contract:
+      root:  data-controller="response-filter"
+      tabs:  role="group", data-action="response-filter#filter",
+             data-response-filter-filter-param="all|agree|neutral|disagree"
+      items: data-response-filter-target="item" data-response-filter-vote="<stance>" %>
+<div data-controller="response-filter"
+     data-response-filter-active-value="all"
+     class="shadow bg-white pb-3">
+  <div class="p-4">
+    <div class="flex shadow rounded overflow-hidden" role="group" aria-label="Filter responses">
+      <button type="button"
+              data-action="response-filter#filter"
+              data-response-filter-filter-param="all"
+              data-response-filter-target="tab"
+              aria-pressed="true"
+              class="flex-1 py-2 flex items-center justify-center gap-1 border border-light-grey text-primary fill-primary">
+        All <%= lucide_icon("message-circle", class: "w-4 h-4") %>
+      </button>
+      <% [["agree", "agree"], ["neutral", "neutral"], ["disagree", "disagree"]].each do |stance, param| %>
+        <button type="button"
+                data-action="response-filter#filter"
+                data-response-filter-filter-param="<%= param %>"
+                data-response-filter-target="tab"
+                aria-pressed="false"
+                aria-label="<%= stance.capitalize %>"
+                class="flex-1 py-2 flex items-center justify-center border border-light-grey fill-<%= stance %> text-<%= stance %>">
+          <%= stance_icon(stance, class: "w-4 h-4") %>
+        </button>
+      <% end %>
+    </div>
+  </div>
+
+  <% if children.any? %>
+    <% children.each do |child| %>
+      <%= render "hujahs/child_card", child: child %>
+    <% end %>
+  <% else %>
+    <div class="flex items-center text-sm text-light-grey fill-light-grey px-4 pt-0">
+      <%= lucide_icon("message-circle", class: "w-4 h-4") %>
+      <span class="ml-1">No response yet</span>
+    </div>
+  <% end %>
+</div>

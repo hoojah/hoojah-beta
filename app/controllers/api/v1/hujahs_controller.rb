@@ -1,10 +1,11 @@
-class Api::V1::HujahsController < ApplicationController
-  def index
-    
-    hujahs = Hujah.all.order(updated_at: :desc)
-    serialized_hujahs = HujahSerializer.new(hujahs, params: {logged_in: logged_in?, current_user_id: current_user&.id }).serializable_hash
-    render json: serialized_hujahs
+class Api::V1::HujahsController < Api::V1::BaseController
+  before_action :authenticate_user!, only: :destroy
+  before_action :require_owner!, only: :destroy
 
+  def index
+    hujahs = Hujah.all.order(updated_at: :desc)
+    serialized_hujahs = HujahSerializer.new(hujahs, params: {logged_in: user_signed_in?, current_user_id: current_user&.id}).serializable_hash
+    render json: serialized_hujahs
   end
 
   def create
@@ -22,15 +23,15 @@ class Api::V1::HujahsController < ApplicationController
   def show
     if hujah
 
-      serialized_hujah = HujahSerializer.new(hujah, params: {logged_in: logged_in?, current_user_id: current_user&.id }).serializable_hash
+      serialized_hujah = HujahSerializer.new(hujah, params: {logged_in: user_signed_in?, current_user_id: current_user&.id}).serializable_hash
 
       render json: serialized_hujah
     end
   end
 
   def destroy
-    hujah&.destroy
-    render json: { message: 'Hoojah deleted!' }
+    hujah.destroy
+    render json: {message: "Hoojah deleted!"}
   end
 
   def new
@@ -38,12 +39,15 @@ class Api::V1::HujahsController < ApplicationController
 
   private
 
+  def require_owner!
+    head :forbidden unless hujah&.user_id == current_user.id
+  end
+
   def hujah_params
     params.permit(:body, :parent_id, :vote)
   end
 
   def hujah
-    @hujah ||= Hujah.find_by_slug(params[:slug])
+    @hujah ||= Hujah.friendly.find(params[:slug])
   end
-
 end

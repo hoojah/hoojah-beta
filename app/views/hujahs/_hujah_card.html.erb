@@ -1,0 +1,26 @@
+<%# Faithful port of the legacy SPA `Hujah/card.js` — one feed card for a top-level hujah:
+    header (avatar/handle/share), tappable body, the shared vote widget, and a
+    counts footer (total votes · responses). %>
+<article data-testid="hujah-card" class="shadow bg-white mb-2">
+  <%= render "hujahs/hujah_header", hujah: hujah %>
+
+  <div class="px-4 pt-3 pb-0">
+    <%= link_to hujah_path(hujah.slug), class: "block text-black no-underline" do %>
+      <div class="hujah-body text-lg leading-snug"><%= format_body(hujah.body) %></div>
+    <% end %>
+  </div>
+
+  <%= render "hujahs/vote_bars",
+        hujah: hujah,
+        current_user_vote: hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) %>
+
+  <div class="px-4 py-2 flex items-center text-sm text-grey fill-grey border-t border-gray-100">
+    <%= link_to hujah_path(hujah.slug), class: "flex items-center text-grey no-underline" do %>
+      <%= lucide_icon("bar-chart-2", class: "w-4 h-4") %>
+      <span class="ml-1"><%= hujah.agree_count.to_i + hujah.neutral_count.to_i + hujah.disagree_count.to_i %></span>
+      <span class="mx-2">·</span>
+      <%= lucide_icon("message-circle", class: "w-4 h-4") %>
+      <span class="ml-1"><%= hujah.children.size %></span>
+    <% end %>
+  </div>
+</article>

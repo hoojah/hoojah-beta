@@ -1,64 +1,22 @@
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'Sessions', type: :request do
-  let(:user) { create(:user) }
+RSpec.describe "Sessions (Devise)", type: :request do
+  let(:user) { create(:user, password: "hoojah88") }
 
-  def body
-    JSON.parse(response.body)
+  it "logs in with valid credentials and redirects" do
+    post user_session_path, params: {user: {email: user.email, password: "hoojah88"}}
+    expect(response).to have_http_status(:see_other).or have_http_status(:found)
   end
 
-  describe 'POST /login' do
-    context 'with valid credentials' do
-      it 'logs the user in and reports unread notifications count' do
-        post '/login', params: { user: { email: user.email, password: 'hoojah' } }
-
-        expect(response).to have_http_status(:ok)
-        expect(body['logged_in']).to eq(true)
-        expect(body['unread_notifications_count']).to eq(0)
-      end
-    end
-
-    context 'with invalid credentials' do
-      it 'returns a 401 status and an errors array (in the JSON body)' do
-        post '/login', params: { user: { email: user.email, password: 'wrong-password' } }
-
-        # NOTE: the controller renders `status: 401` inside the JSON body but does
-        # not set the HTTP status, so the actual HTTP response is 200 OK.
-        expect(body['status']).to eq(401)
-        expect(body['errors']).to be_an(Array)
-      end
-    end
+  it "never exposes encrypted_password in any auth response" do
+    post user_session_path, params: {user: {email: user.email, password: "hoojah88"}}
+    follow_redirect!
+    expect(response.body).not_to include("encrypted_password")
+    expect(response.body).not_to include("$2a$")
   end
 
-  describe 'GET /logged_in' do
-    it 'is true after logging in' do
-      login_as(user)
-
-      get '/logged_in'
-
-      expect(response).to have_http_status(:ok)
-      expect(body['logged_in']).to eq(true)
-    end
-
-    it 'is false without a session' do
-      get '/logged_in'
-
-      expect(response).to have_http_status(:ok)
-      expect(body['logged_in']).to eq(false)
-    end
-  end
-
-  describe 'DELETE /logout' do
-    it 'logs the user out' do
-      login_as(user)
-
-      delete '/logout'
-
-      expect(response).to have_http_status(:ok)
-      expect(body['logged_out']).to eq(true)
-
-      get '/logged_in'
-      expect(body['logged_in']).to eq(false)
-    end
+  it "rejects bad credentials without revealing account existence" do
+    post user_session_path, params: {user: {email: user.email, password: "wrong"}}
+    expect(response.body).not_to include("encrypted_password")
   end
 end

@@ -1,0 +1,47 @@
+<%# Faithful port of the legacy SPA `Hujah.jsx` — the single-hujah screen:
+    back + more-actions subnav, the full card (parent stub, body, per-stance vote
+    rows, counts), then the response-filter section wrapping threaded children. %>
+<% total_votes = @hujah.agree_count.to_i + @hujah.neutral_count.to_i + @hujah.disagree_count.to_i %>
+
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <nav class="flex justify-between items-center mb-2">
+    <%= link_to root_path, class: "fill-primary text-primary no-underline", aria: { label: "Back" } do %>
+      <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
+    <% end %>
+    <details class="relative">
+      <summary class="list-none cursor-pointer fill-primary text-primary" aria-label="More actions">
+        <%= lucide_icon("more-horizontal", class: "w-6 h-6") %>
+      </summary>
+      <div class="absolute right-0 mt-1 w-56 bg-white shadow rounded p-2 z-10">
+        <% if user_signed_in? && @hujah.user_id == current_user.id %>
+          <span class="block px-3 py-1 text-grey">Delete hoojah (Slice 2)</span>
+        <% end %>
+        <span class="block px-3 py-1 text-neutral fill-neutral">Flag this hoojah (Slice 2)</span>
+      </div>
+    </details>
+  </nav>
+
+  <article class="shadow bg-white mb-2">
+    <%= render "hujahs/hujah_header", hujah: @hujah, parent: @hujah.parent %>
+
+    <div class="px-4 pt-3 pb-1 text-black">
+      <h3 class="hujah-body text-xl leading-snug"><%= format_body(@hujah.body) %></h3>
+    </div>
+
+    <%= render "hujahs/vote_bars",
+          hujah: @hujah,
+          current_user_vote: @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) %>
+
+    <div class="px-4 py-2 flex items-center text-sm text-grey fill-grey">
+      <%= lucide_icon("bar-chart-2", class: "w-4 h-4") %>
+      <span class="ml-1"><%= total_votes %></span>
+      <span class="mx-2">·</span>
+      <%= lucide_icon("message-circle", class: "w-4 h-4") %>
+      <span class="ml-1"><%= @children.size %></span>
+    </div>
+  </article>
+
+  <%= render "hujahs/response_filter", hujah: @hujah, children: @children %>
+</main>

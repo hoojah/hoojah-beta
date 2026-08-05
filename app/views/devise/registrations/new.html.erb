@@ -1,0 +1,44 @@
+<div class="max-w-md mx-auto mt-16 p-6 bg-white rounded shadow">
+  <h2 class="text-2xl font-semibold mb-6">Sign up</h2>
+
+  <%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
+    <%= render "devise/shared/error_messages", resource: resource %>
+
+    <%= invisible_captcha :subtitle %>
+
+    <div class="mb-3">
+      <%= f.label :full_name, class: "block text-sm" %>
+      <%= f.text_field :full_name, autofocus: true, class: "w-full border rounded px-3 py-2" %>
+    </div>
+    <div class="mb-3">
+      <%= f.label :username, class: "block text-sm" %>
+      <%= f.text_field :username, class: "w-full border rounded px-3 py-2" %>
+    </div>
+
+    <div class="mb-3">
+      <%= f.label :email, class: "block text-sm" %>
+      <%= f.email_field :email, autocomplete: "email", class: "w-full border rounded px-3 py-2" %>
+    </div>
+
+    <div class="mb-3">
+      <%= f.label :password, class: "block text-sm" %>
+      <% if @minimum_password_length %>
+        <em class="text-xs text-gray-500">(<%= @minimum_password_length %> characters minimum)</em>
+      <% end %>
+      <%= f.password_field :password, autocomplete: "new-password", class: "w-full border rounded px-3 py-2" %>
+    </div>
+
+    <div class="mb-3">
+      <%= f.label :password_confirmation, class: "block text-sm" %>
+      <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "w-full border rounded px-3 py-2" %>
+    </div>
+
+    <div class="mt-4">
+      <%= f.submit "Sign up", class: "bg-primary text-white rounded px-4 py-2" %>
+    </div>
+  <% end %>
+
+  <div class="mt-4 text-sm">
+    <%= render "devise/shared/links" %>
+  </div>
+</div>

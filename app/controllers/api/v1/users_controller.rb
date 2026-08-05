@@ -1,4 +1,6 @@
-class Api::V1::UsersController < ApplicationController
+class Api::V1::UsersController < Api::V1::BaseController
+  before_action :authenticate_user!, only: :update
+
   def show
     if user
       render json: UserSerializer.new(user).serializable_hash
@@ -16,7 +18,7 @@ class Api::V1::UsersController < ApplicationController
   private
 
   def user_params
-    params.permit(:username, :full_name, :location, :link, :photo, :headline, :id, :user)
+    params.permit(:full_name, :username, :email, :photo, :location, :headline, :link)
   end
 
   def user

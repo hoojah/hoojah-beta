@@ -1,0 +1,13 @@
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <%= render "shared/pinned" unless user_signed_in? %>
+
+  <div id="hujah-feed">
+    <%= render partial: "hujah_card", collection: @hujahs, as: :hujah %>
+  </div>
+
+  <div id="load-more">
+    <%= render "load_more" if @pagy.next %>
+  </div>
+</main>

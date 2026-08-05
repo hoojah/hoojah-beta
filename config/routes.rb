@@ -1,32 +1,34 @@
 Rails.application.routes.draw do
-  resources :votes
+  devise_for :users,
+    controllers: {registrations: "users/registrations"},
+    path: "",
+    path_names: {sign_in: "login", sign_out: "logout", sign_up: "signup"}
+
   namespace :api do
     namespace :v1 do
-      get 'hoojah/index', to: 'hujahs#index'
-      post 'hoojah/create', to: 'hujahs#create'
-      get '/hoojah/:slug', to: 'hujahs#show'
-      delete '/hoojah/destroy/:slug', to: 'hujahs#destroy'
-      get '/hoojah/new', to: 'hujahs#new'
+      get "hoojah/index", to: "hujahs#index"
+      post "hoojah/create", to: "hujahs#create"
+      get "/hoojah/:slug", to: "hujahs#show"
+      delete "/hoojah/destroy/:slug", to: "hujahs#destroy"
+      get "/hoojah/new", to: "hujahs#new"
 
-      post 'votes/create', to: 'votes#create'
-      
-      get '/:username', to: 'users#show'
-      post ':username/update', to: 'users#update'
+      post "votes/create", to: "votes#create"
 
-      post 'flags/create', to: 'flags#create'
+      get "/:username", to: "users#show"
+      post ":username/update", to: "users#update"
 
-      get '/:username/notifications', to: 'notifications#index'
-      put '/:username/notifications/:id', to: 'notifications#update'
-      delete '/:username/notifications/:id', to: 'notifications#destroy'
+      post "flags/create", to: "flags#create"
+
+      get "/:username/notifications", to: "notifications#index"
+      put "/:username/notifications/:id", to: "notifications#update"
+      delete "/:username/notifications/:id", to: "notifications#destroy"
     end
   end
-  
-  post '/login', to: 'sessions#create'
-  delete '/logout', to: 'sessions#destroy'
-  get '/logged_in', to: 'sessions#is_logged_in?'
-  
-  resources :users, only: :create
 
-  root 'hujah#index'
-  get '/*path' => 'hujah#index'
+  # HTML (Hotwire) screens — the server-rendered replacement for the legacy SPA.
+  root "hujahs#index"
+  get "/hoojah/:slug", to: "hujahs#show", as: :hujah
+  # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`
+  # resolves when `_vote_bars` renders inside the card in the feed AND the show page.
+  post "/hoojah/:slug/votes", to: "votes#create", as: :hujah_votes
 end

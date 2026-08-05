@@ -8,63 +8,63 @@ class HujahSerializer
   end
 
   # this is the owner of the hujah, not the current user
-  attribute :user do |hujah| 
+  attribute :user do |hujah|
     {
-      "id": hujah.user.id,
-      "type": "user",
-      "attributes": {
-        "username": hujah.user.username,
-        "full_name": hujah.user.full_name,
-        "photo": hujah.user.photo
+      id: hujah.user.id,
+      type: "user",
+      attributes: {
+        username: hujah.user.username,
+        full_name: hujah.user.full_name,
+        photo: hujah.user.photo
       }
     }
   end
 
-  attribute :parent, if: Proc.new { |hujah| hujah.parent_id != nil } do |hujah| {
-      "id": hujah.parent.id,
-      "type": "hujah",
-      "attributes": {
-        "body": hujah.parent.body,
-        "slug": hujah.parent.slug,
-        "user": {
-          "attributes": {
-            "username": hujah.parent.user.username,
-            "full_name": hujah.parent.user.full_name,
-            "photo": hujah.parent.user.photo
+  attribute :parent, if: proc { |hujah| !hujah.parent_id.nil? } do |hujah|
+    {
+      id: hujah.parent.id,
+      type: "hujah",
+      attributes: {
+        body: hujah.parent.body,
+        slug: hujah.parent.slug,
+        user: {
+          attributes: {
+            username: hujah.parent.user.username,
+            full_name: hujah.parent.user.full_name,
+            photo: hujah.parent.user.photo
           }
         }
       }
     }
   end
 
-  attributes :children, if: Proc.new { |hujah| hujah.children.length != 0 } do |hujah| 
+  attributes :children, if: proc { |hujah| hujah.children.length != 0 } do |hujah|
+    new_children = []
 
-    newChildren = []
-  
     hujah.children.each do |child|
-      newChild = {
-        "id": child.id,
-        "type": "hujah",
-        "attributes": {
-          "body": child.body,
-          "vote": child.vote,
-          "agree_count": child.agree_count,
-          "neutral_count": child.neutral_count,
-          "disagree_count": child.disagree_count,
-          "slug": child.slug,
-          "user": {
-            "attributes": {
-              "username": child.user.username,
-              "full_name": child.user.full_name,
-              "photo": child.user.photo
+      new_child = {
+        id: child.id,
+        type: "hujah",
+        attributes: {
+          body: child.body,
+          vote: child.vote,
+          agree_count: child.agree_count,
+          neutral_count: child.neutral_count,
+          disagree_count: child.disagree_count,
+          slug: child.slug,
+          user: {
+            attributes: {
+              username: child.user.username,
+              full_name: child.user.full_name,
+              photo: child.user.photo
             }
           }
         }
       }
-      newChildren << newChild
+      new_children << new_child
     end
 
-    newChildren
+    new_children
   end
 
   attribute :current_user_vote do |hujah, params|

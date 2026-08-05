@@ -4,14 +4,15 @@ class User < ApplicationRecord
   has_many :notifications, dependent: :destroy
   has_many :flags, dependent: :destroy
 
-  has_secure_password
+  devise :database_authenticatable, :registerable,
+    :recoverable, :rememberable, :validatable
+
+  before_validation { self.email = email.to_s.downcase.strip }
+
   validates :full_name, presence: true
-  validates :username, presence: true
-  validates :username, uniqueness: true
-  validates :username, length: { minimum: 1 }
-  validates :email, presence: true
-  validates :email, uniqueness: true
-  validates_format_of :email, :with => /\A([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})\z/i
+  validates :username, presence: true, uniqueness: true, length: {minimum: 1}
+
+  after_create :assign_random_photo
 
   def self.random_photo
     [
@@ -23,6 +24,12 @@ class User < ApplicationRecord
   end
 
   def unread_notifications_count
-    self.notifications.where(read: false).count
+    notifications.where(read: false).count
+  end
+
+  private
+
+  def assign_random_photo
+    update_column(:photo, User.random_photo) if photo.blank?
   end
 end
