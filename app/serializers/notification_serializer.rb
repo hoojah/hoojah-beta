@@ -7,8 +7,8 @@ class NotificationSerializer
     if notification.hujah_id
       hujah = Hujah.find(notification.hujah_id)
       {
-        "slug": hujah.slug,
-        "body": hujah.body
+        slug: hujah.slug,
+        body: hujah.body
       }
     end
   end
@@ -17,7 +17,7 @@ class NotificationSerializer
     if notification.subject_user_id
       subject_user = User.find(notification.subject_user_id)
       {
-        "username": subject_user.username
+        username: subject_user.username
       }
     end
   end

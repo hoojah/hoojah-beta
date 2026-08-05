@@ -3,19 +3,19 @@ require "capybara/cuprite"
 # Cuprite (headless Chrome via CDP) drives the `js: true` system specs. On this
 # machine Chrome lives at the standard macOS app path; Ferrum auto-detects it, but
 # we pass CUPRITE_CHROME_PATH explicitly when set so CI/other hosts can override.
-_chrome_candidates = [
+chrome_candidates = [
   ENV["CUPRITE_CHROME_PATH"],
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "/Applications/Chromium.app/Contents/MacOS/Chromium"
 ].compact
-_chrome_path = _chrome_candidates.find { |p| File.executable?(p) }
+chrome_path = chrome_candidates.find { |p| File.executable?(p) }
 
 Capybara.register_driver(:cuprite) do |app|
   Capybara::Cuprite::Driver.new(
     app,
     window_size: [1200, 900],
     process_timeout: 20,
-    browser_path: _chrome_path,
+    browser_path: chrome_path,
     browser_options: {"no-sandbox": nil}
   )
 end

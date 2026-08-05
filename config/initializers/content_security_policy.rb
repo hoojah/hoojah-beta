@@ -7,11 +7,11 @@
 Rails.application.configure do
   config.content_security_policy do |policy|
     policy.default_src :self
-    policy.script_src  :self, "https://widget.cloudinary.com", "https://js.driftt.com", "https://*.drift.com"
-    policy.style_src   :self, :unsafe_inline # Tailwind ships static CSS; inline only for Turbo progress bar
-    policy.img_src     :self, :data, "https://res.cloudinary.com", "https://*.drift.com"
+    policy.script_src :self, "https://widget.cloudinary.com", "https://js.driftt.com", "https://*.drift.com"
+    policy.style_src :self, :unsafe_inline # Tailwind ships static CSS; inline only for Turbo progress bar
+    policy.img_src :self, :data, "https://res.cloudinary.com", "https://*.drift.com"
     policy.connect_src :self, "https://api.cloudinary.com", "https://*.drift.com", "wss://*.drift.com"
-    policy.frame_src   "https://widget.cloudinary.com", "https://*.drift.com"
+    policy.frame_src "https://widget.cloudinary.com", "https://*.drift.com"
   end
 
   # SecureRandom, not request.session.id: the session id is blank on a

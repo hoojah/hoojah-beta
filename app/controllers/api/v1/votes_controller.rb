@@ -3,7 +3,7 @@ class Api::V1::VotesController < Api::V1::BaseController
 
   def create
     hujah.cast_vote(by: current_user, choice: vote_params[:vote])
-    render json: { message: 'ok' }
+    render json: {message: "ok"}
   end
 
   private

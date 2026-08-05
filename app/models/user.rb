@@ -5,12 +5,12 @@ class User < ApplicationRecord
   has_many :flags, dependent: :destroy
 
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable
+    :recoverable, :rememberable, :validatable
 
   before_validation { self.email = email.to_s.downcase.strip }
 
   validates :full_name, presence: true
-  validates :username, presence: true, uniqueness: true, length: { minimum: 1 }
+  validates :username, presence: true, uniqueness: true, length: {minimum: 1}
 
   after_create :assign_random_photo
 

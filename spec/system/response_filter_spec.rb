@@ -7,8 +7,8 @@ RSpec.describe "Response filter", type: :system, js: true do
   it "hides non-matching responses and reflects the active tab via aria-pressed" do
     author = create(:user)
     parent = create(:hujah, user: author)
-    agree_child = create(:hujah, user: author, parent: parent, vote: 1, body: "I agree strongly")
-    disagree_child = create(:hujah, user: author, parent: parent, vote: 3, body: "I disagree entirely")
+    create(:hujah, user: author, parent: parent, vote: 1, body: "I agree strongly")
+    create(:hujah, user: author, parent: parent, vote: 3, body: "I disagree entirely")
 
     visit "/hoojah/#{parent.slug}"
 

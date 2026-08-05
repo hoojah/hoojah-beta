@@ -1,25 +1,25 @@
 class Hujah < ApplicationRecord
-
   belongs_to :user
   has_many :votes, dependent: :destroy
   has_many :flags, dependent: :destroy
   has_many :children, class_name: "Hujah", foreign_key: "parent_id", dependent: :destroy
   belongs_to :parent, class_name: "Hujah", optional: true
-  
+
   validates :body, presence: true
 
   extend FriendlyId
+
   friendly_id :slug_source, use: [:slugged, :history]
 
   def slug_source
-    ActionController::Base.helpers.strip_tags(body.to_s).split.first(10).join(' ')
+    ActionController::Base.helpers.strip_tags(body.to_s).split.first(10).join(" ")
   end
 
   def should_generate_new_friendly_id?
     will_save_change_to_body? || slug.blank?
   end
 
-  COUNTER_FOR = { 1 => :agree_count, 2 => :neutral_count, 3 => :disagree_count }.freeze
+  COUNTER_FOR = {1 => :agree_count, 2 => :neutral_count, 3 => :disagree_count}.freeze
 
   def cast_vote(by:, choice:)
     choice = choice.to_i
@@ -43,15 +43,15 @@ class Hujah < ApplicationRecord
   end
 
   def is_parent?
-    self.parent == nil
+    parent.nil?
   end
 
   def has_parent?
-    self.parent != nil
+    parent != nil
   end
 
   def has_children?
-    self.children != 0
+    children != 0
   end
 
   def current_user_vote(logged_in: nil, current_user_id: nil)
@@ -68,8 +68,6 @@ class Hujah < ApplicationRecord
           "disagree"
         end
       end
-    else
-      nil
     end
   end
 end
