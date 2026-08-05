@@ -9,8 +9,15 @@ class User < ApplicationRecord
 
   before_validation { self.email = email.to_s.downcase.strip }
 
+  RESERVED_USERNAMES = %w[login signup logout password edit cancel new hoojah hoojahs u users
+    notifications rails api admin].freeze
+
   validates :full_name, presence: true
-  validates :username, presence: true, uniqueness: true, length: {minimum: 1}
+  validates :username, presence: true, uniqueness: true,
+    format: {with: /\A[a-zA-Z0-9_]+\z/},
+    exclusion: {in: RESERVED_USERNAMES}
+  validates :link, format: {with: %r{\Ahttps?://}i}, allow_blank: true
+  validate :photo_from_cloudinary
 
   after_create :assign_random_photo
 
@@ -24,7 +31,16 @@ class User < ApplicationRecord
   end
 
   def unread_notifications_count
-    notifications.where(read: false).count
+    notifications.unread.count
+  end
+
+  def photo_from_cloudinary
+    return if photo.blank?
+    uri = URI.parse(photo)
+    ok = uri.scheme == "https" && uri.host == "res.cloudinary.com" && uri.path.start_with?("/hoojah/")
+    errors.add(:photo, "must be a Hoojah Cloudinary URL") unless ok
+  rescue URI::InvalidURIError
+    errors.add(:photo, "is not a valid URL")
   end
 
   private
