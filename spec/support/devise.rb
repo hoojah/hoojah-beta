@@ -31,7 +31,13 @@ Warden::Manager.on_request do |proxy|
   user = SystemLoginState.current_user
   next if user.nil? || proxy.asset_request?
 
-  proxy.set_user(user, scope: :user, store: false, run_callbacks: false)
+  # Re-find a FRESH instance each request. Production loads current_user anew from the
+  # session on every request, so per-instance memoization (e.g. User#hidden_user_ids,
+  # Slice 7) is always recomputed. Re-`set_user`ing the one stored object instead would
+  # persist a stale memo across the whole browser flow (e.g. hidden_user_ids computed
+  # before a block, then read after) — an artifact of the shared object, not real
+  # behaviour. Finding by id models the real per-request load.
+  proxy.set_user(User.find(user.id), scope: :user, store: false, run_callbacks: false)
 end
 
 module SystemAuthHelpers

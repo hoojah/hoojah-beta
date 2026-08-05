@@ -52,6 +52,15 @@ Pundit authorization, and a JSON `Api::V1` API for native clients — https://be
   query never joins `votes`→`users`, and a per-hoojah split below 5 votes is suppressed
   ("fewer than 5 votes"). See the **Privacy** note below.
 
+- **Block** — a bidirectional block from any profile (`/u/:username`; Block ↔ Unblock via
+  Turbo Stream; a blocked-users list at `/blocks`). Block is enforced at the **Pundit policy
+  layer**: a blocked pair can no longer reply to, follow, or challenge each other (so no such
+  content and no such notification is ever created), and their content is filtered from each
+  other's feeds, reply threads, trending, and `@mention` notifications (via one memoized
+  `User#hidden_user_ids` helper). Blocking also removes any existing follow in both directions.
+  Filters are **signed-in only** (anonymous is unfiltered); votes stay anonymous and are
+  deliberately not filtered. rack-attack throttled.
+
 Modals use native `<dialog>` plus a custom `close_dialog` Turbo Stream action.
 
 **Privacy — secret ballot.** The `new_vote` notification carries **no voter identity** (Slice 5):
@@ -121,5 +130,11 @@ Code style is enforced with **StandardRB** (`bundle exec standardrb`).
   profile chips; plus a cached, public **`/trending`** (`Hujah.trending`, HN-decayed activity) rendered as
   a lazy `lg` sidebar frame on the feed and a standalone page. Deferred: vote-milestone + `debate_won`
   badges, recurring-job trending, trending block/private exclusion (Slice 7); see HANDOVER.
+- **Project 2 Slice 7 — done:** bidirectional **Block** (`blocks` table + `User#hidden_user_ids`).
+  Policy-layer interaction rejection (reply/follow/challenge → no content, no notification) +
+  signed-in-only content filters (feeds, reply threads, trending, mentions) + reciprocal-follow
+  removal. Deferred: mute + private accounts (Slice 7b — Block does not yet hide a blocked user's
+  profile/show page or their appearance in third-party follower lists reached by direct URL);
+  `Api::V1` block filters; see HANDOVER.
 - **Project 3:** Hotwire Native (mobile).
 - **Security:** remaining app-logic findings in `SECURITY-FINDINGS.md`.
