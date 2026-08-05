@@ -33,6 +33,11 @@ Rails.application.routes.draw do
   get "/hoojah/:slug/respond", to: "hujahs#new", as: :respond_hujah
   post "/hoojah", to: "hujahs#create"
   get "/hoojah/:slug", to: "hujahs#show", as: :hujah
+  # Profile (Task 3.2). Public view at /u/:username; owner-only edit/update.
+  # `:username` (not id/slug) mirrors the legacy SPA `/api/v1/:username` shape.
+  get "/u/:username", to: "users#show", as: :profile
+  get "/u/:username/edit", to: "users#edit", as: :edit_profile
+  patch "/u/:username", to: "users#update"
   # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`
   # resolves when `_vote_bars` renders inside the card in the feed AND the show page.
   post "/hoojah/:slug/votes", to: "votes#create", as: :hujah_votes
