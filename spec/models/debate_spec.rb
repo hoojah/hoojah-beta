@@ -52,4 +52,29 @@ RSpec.describe Debate, type: :model do
     expect(d).to be_concluded
     expect(d.current_turn_user).to be_nil
   end
+
+  it "conclude!(by: nil) (system/timeout) concludes + notifies BOTH participants without crashing" do
+    d = build_debate
+    d.accept!(by: opponent)
+    expect { expect(d.conclude!(by: nil)).to be(true) }
+      .to change { Notification.where(category: "debate_concluded").count }.by(2)
+    expect(d).to be_concluded
+    expect(Notification.where(user: challenger, category: "debate_concluded").count).to eq(1)
+    expect(Notification.where(user: opponent, category: "debate_concluded").count).to eq(1)
+  end
+
+  it "conclude!(by: a non-participant) is still refused" do
+    d = build_debate
+    d.accept!(by: opponent)
+    stranger = create(:user)
+    expect(d.conclude!(by: stranger)).to be(false)
+    expect(d).to be_active
+  end
+
+  it "posting a turn bumps debate.updated_at (touch: true)" do
+    d = build_debate
+    d.accept!(by: opponent)
+    d.update_column(:updated_at, 10.days.ago)
+    expect { d.post_turn(by: challenger, body: "c1") }.to change { d.reload.updated_at }
+  end
 end

@@ -60,10 +60,19 @@ class Debate < ApplicationRecord
     true
   end
 
-  def conclude!(by:)
-    return false unless active? && participant?(by)
+  # by: nil is the SYSTEM/timeout path (ConcludeStaleDebatesJob) — there is no
+  # actor to exclude, so BOTH participants are notified. A manual conclude always
+  # passes current_user (never nil), so notify(other(by)) is only reached there.
+  def conclude!(by: nil)
+    return false unless active?
+    return false unless by.nil? || participant?(by)
     update!(status: :concluded)
-    notify(other(by), :debate_concluded)
+    if by.nil?
+      notify(challenger, :debate_concluded)
+      notify(opponent, :debate_concluded)
+    else
+      notify(other(by), :debate_concluded)
+    end
     # After the status update commits — both participants earn first_debate.
     UserBadge.award(challenger, "first_debate")
     UserBadge.award(opponent, "first_debate")
