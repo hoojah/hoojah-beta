@@ -36,6 +36,13 @@
     <%= lucide_icon("message-circle", class: "w-4 h-4") %>
     <span><%= user.hujahs.size %></span>
     <span class="mx-2">·</span>
-    <%= render "follower_count", user: user %>
+    <%= link_to user_followers_path(user.username), class: "flex items-center gap-1 text-white" do %>
+      <%= render "follower_count", user: user %>
+    <% end %>
+    <span class="mx-2">·</span>
+    <%= link_to user_following_path(user.username), class: "flex items-center gap-1 text-white" do %>
+      <%= lucide_icon("user-plus", class: "w-4 h-4") %>
+      <span><%= user.following.size %></span>
+    <% end %>
   </div>
 </div>

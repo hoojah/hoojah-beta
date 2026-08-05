@@ -43,6 +43,9 @@ Rails.application.routes.draw do
   # + follower-count chip in place.
   post "/u/:username/follow", to: "follows#create", as: :follow_user
   delete "/u/:username/follow", to: "follows#destroy", as: :unfollow_user
+  # Public followers / following lists (Slice 3, Task 2.2).
+  get "/u/:username/followers", to: "users#followers", as: :user_followers
+  get "/u/:username/following", to: "users#following", as: :user_following
   # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`
   # resolves when `_vote_bars` renders inside the card in the feed AND the show page.
   post "/hoojah/:slug/votes", to: "votes#create", as: :hujah_votes
