@@ -4,19 +4,26 @@ class UsersController < ApplicationController
 
   def show
     skip_authorization
-    # Eager-load the poster on each hoojah so the profile list avoids an N+1.
-    @hujahs = @user.hujahs.includes(:user).order(updated_at: :desc)
+    # Slice 7b (Gate 4): a private author's hoojah list is loaded ONLY for a viewer who
+    # may see it (self + accepted followers). The view renders a gated header (avatar,
+    # name, @handle, "This account is private", follow button, follower/following
+    # counts) with no hoojah list / headline / location / link / badges otherwise.
+    @gated = !@user.visible_to?(current_user)
+    @hujahs = @user.hujahs.includes(:user).order(updated_at: :desc) unless @gated
   end
 
-  # Public follower / following lists. Follows are public, so no policy scoping —
+  # Follower / following lists. Public by default; Slice 7b (Gate 7) gates the lists of
+  # a private account behind visible_to? (a stranger must not enumerate them).
   # skip_authorization (else verify_authorized 500s).
   def followers
     skip_authorization
+    return redirect_to profile_path(@user.username) unless @user.visible_to?(current_user)
     @users = @user.followers.order(:username)
   end
 
   def following
     skip_authorization
+    return redirect_to profile_path(@user.username) unless @user.visible_to?(current_user)
     @users = @user.following.order(:username)
   end
 

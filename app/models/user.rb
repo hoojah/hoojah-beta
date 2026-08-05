@@ -46,6 +46,12 @@ class User < ApplicationRecord
 
   after_create :assign_random_photo
 
+  # Slice 7b (T-1): a cached trending hoojah must not stay visible after its author
+  # goes private. Trending caches only ids for 15 min; busting the cache on the
+  # privacy flip forces a recompute (which excludes the now-private author) instead
+  # of leaking the hoojah for up to 15 minutes.
+  after_update_commit :bust_trending_cache, if: -> { saved_change_to_private? }
+
   def self.random_photo
     [
       "https://res.cloudinary.com/hoojah/image/upload/v1586909321/user_photo_2.gif",
@@ -94,6 +100,8 @@ class User < ApplicationRecord
   end
 
   private
+
+  def bust_trending_cache = Rails.cache.delete("trending:v1")
 
   def assign_random_photo
     update_column(:photo, User.random_photo) if photo.blank?

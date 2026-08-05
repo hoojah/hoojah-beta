@@ -54,7 +54,10 @@
               class: "text-left p-0 bg-transparent border-0 text-grey truncate no-underline" do %>
           <%= notification.body %>
         <% end %>
-      <% elsif notification.hujah %>
+      <% elsif notification.hujah && notification.hujah.visible_to?(current_user) %>
+        <%# Slice 7b (Gate 9, N-1): only render the hoojah body if the recipient may
+            actually see it — a private author's hoojah body must not leak through a
+            mention/response notification to a non-follower. %>
         <%= button_to notification_path(notification), method: :patch,
               class: "block text-left p-0 bg-transparent border-0 text-grey truncate no-underline max-w-[350px]" do %>
           <%= format_body(notification.hujah.body) %>

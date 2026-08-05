@@ -3,13 +3,19 @@ class NotificationSerializer
 
   attributes :body, :category, :read
 
+  # Slice 7b (Gate 9, N-1): mirror the notification-card guard. Notifications are
+  # always the recipient's own (policy_scoped), so `notification.user` IS the viewer —
+  # only expose the hoojah when it is visible to them (a private author's body must not
+  # leak to a non-follower through the API).
   attribute :hujah do |notification|
     if notification.hujah_id
       hujah = Hujah.find(notification.hujah_id)
-      {
-        slug: hujah.slug,
-        body: hujah.body
-      }
+      if hujah.visible_to?(notification.user)
+        {
+          slug: hujah.slug,
+          body: hujah.body
+        }
+      end
     end
   end
 

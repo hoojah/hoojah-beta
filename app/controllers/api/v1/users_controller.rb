@@ -3,8 +3,13 @@ class Api::V1::UsersController < Api::V1::BaseController
 
   def show
     skip_authorization
-    if user
+    # Slice 7b (Gate 11, A-1): a private account's profile is not readable via the JSON
+    # endpoint by a non-follower. The gated HTML profile (name/@handle/counts) is not
+    # mirrored here yet — native parity is deferred to Project 3.
+    if user&.visible_to?(current_user)
       render json: UserSerializer.new(user).serializable_hash
+    else
+      head :not_found
     end
   end
 
