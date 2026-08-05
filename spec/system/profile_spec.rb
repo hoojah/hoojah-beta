@@ -2,7 +2,10 @@ require "rails_helper"
 
 # Cuprite (headless Chrome) system coverage for the profile screen. Runs in Phase 6.
 RSpec.describe "Profile", type: :system, js: true do
-  let(:user) { create(:user, username: "rudz", full_name: "Rudz Rahman") }
+  # Eager (`let!`) so the public profile at /u/rudz exists even in the examples
+  # that never sign the user in (e.g. the anonymous-visitor case). A lazy `let`
+  # left /u/rudz 404-ing whenever the example body didn't reference `user`.
+  let!(:user) { create(:user, username: "rudz", full_name: "Rudz Rahman") }
 
   it "shows a public profile with the user's hoojahs" do
     create(:hujah, user: user, body: "my public take")
@@ -44,7 +47,12 @@ RSpec.describe "Profile", type: :system, js: true do
     visit "/u/rudz"
     find("[aria-label='Edit your profile']").click
     within("dialog##{ActionView::RecordIdentifier.dom_id(user, :edit_dialog)}") do
-      expect(page).to have_button("Update photo")
+      # Assert the WIRING, not a live upload: the trigger button and the hidden
+      # field the widget fills both exist. The Cloudinary widget script
+      # (widget.cloudinary.com) is blocked under headless Chrome, so
+      # cloudinary_upload_controller disables the button (window.cloudinary absent)
+      # — hence disabled: :all rather than requiring an enabled button.
+      expect(page).to have_button("Update photo", disabled: :all)
       expect(page).to have_field("user[photo]", type: :hidden)
     end
   end
