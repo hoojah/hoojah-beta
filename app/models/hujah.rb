@@ -12,11 +12,13 @@ class Hujah < ApplicationRecord
   # word char (e.g. inside an email `foo@bar`) is NOT a mention.
   MENTION_RE = /(?<!\w)@([a-zA-Z0-9_]+)/
 
-  # Home timeline: top-level hoojahs from the people you follow, plus your own.
-  # Uses the association's `_ids` (not raw SQL) so a future Block filter slots in
-  # as plain Ruby (`following_ids - blocked_ids`).
+  # Home timeline: top-level hoojahs from the people you follow, plus your own,
+  # minus any hidden (blocked/blocked-by) author. The follow-removal on block already
+  # drops a blocked author from `following_ids`; the `hidden_user_ids` exclusion is
+  # belt-and-suspenders (Slice 7).
   scope :timeline_for, ->(user) {
     where(parent_id: nil).where(user_id: user.following_ids + [user.id])
+      .where.not(user_id: user.hidden_user_ids)
   }
 
   after_create_commit :notify_parent_owner, if: :has_parent?
@@ -126,7 +128,9 @@ class Hujah < ApplicationRecord
   # mentioner, mentioned)" -- robust to any future edit churn without body-diffing.
   def notify_mentions
     handles = body.scan(MENTION_RE).flatten.uniq.first(10)
-    User.where(username: handles).where.not(id: user_id).each do |u|
+    return if handles.empty? # skip the lookup (and hidden_user_ids) for the common no-mention case
+    # Slice 7: never notify a hidden (blocked/blocked-by) user of a mention.
+    User.where(username: handles).where.not(id: user_id).where.not(id: user.hidden_user_ids).each do |u|
       next if Notification.exists?(user: u, hujah_id: id, category: :mention, subject_user_id: user_id)
       Notification.create!(user: u, category: :mention, hujah_id: id, subject_user_id: user_id)
     end

@@ -1,0 +1,18 @@
+<%# The current user's blocked-users list (Slice 7). Always own list — no username
+    in the URL. Each row links to the profile (where Unblock lives). %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <h1 class="text-lg font-medium mb-3">Blocked users</h1>
+
+  <div class="flex flex-col shadow">
+    <% if @blocks.any? %>
+      <%= render partial: "users/user_row", collection: @blocks.map(&:blocked), as: :user %>
+    <% else %>
+      <div class="flex items-center text-sm text-light-grey fill-light-grey p-3 bg-white">
+        <%= lucide_icon("ban", class: "w-4 h-4") %>
+        <span class="ml-1">You haven't blocked anyone</span>
+      </div>
+    <% end %>
+  </div>
+</main>

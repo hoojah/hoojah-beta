@@ -5,5 +5,8 @@ class TrendingController < ApplicationController
   def index
     skip_authorization
     @hujahs = Hujah.trending
+    # Slice 7: keep the cache global; reject a hidden (blocked/blocked-by) author's
+    # hoojahs per viewer. Signed-in only — anonymous trending is unfiltered.
+    @hujahs = @hujahs.reject { |h| current_user.hidden_user_ids.include?(h.user_id) } if user_signed_in?
   end
 end

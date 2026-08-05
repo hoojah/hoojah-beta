@@ -42,6 +42,12 @@ class Rack::Attack
       req.env["warden"]&.user&.id
     end
   end
+  # Cap block/unblock churn per user (Slice 7).
+  throttle("block/user", limit: 20, period: 1.minute) do |req|
+    if req.path.match?(%r{\A/u/[^/]+/block\z}) && (req.post? || req.delete?)
+      req.env["warden"]&.user&.id
+    end
+  end
   # Cap challenge bursts per user — bounds cross-hoojah challenge spam (Slice 4).
   throttle("debates/challenge/user", limit: 10, period: 1.minute) do |req|
     if req.post? && req.path.match?(%r{\A/hoojah/[^/]+/debates\z})

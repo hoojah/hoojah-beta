@@ -351,6 +351,75 @@ clean. One new table (`user_badges`)._
 
 ---
 
+## Slice 7 (Block) — DONE
+
+_Branch: `slice-7-block`. Suite: **185 examples / 0 failures / 2 pending** (+24 over the 161
+baseline: block model/policy/request + enforcement + visibility + a cuprite system spec; system
+dir is **22 examples**, reliably green across repeated runs). brakeman **0**; `standardrb` clean;
+`bundler-audit` clean. One new table (`blocks`)._
+
+**Bidirectional Block — interaction cutoff + invisibility, all keyed on one helper:**
+- **Model + single source of truth** — `blocks (blocker_id, blocked_id, timestamps)` with a
+  **unique `[blocker_id, blocked_id]`** index + a `blocker_id <> blocked_id` DB check
+  (`no_self_block`). `Block belongs_to blocker/blocked (class_name User)`, uniqueness-scoped +
+  not-self validation. `User` gains `blocks_made`/`blocks_received` (dep: destroy) and the
+  **memoized** `hidden_user_ids = (blocks_made.pluck(:blocked_id) + blocks_received.pluck(:blocker_id)).uniq`
+  — the bidirectional set (blocked ∪ blocked-by) every filter/policy consults.
+- **Enforced at the POLICY layer, not controller guards** (avoids the `verify_authorized` 500 an
+  early `return` before `authorize` would cause — denials flow through the existing
+  `rescue_from Pundit::NotAuthorizedError`):
+  - `FollowPolicy#create?` += `!user.hidden_user_ids.include?(record.followed_id)`.
+  - `DebatePolicy#create?` += `!user.hidden_user_ids.include?(record.opponent_id)`.
+  - `HujahPolicy#create?` = `user.present? && (record.parent_id.nil? || !user.hidden_user_ids.include?(record.parent&.user_id))`.
+    **`HujahsController#create` now authorizes the built instance** (`@hujah = current_user.hujahs.new(compose_params)`
+    *before* `authorize @hujah`), not `authorize Hujah` (class), so the policy can read
+    `record.parent.user_id`. Missing-parent 404 handling kept (the rescue now calls
+    `skip_authorization` since it fires before `authorize`). The shared `Api::V1::HujahsController#create`
+    was switched to the same instance-authorize so it keeps working under the parent-reading policy.
+- **Because interactions are rejected, there are ZERO notification-creation guards** — no reply →
+  no `new_hoojah_response`; no follow → no `new_follower`; challenge rejected → no `debate_challenge`.
+  `notify_parent_owner`/`cast_vote`/`Debate#notify` are **untouched**. `mention` is filtered at its
+  **query** (`notify_mentions` += `.where.not(id: user.hidden_user_ids)`, plus a `return if handles.empty?`
+  fast-path). `new_vote` is deliberately **left unfiltered** (anonymous — no attribution, no vector).
+- **In-progress debates are grandfathered** — `DebateTurnPolicy` and the turn/conclude
+  notifications are untouched, so an active debate predating a block still allows turns and still
+  fires `debate_your_turn`/`debate_concluded` (guarding them would stall the debate).
+- **Content filters (signed-in only; anonymous unfiltered)** — `Hujah.timeline_for` and the global
+  feed branch (`HujahsController#index`) exclude `hidden_user_ids`; `HujahsController#show` filters
+  `@children` (hides pre-block replies too); `TrendingController#index` rejects per-viewer over the
+  still-global cache.
+- **BlocksController** (`authenticate_user!`, `set_target` from `:username`) — `create` authorizes
+  `Block.new(...)` then, in a **transaction**, `find_or_create_by` (rescue `RecordNotUnique`) **and**
+  removes reciprocal follows both ways (`Follow.where(follower: [me,@target], followed: [me,@target]).delete_all`
+  — `delete_all` since Follow has no destroy callbacks). `destroy` mirrors `FollowsController` (`authorize
+  @block, :destroy? if @block` else `skip_authorization` — a nil block would 500 under
+  `verify_authorized`). `index` renders the current user's blocked list at `/blocks`. `BlockPolicy`
+  (`create? = user.present?`; `destroy? = record.blocker_id == user&.id`). rack-attack `block/user`
+  throttle (20/min). `_follow_button` gained Block/Unblock states (Unblock when blocked-by-me; never
+  Follow for a hidden pair). Turbo-Stream replaces the action button + follower-count chip.
+- **System-harness fix (important):** the persistent Warden `on_request` hook (`spec/support/devise.rb`)
+  now re-`set_user`s a **freshly-found** `User.find(id)` each request instead of the one stored object.
+  Production loads `current_user` anew per request, so the per-instance `hidden_user_ids` memo is always
+  recomputed; reusing one object would persist a stale memo across a browser flow (memoized before a
+  block, read after). The block-visibility **request** specs model the same via a `sign_in_fresh` helper.
+
+**Documented boundaries / still open:**
+- **Direct-URL boundary (MVP):** Block does NOT hide a blocked user's profile, hoojah show page, or
+  their appearance in third-party followers/following lists reached by direct URL — that's **Slice 7b**
+  (private accounts + mute). Block removes them from *your* feeds/threads/trending and cuts
+  interaction/notification.
+- **`Api::V1` block filters — deferred, not ignored:** the JSON feed/children/user endpoints still
+  have no social-graph filtering (pre-existing); a native client will need the same filters incl.
+  `HujahSerializer#children`. (The `create` instance-authorize above does now reject a blocked-pair
+  reply via the API as a side effect — filtering of *reads* is what's deferred.)
+- **Grandfathered debate:** an in-progress blocked-pair debate is not auto-concluded (its
+  notifications keep firing) — deferred.
+- Carried forward: **debate Increments 2a/2b/3** (Slice 8, incl. `debate_won`), **Vote array→scalar**,
+  **serializer N+1 / prosopite**, **`config.require_master_key`** (L4), **`rack-cors`** (M1),
+  **Project 3 — Hotwire Native**.
+
+---
+
 ## ⚠️ Environment quirks — you MUST know these to run anything
 
 This machine is arm64 / Darwin 25 with modern clang. The repo carries build helpers:

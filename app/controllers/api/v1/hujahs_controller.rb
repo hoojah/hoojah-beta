@@ -9,12 +9,14 @@ class Api::V1::HujahsController < Api::V1::BaseController
   end
 
   def create
-    authorize Hujah
-    hujah = current_user.hujahs.create(hujah_params)
-    if hujah
-      render json: hujah
+    # Authorize the built instance (not the Hujah class) so the shared HujahPolicy#create?
+    # can read parent_id — same instance-authorize shape as the HTML controller (Slice 7).
+    @hujah = current_user.hujahs.new(hujah_params)
+    authorize @hujah
+    if @hujah.save
+      render json: @hujah
     else
-      render json: hujah.errors
+      render json: @hujah.errors
     end
   end
 

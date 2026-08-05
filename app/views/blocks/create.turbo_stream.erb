@@ -1,0 +1,9 @@
+<%# Block succeeded: flip the profile action button to "Unblock" and refresh the
+    follower-count chip (a reciprocal follow may have been removed). Both partials
+    re-derive their state from current_user + @target. %>
+<%= turbo_stream.replace dom_id(@target, :follow_button) do %>
+  <%= render "users/follow_button", user: @target %>
+<% end %>
+<%= turbo_stream.replace dom_id(@target, :follower_count) do %>
+  <%= render "users/follower_count", user: @target %>
+<% end %>

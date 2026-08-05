@@ -3,7 +3,8 @@
 class DebatePolicy < ApplicationPolicy
   def show? = record.concluded? || record.participant?(user)
 
-  def create? = user.present?
+  # Reject a challenge against a hidden (blocked/blocked-by) opponent — Slice 7.
+  def create? = user.present? && !user.hidden_user_ids.include?(record.opponent_id)
 
   def accept? = user.present? && user == record.opponent && record.pending?
 
