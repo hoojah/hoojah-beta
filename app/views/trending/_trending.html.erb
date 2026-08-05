@@ -1,0 +1,22 @@
+<%# Compact trending list — reused by the lazy sidebar frame on the feed and by
+    the standalone /trending page. Locals: hujahs. %>
+<section aria-label="Trending hoojahs">
+  <h2 class="text-sm font-semibold text-grey uppercase tracking-wide mb-2 flex items-center gap-1">
+    <%= lucide_icon("flame", class: "w-4 h-4") %> Trending
+  </h2>
+
+  <% if hujahs.any? %>
+    <ol class="list-none p-0 m-0 flex flex-col gap-2">
+      <% hujahs.each do |hujah| %>
+        <li>
+          <%= link_to hujah_path(hujah.slug), class: "block text-sm text-grey no-underline hover:text-primary" do %>
+            <%= truncate(strip_tags(hujah.body.to_s), length: 90) %>
+            <span class="block text-xs text-grey/70 mt-0.5">@<%= hujah.user.username %></span>
+          <% end %>
+        </li>
+      <% end %>
+    </ol>
+  <% else %>
+    <p class="text-sm text-grey">Nothing trending yet.</p>
+  <% end %>
+</section>

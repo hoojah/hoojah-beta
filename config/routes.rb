@@ -69,6 +69,9 @@ Rails.application.routes.draw do
   # Analytics dashboard (Slice 5, Part B). Owner-only by construction: always the
   # current user's own aggregates (no username in the URL, like /notifications).
   get "/dashboard", to: "analytics#show", as: :dashboard
+  # Trending (Slice 6). Public, cached top-level hoojahs by HN-decayed activity.
+  # Rendered both as a standalone page and as the feed's lazy turbo_frame sidebar.
+  get "/trending", to: "trending#index", as: :trending
   get "/notifications", to: "notifications#index", as: :notifications
   patch "/notifications/:id", to: "notifications#update", as: :notification
   delete "/notifications/:id", to: "notifications#destroy"

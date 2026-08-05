@@ -19,10 +19,14 @@ Rails.application.configure do
     "Cache-Control" => "public, max-age=#{1.hour.to_i}"
   }
 
-  # Show full error reports and disable caching.
+  # Show full error reports and disable controller/fragment caching.
   config.consider_all_requests_local = true
   config.action_controller.perform_caching = false
-  config.cache_store = :null_store
+  # A real in-memory store (not :null_store) so low-level Rails.cache reads/writes
+  # behave as in production — Hujah.trending caches its ordered ids via
+  # Rails.cache.fetch and its spec asserts the entry exists. Specs that depend on
+  # cache state clear it in a `before` hook.
+  config.cache_store = :memory_store
 
   # Raise exceptions instead of rendering exception templates.
   config.action_dispatch.show_exceptions = :none

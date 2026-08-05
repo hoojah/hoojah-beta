@@ -9,6 +9,11 @@
     <%= link_to root_path, class: "font-bold text-primary text-xl no-underline" do %>Hoojah<% end %>
 
     <div class="flex items-center gap-3">
+      <%= link_to trending_path, class: "flex items-center text-grey hover:text-primary no-underline", aria: {label: "Trending"} do %>
+        <%= lucide_icon("flame", class: "w-6 h-6") %>
+        <span class="hidden lg:inline ml-1">Trending</span>
+      <% end %>
+
       <% if user_signed_in? %>
         <details class="relative">
           <summary class="list-none cursor-pointer flex items-center">

@@ -1,0 +1,9 @@
+<%= render "shared/navbar" %>
+
+<%# Standalone, publicly reachable trending page (nav link) — also the source the
+    feed's lazy `turbo_frame_tag "trending"` sidebar extracts by matching id. %>
+<main class="max-w-xl mx-auto px-4 py-6">
+  <%= turbo_frame_tag "trending" do %>
+    <%= render "trending", hujahs: @hujahs %>
+  <% end %>
+</main>
