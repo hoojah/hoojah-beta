@@ -7,6 +7,15 @@
  * `border-primary`, etc. available to the Hotwire views (feed, single-hujah,
  * vote bars, response filter).
  */
+/*
+ * Safelist the stance color utilities. The vote widget builds class names like
+ * `bg-agree` / `text-disagree` / `fill-neutral` by interpolating the stance name,
+ * which Tailwind's source scanner can't see as literal strings. `@source inline`
+ * forces them into the build.
+ */
+@source inline("{bg,text,border,fill}-{agree,neutral,disagree,primary}");
+@source inline("fill-white text-white bg-white");
+
 @theme {
   --color-primary: #415de6;
   --color-agree: #fcaf45;

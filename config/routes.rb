@@ -25,5 +25,10 @@ Rails.application.routes.draw do
     end
   end
 
-  root 'hujah#index'
+  # HTML (Hotwire) screens — the server-rendered replacement for the React SPA.
+  root "hujahs#index"
+  get "/hoojah/:slug", to: "hujahs#show", as: :hujah
+  # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`
+  # resolves when `_vote_bars` renders inside the card in the feed AND the show page.
+  post "/hoojah/:slug/votes", to: "votes#create", as: :hujah_votes
 end

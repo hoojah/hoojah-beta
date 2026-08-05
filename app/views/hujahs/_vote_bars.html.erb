@@ -1,0 +1,38 @@
+<%#
+  Shared vote widget — rendered by the feed card, the show page, AND re-rendered by
+  votes/create.turbo_stream.erb. The wrapper id MUST match the Turbo-Stream replace
+  target: dom_id(hujah, :vote_bars) => "vote_bars_hujah_<id>".
+
+  Locals: hujah, current_user_vote (one of "agree"/"neutral"/"disagree"/nil).
+
+  VOTE-FEEDBACK LATENCY DECISION (Task 4.4 Step 5): CSS-only, no vote_controller.js.
+  Each stance button is a Turbo-driven button_to form; Turbo natively disables the
+  submitter during the request and the same-origin round-trip is effectively instant,
+  so a Stimulus controller would add nothing but code. Immediate press feedback comes
+  from `active:scale-95` (CSS :active). Revisit only if a real deployment shows lag.
+%>
+<%
+  agree = hujah.agree_count.to_i
+  neutral = hujah.neutral_count.to_i
+  disagree = hujah.disagree_count.to_i
+  total = agree + neutral + disagree
+  rows = [["agree", 1, agree], ["neutral", 2, neutral], ["disagree", 3, disagree]]
+%>
+<div id="<%= dom_id(hujah, :vote_bars) %>" class="px-4 py-3">
+  <% rows.each do |stance, choice, count| %>
+    <% pct = total.zero? ? 0 : (count * 100.0 / total).round %>
+    <% voted = current_user_vote == stance %>
+    <div class="flex items-center mb-3 last:mb-0">
+      <%= button_to hujah_votes_path(hujah.slug),
+            params: { vote: choice },
+            aria: { label: stance.capitalize, pressed: voted.to_s },
+            class: "shrink-0 w-11 h-11 rounded-full border-2 flex items-center justify-center shadow transition active:scale-95 border-#{stance} #{voted ? "bg-#{stance} fill-white text-white" : "fill-#{stance} text-#{stance}"}" do %>
+        <%= stance_icon(stance, class: "w-4 h-4") %>
+      <% end %>
+      <div class="flex-1 mx-3 h-2 bg-gray-200 rounded overflow-hidden">
+        <div class="h-2 rounded bg-<%= stance %>" style="width: <%= pct %>%"></div>
+      </div>
+      <small class="w-10 text-right text-<%= stance %>"><%= pct %>%</small>
+    </div>
+  <% end %>
+</div>

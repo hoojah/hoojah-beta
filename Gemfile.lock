@@ -208,6 +208,10 @@ GEM
       racc (~> 1.4)
     orm_adapter (0.5.0)
     ostruct (0.6.3)
+    pagy (43.6.1)
+      json
+      uri
+      yaml
     pg (1.6.3)
     pp (0.6.4)
       prettyprint
@@ -360,6 +364,7 @@ GEM
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
+    yaml (0.4.0)
     zeitwerk (2.8.3)
 
 PLATFORMS
@@ -384,6 +389,7 @@ DEPENDENCIES
   letter_opener
   listen (~> 3.3)
   lucide-rails
+  pagy (~> 43.6)
   pg (>= 0.18, < 2.0)
   propshaft
   puma (~> 7.0, >= 7.2.1)

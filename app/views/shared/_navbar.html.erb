@@ -1,0 +1,13 @@
+<%# Basic navbar (created in Task 4.1, finished in Task 4.5). %>
+<nav class="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100">
+  <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+    <%= link_to root_path, class: "font-bold text-primary text-xl no-underline" do %>Hoojah<% end %>
+
+    <% if user_signed_in? %>
+      <%= image_tag current_user.photo, class: "rounded-full w-9 h-9", alt: current_user.username %>
+    <% else %>
+      <%= link_to "Log in", new_user_session_path, class: "text-primary no-underline" %>
+    <% end %>
+  </div>
+</nav>
+<div class="h-14"></div>
