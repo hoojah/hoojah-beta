@@ -21,6 +21,9 @@ class Hujah < ApplicationRecord
 
   after_create_commit :notify_parent_owner, if: :has_parent?
   after_create_commit :notify_mentions # create only -- edit-mention handling deferred with the edit UI
+  # Off the hot path (after commit, never inside cast_vote's transaction): the
+  # first top-level hoojah earns first_hoojah; the first reply earns first_argument.
+  after_create_commit :award_authoring_badge
 
   extend FriendlyId
 
@@ -90,6 +93,10 @@ class Hujah < ApplicationRecord
   end
 
   private
+
+  def award_authoring_badge
+    UserBadge.award(user, is_parent? ? "first_hoojah" : "first_argument")
+  end
 
   def notify_parent_owner
     Notification.create!(user_id: parent.user_id, category: :new_hoojah_response,

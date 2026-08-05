@@ -18,6 +18,8 @@
         <%= lucide_icon("at-sign", class: "w-4 h-4") %>
       <% when "new_follower" %>
         <%= lucide_icon("user-plus", class: "w-4 h-4") %>
+      <% when "badge_earned" %>
+        <%= lucide_icon("award", class: "w-4 h-4") %>
       <% end %>
     </div>
 
@@ -34,6 +36,8 @@
           @<%= notification.subject_user&.username %> mentioned you in a hoojah
         <% when "new_follower" %>
           @<%= notification.subject_user&.username %> started following you
+        <% when "badge_earned" %>
+          You earned the <strong><%= Badge::REGISTRY.dig(notification.body, :name) || "achievement" %></strong> badge
         <% end %>
       </span>
 
@@ -50,6 +54,10 @@
       <% elsif notification.new_follower? && notification.subject_user %>
         <%= link_to "View profile", profile_path(notification.subject_user.username),
               class: "text-left text-primary no-underline" %>
+      <% elsif notification.badge_earned? %>
+        <%# badge_earned has no hujah/subject_user, so add its own mark-read affordance. %>
+        <%= button_to "Mark as read", notification_path(notification), method: :patch,
+              class: "text-left p-0 bg-transparent border-0 text-primary no-underline" %>
       <% end %>
     </div>
 

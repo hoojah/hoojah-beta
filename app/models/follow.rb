@@ -6,6 +6,7 @@ class Follow < ApplicationRecord
   validate :not_self
 
   after_create_commit :notify_followed
+  after_create_commit :award_first_follower
 
   private
 
@@ -15,5 +16,9 @@ class Follow < ApplicationRecord
 
   def notify_followed
     Notification.create!(user_id: followed_id, category: :new_follower, subject_user_id: follower_id)
+  end
+
+  def award_first_follower
+    UserBadge.award(followed, "first_follower")
   end
 end
