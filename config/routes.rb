@@ -75,6 +75,9 @@ Rails.application.routes.draw do
   patch "/debates/:slug/decline", to: "debates#decline", as: :decline_debate
   patch "/debates/:slug/conclude", to: "debates#conclude", as: :conclude_debate
   post "/debates/:slug/turns", to: "debate_turns#create", as: :debate_turns
+  # Spectator verdict on a concluded debate (Slice 8). One immutable vote per
+  # visible spectator; the tally is compute-on-read.
+  post "/debates/:slug/verdicts", to: "debate_verdicts#create", as: :debate_verdicts
   # Notifications (Task 4.1). Always the current user's own list (policy_scope, no
   # username in the URL). PATCH marks read + redirects to the hoojah; DELETE removes
   # the card via Turbo-Stream.

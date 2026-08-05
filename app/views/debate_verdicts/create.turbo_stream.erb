@@ -1,0 +1,5 @@
+<%# Replace the spectator's verdict block in place — after voting they see the
+    read-only tally (their own bar now updated). %>
+<%= turbo_stream.replace dom_id(@debate, :verdict) do %>
+  <%= render "debates/verdict", debate: @debate %>
+<% end %>

@@ -25,4 +25,8 @@
   <%= render "debates/debate_transcript", debate: @debate, turns: @turns %>
 
   <%= render "debates/turn_composer", debate: @debate %>
+
+  <% if @debate.concluded? %>
+    <%= render "debates/verdict", debate: @debate %>
+  <% end %>
 </main>
