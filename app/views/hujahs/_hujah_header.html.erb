@@ -22,7 +22,11 @@
     <% end %>
     <div class="flex flex-col min-w-0">
       <%= link_to hujah.user.full_name, "#", class: "text-primary font-medium no-underline truncate" %>
-      <small class="text-grey">@<%= hujah.user.username %></small>
+      <small class="text-grey">
+        @<%= hujah.user.username %>
+        <span class="mx-1">·</span>
+        <time datetime="<%= hujah.created_at.iso8601 %>" data-local="time-ago"><%= hujah.created_at.strftime("%b %-d") %></time>
+      </small>
     </div>
   </div>
 
