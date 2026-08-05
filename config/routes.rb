@@ -1,5 +1,9 @@
 Rails.application.routes.draw do
-  resources :votes
+  devise_for :users,
+    controllers: { registrations: 'users/registrations' },
+    path: '',
+    path_names: { sign_in: 'login', sign_out: 'logout', sign_up: 'signup' }
+
   namespace :api do
     namespace :v1 do
       get 'hoojah/index', to: 'hujahs#index'
@@ -9,7 +13,7 @@ Rails.application.routes.draw do
       get '/hoojah/new', to: 'hujahs#new'
 
       post 'votes/create', to: 'votes#create'
-      
+
       get '/:username', to: 'users#show'
       post ':username/update', to: 'users#update'
 
@@ -20,12 +24,6 @@ Rails.application.routes.draw do
       delete '/:username/notifications/:id', to: 'notifications#destroy'
     end
   end
-  
-  post '/login', to: 'sessions#create'
-  delete '/logout', to: 'sessions#destroy'
-  get '/logged_in', to: 'sessions#is_logged_in?'
-  
-  resources :users, only: :create
 
   root 'hujah#index'
 end
