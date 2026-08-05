@@ -7,6 +7,12 @@
   <%= image_tag user.photo, class: "rounded-full mb-3 w-24 h-24 object-cover", alt: user.username %>
   <h5 class="mb-0 text-lg font-medium"><%= user.full_name %></h5>
   <div class="mb-3">@<%= user.username %></div>
+
+  <%# Follow button (signed-in non-owner only; self-wraps in dom_id for Turbo). %>
+  <div class="mb-3">
+    <%= render "follow_button", user: user %>
+  </div>
+
   <% if user.headline.present? %>
     <div class="mb-3 text-center"><%= user.headline %></div>
   <% end %>
@@ -29,5 +35,7 @@
     <span class="mx-2">·</span>
     <%= lucide_icon("message-circle", class: "w-4 h-4") %>
     <span><%= user.hujahs.size %></span>
+    <span class="mx-2">·</span>
+    <%= render "follower_count", user: user %>
   </div>
 </div>

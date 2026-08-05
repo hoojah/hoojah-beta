@@ -1,0 +1,8 @@
+<%# Follow succeeded: flip the button to "Following" and refresh the follower-count
+    chip. Both partials self-wrap in the dom_id the replace targets. %>
+<%= turbo_stream.replace dom_id(@target, :follow_button) do %>
+  <%= render "users/follow_button", user: @target %>
+<% end %>
+<%= turbo_stream.replace dom_id(@target, :follower_count) do %>
+  <%= render "users/follower_count", user: @target %>
+<% end %>
