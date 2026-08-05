@@ -46,6 +46,12 @@ Rails.application.routes.draw do
   # Public followers / following lists (Slice 3, Task 2.2).
   get "/u/:username/followers", to: "users#followers", as: :user_followers
   get "/u/:username/following", to: "users#following", as: :user_following
+  # Block / unblock (Slice 7). Main routes (NOT Api::V1) so CSRF stays on. Bidirectional
+  # block: rejects interactions at the policy layer + removes reciprocal follows.
+  post "/u/:username/block", to: "blocks#create", as: :block_user
+  delete "/u/:username/block", to: "blocks#destroy", as: :unblock_user
+  # Current user's blocked-users list (no username in the URL — always own list).
+  get "/blocks", to: "blocks#index", as: :blocks
   # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`
   # resolves when `_vote_bars` renders inside the card in the feed AND the show page.
   post "/hoojah/:slug/votes", to: "votes#create", as: :hujah_votes

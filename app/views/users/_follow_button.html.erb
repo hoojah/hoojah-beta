@@ -1,21 +1,45 @@
-<%# Follow / unfollow control for `user` (the profile owner being viewed).
-    Self-wraps in dom_id(user, :follow_button) so the create/destroy Turbo Streams
-    replace it in place. Only shown to a signed-in non-owner. button_to lives on the
-    main routes (CSRF on) so the generated form carries the authenticity token. %>
+<%# Follow / block control for `user` (the profile owner being viewed). Self-wraps
+    in dom_id(user, :follow_button) so the follow/block Turbo Streams replace it in
+    place. Only shown to a signed-in non-owner. button_to lives on the main routes
+    (CSRF on) so the generated form carries the authenticity token.
+    States (Slice 7): blocked-by-me → Unblock (never Follow); blocked-by-them →
+    Block only (never Follow for a hidden pair); otherwise Follow/Following + Block. %>
 <div id="<%= dom_id(user, :follow_button) %>">
   <% if user_signed_in? && current_user.id != user.id %>
-    <% if current_user.following.include?(user) %>
-      <%= button_to unfollow_user_path(user.username), method: :delete,
+    <% if current_user.blocks_made.exists?(blocked_id: user.id) %>
+      <%= button_to unblock_user_path(user.username), method: :delete,
             class: "flex items-center gap-1 px-4 py-1 rounded-full text-sm bg-white text-primary" do %>
-        <%= lucide_icon("user-check", class: "w-4 h-4") %>
-        <span>Following</span>
+        <%= lucide_icon("user-x", class: "w-4 h-4") %>
+        <span>Unblock</span>
+      <% end %>
+    <% elsif current_user.hidden_user_ids.include?(user.id) %>
+      <%# They blocked me — never offer Follow. Block-back stays available. %>
+      <%= button_to block_user_path(user.username),
+            class: "flex items-center gap-1 px-4 py-1 rounded-full text-sm border border-white text-white" do %>
+        <%= lucide_icon("ban", class: "w-4 h-4") %>
+        <span>Block</span>
       <% end %>
     <% else %>
-      <%= button_to follow_user_path(user.username),
-            class: "flex items-center gap-1 px-4 py-1 rounded-full text-sm border border-white text-white" do %>
-        <%= lucide_icon("user-plus", class: "w-4 h-4") %>
-        <span>Follow</span>
-      <% end %>
+      <div class="flex items-center gap-2">
+        <% if current_user.following.include?(user) %>
+          <%= button_to unfollow_user_path(user.username), method: :delete,
+                class: "flex items-center gap-1 px-4 py-1 rounded-full text-sm bg-white text-primary" do %>
+            <%= lucide_icon("user-check", class: "w-4 h-4") %>
+            <span>Following</span>
+          <% end %>
+        <% else %>
+          <%= button_to follow_user_path(user.username),
+                class: "flex items-center gap-1 px-4 py-1 rounded-full text-sm border border-white text-white" do %>
+            <%= lucide_icon("user-plus", class: "w-4 h-4") %>
+            <span>Follow</span>
+          <% end %>
+        <% end %>
+        <%= button_to block_user_path(user.username),
+              class: "flex items-center gap-1 px-3 py-1 rounded-full text-sm border border-white/60 text-white/80" do %>
+          <%= lucide_icon("ban", class: "w-4 h-4") %>
+          <span>Block</span>
+        <% end %>
+      </div>
     <% end %>
   <% end %>
 </div>
