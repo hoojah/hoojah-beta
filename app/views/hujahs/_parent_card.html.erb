@@ -1,0 +1,22 @@
+<%# Port of `Hujah/form.js` displayParentCard: reminds the replier how they voted on
+    the parent, then shows the parent body with a stance-colored left border.
+    Locals: parent. %>
+<%
+  stance = parent.current_user_vote(logged_in: true, current_user_id: current_user.id)
+  verb = {"agree" => "agreed", "neutral" => "were neutral", "disagree" => "disagreed"}[stance]
+  border = stance || "primary"
+%>
+<div class="bg-white pb-2">
+  <small class="text-grey">
+    You
+    <% if verb %>
+      <span class="inline-flex items-center gap-1 text-<%= stance %> fill-<%= stance %>">
+        <%= stance_icon(stance, class: "w-4 h-4") %><%= verb %>
+      </span>
+    <% end %>
+    to <span class="text-primary"><%= parent.user.full_name %></span>'s claim:
+  </small>
+</div>
+<div class="bg-white pl-2 border-l-8 border-<%= border %>">
+  <h6 class="text-black pt-1 leading-snug"><%= format_body(parent.body) %></h6>
+</div>

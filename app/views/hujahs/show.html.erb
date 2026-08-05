@@ -18,7 +18,13 @@
         <% if user_signed_in? && @hujah.user_id == current_user.id %>
           <span class="block px-3 py-1 text-grey">Delete hoojah (Slice 2)</span>
         <% end %>
-        <span class="block px-3 py-1 text-neutral fill-neutral">Flag this hoojah (Slice 2)</span>
+        <% if user_signed_in? %>
+          <%= render "hujahs/flag_dialog", hujah: @hujah %>
+        <% else %>
+          <%= link_to new_user_session_path, class: "flex items-center gap-1 px-3 py-1 text-neutral fill-neutral no-underline" do %>
+            <%= lucide_icon("flag", class: "w-4 h-4") %> Login to flag this hoojah
+          <% end %>
+        <% end %>
       </div>
     </details>
   </nav>
@@ -42,6 +48,16 @@
       <span class="ml-1"><%= @children.size %></span>
     </div>
   </article>
+
+  <%# Port of the legacy SPA `Layouts/button_add_hujah.js` — the respond entry.
+      Seeds the compose form with this hoojah as the parent (stance-tagged reply). %>
+  <% stance = @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) || "primary" %>
+  <div class="flex justify-center mb-2">
+    <%= link_to respond_hujah_path(@hujah.slug),
+          class: "shadow inline-flex items-center gap-1 rounded-full px-5 py-2 border-2 no-underline border-#{stance} text-#{stance} fill-#{stance}" do %>
+      <%= lucide_icon("message-square-plus", class: "w-4 h-4") %> Add hoojah
+    <% end %>
+  </div>
 
   <%= render "hujahs/response_filter", hujah: @hujah, children: @children %>
 </main>

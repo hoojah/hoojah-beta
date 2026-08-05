@@ -1,0 +1,7 @@
+<%# Successful profile update: refresh the header card in place, then close the edit
+    modal remotely via the custom `close_dialog` Turbo Stream action (registered in
+    application.js). %>
+<%= turbo_stream.replace dom_id(@user, :profile_header) do %>
+  <%= render "profile_header", user: @user %>
+<% end %>
+<turbo-stream action="close_dialog" target="<%= dom_id(@user, :edit_dialog) %>"></turbo-stream>

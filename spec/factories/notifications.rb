@@ -1,10 +1,10 @@
 FactoryBot.define do
   factory :notification do
-    user { nil }
+    association :user
+    association :hujah
+    association :subject_user, factory: :user
     body { "MyString" }
-    model_type { 1 }
+    category { :new_hoojah_response }
     read { false }
-    hoojah_id { 1 }
-    subject_user_id { 1 }
   end
 end

@@ -1,0 +1,50 @@
+<%# Faithful port of the legacy SPA `Hujah.jsx` flag modal (a Bootstrap Modal +
+    ListGroup, 3 reasons: spam / abusive / irrelevant). Native <dialog> driven by the
+    shared `dialog` controller. Each reason is a submit button that posts its subject
+    straight to POST /hoojah/:slug/flags — no client-side reason state needed, and the
+    menu still works with JS off (the form submits, the server redirects).
+
+    Locals: hujah. The `flag_control` wrapper is the Turbo-Stream replace target
+    (create.turbo_stream.erb swaps it for a confirmation). %>
+<div id="<%= dom_id(hujah, :flag_control) %>" data-controller="dialog">
+  <button type="button" data-action="dialog#open"
+          class="btn btn-link flex items-center gap-1 px-3 py-1 text-neutral fill-neutral no-underline w-full text-left">
+    <%= lucide_icon("flag", class: "w-4 h-4") %> Flag this hoojah
+  </button>
+
+  <dialog id="<%= dom_id(hujah, :flag_dialog) %>"
+          data-dialog-target="dialog"
+          data-action="click->dialog#backdropClose close->dialog#restoreFocus"
+          aria-labelledby="dialog-title-flag"
+          class="rounded-lg shadow-lg p-0 w-full max-w-md backdrop:bg-black/40">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+      <h5 id="dialog-title-flag" class="text-lg font-medium m-0">Flag this hoojah</h5>
+      <button type="button" data-action="dialog#close" aria-label="Close"
+              class="text-grey fill-grey p-0 leading-none">
+        <%= lucide_icon("x", class: "w-5 h-5") %>
+      </button>
+    </div>
+
+    <%= form_with url: hujah_flags_path(hujah.slug), method: :post, class: "p-4" do %>
+      <p class="text-sm text-grey mb-3">Why are you flagging this hoojah?</p>
+      <div class="flex flex-col divide-y divide-gray-100 border border-gray-100 rounded overflow-hidden">
+        <button type="submit" name="flag[subject]" value="spam"
+                class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-white cursor-pointer">
+          It's suspicious or spam
+        </button>
+        <button type="submit" name="flag[subject]" value="abusive"
+                class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-white cursor-pointer">
+          It's abusive or harmful
+        </button>
+        <button type="submit" name="flag[subject]" value="irrelevant"
+                class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-white cursor-pointer">
+          It's irrelevant to the parent hoojah
+        </button>
+      </div>
+      <div class="text-right mt-4">
+        <button type="button" data-action="dialog#close"
+                class="btn btn-link text-grey no-underline px-4 py-2">Cancel</button>
+      </div>
+    <% end %>
+  </dialog>
+</div>

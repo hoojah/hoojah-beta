@@ -1,0 +1,12 @@
+<%# No-JS / progressive-enhancement fallback for editing the profile. Renders the
+    same header + edit modal as the show page, but with the dialog opened inline so
+    the form is usable without Stimulus. The primary edit path is the modal on the
+    profile page (dialog#open). Re-rendered on validation failure (422). %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <div class="relative flex justify-center shadow">
+    <%= render "profile_header", user: @user %>
+    <%= render "profile_edit", user: @user, open: true %>
+  </div>
+</main>

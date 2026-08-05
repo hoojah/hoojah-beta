@@ -65,6 +65,62 @@ the `assets:precompile` hook — every deploy must run `assets:precompile` so th
 
 ---
 
+## Project 2 Slice 2 — Features + Pundit — DONE
+
+_Branch: `project-2-slice-2-features`. Suite: **95 examples / 0 failures / 2 pending**
+(request + Cuprite system specs). brakeman **0**; `standardrb` clean; `bundler-audit` clean;
+`grep -rniE "react|params[:user_id]" app config` clean._
+
+**What shipped:**
+- **Compose / respond** — `HujahsController#new/#create` at `/hoojah/new` and
+  `/hoojah/:slug/respond`; stance picker; a `Hujah` `after_create_commit` callback notifies the
+  parent owner on a reply (replaces the old inline `Notification.create!`), and `has_children?`
+  was fixed (`children.exists?`, was always-true).
+- **Profile view + edit** — public `/u/:username` + owner edit via a native `<dialog>`;
+  `update.turbo_stream.erb` refreshes the header and fires `close_dialog`. Photo upload via a
+  **Cloudinary** Stimulus controller (hidden field the widget fills), host-validated server-side.
+- **Notifications** — HTML `/notifications` (mark-read → redirect to the hoojah; Turbo-Stream
+  delete) and the hardened `Api::V1` endpoint.
+- **Flag** — a `<dialog>` reason picker (spam / abusive / irrelevant) → `create.turbo_stream.erb`
+  closes the dialog and confirms in place.
+- **Share** — server-rendered social intent links (WhatsApp / X / Telegram / Reddit / Facebook /
+  Email) that work JS-off, plus a progressively-enhanced Web Share button.
+- **Pundit adopted** — `ApplicationPolicy` + `{hujah,notification,user,flag}` policies; app-wide
+  `after_action :verify_authorized` (Devise-exempt); Slice 1's `before_action` IDOR checks
+  migrated to per-action `authorize` / `policy_scope` / `skip_authorization` across HTML + API.
+
+**Security closed:**
+- **Notifications IDOR + leak** — index is now `policy_scope(Notification)` (own rows only);
+  update/destroy `authorize` owner-only (was trusting `params[:user_id]`), on both HTML and API.
+- **Flags hardened** — `authenticate_user!` + `authorize`; a posted `:user_id` is ignored (the
+  flag records under `current_user`).
+- **M7 link XSS** — the `link` validation is anchored end-to-end (`%r{\Ahttps?://\S+\z}i`), closing
+  the newline-injection brakeman flagged as Format Validation.
+- **Photo host validation** — user photo URLs must be `https://res.cloudinary.com/hoojah/…`
+  (exact host; blocks `…evil.com`, userinfo `@`, and `http`).
+
+**Still open / deferred — carry these forward:**
+- **Vote model:** `vote` is still an **array** column appended per cast — collapse to a scalar
+  (latest stance) in a dedicated migration.
+- **Serializer N+1 + prosopite:** feed/show + notification serializers not yet N+1-audited; wire
+  prosopite in test/dev.
+- **ActionCable notification push:** the compose callback creates notifications synchronously; no
+  real-time push yet.
+- **`config.require_master_key`** still commented (finding **L4**) — enable once the deploy provides
+  `config/master.key`.
+- **`rack-cors` origin tightening** (finding **M1**) — still permissive; tighten before Project 3.
+- **Project 3 — Hotwire Native** (mobile) — not started.
+
+**System-suite note (Phase 6):** headless Chrome hung on the third-party **Cloudinary/Drift**
+widget scripts (intermittent `Ferrum::PendingConnectionsError`), so those scripts are **skipped in
+the test env** (layout guard) and their hosts are `url_blacklist`ed in the cuprite driver. **Rack::Attack
+is disabled for system specs** — its user-keyed throttles read `warden.user` from upstream
+middleware, which mis-deserializes the `Warden::Test::Helpers` stash under Devise 5 (a test-harness
+artifact; the throttles are covered end-to-end by the request-level `rate_limit_spec`). The system
+suite is reliably green across repeated runs (14 examples). No product-behaviour changes in dev/prod.
+
+---
+
 ## ⚠️ Environment quirks — you MUST know these to run anything
 
 This machine is arm64 / Darwin 25 with modern clang. The repo carries build helpers:

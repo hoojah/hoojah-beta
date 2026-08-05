@@ -1,0 +1,26 @@
+<%# Public profile screen — faithful port of the legacy SPA `UserProfile.jsx`:
+    the primary-colored header card (with the owner's edit pencil + modal), then the
+    user's hoojahs as compact cards. %>
+<% owner = user_signed_in? && current_user.id == @user.id %>
+
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <div class="relative flex justify-center shadow">
+    <%= render "profile_header", user: @user %>
+    <% if owner %>
+      <%= render "profile_edit", user: @user %>
+    <% end %>
+  </div>
+
+  <div class="mt-2 flex flex-col">
+    <% if @hujahs.any? %>
+      <%= render partial: "user_hujah", collection: @hujahs, as: :hujah %>
+    <% else %>
+      <div class="flex items-center text-sm text-light-grey fill-light-grey card-body p-3 bg-white">
+        <%= lucide_icon("message-circle", class: "w-4 h-4") %>
+        <span class="ml-1">No response yet</span>
+      </div>
+    <% end %>
+  </div>
+</main>

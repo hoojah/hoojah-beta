@@ -1,0 +1,33 @@
+<%# Faithful port of the legacy SPA `UserProfile.jsx` header column: avatar, name,
+    @handle, headline, optional location + link, and the vote/hoojah counts.
+    Root carries `dom_id(user, :profile_header)` so update.turbo_stream.erb can
+    replace just this block after an edit. Locals: user. %>
+<div id="<%= dom_id(user, :profile_header) %>"
+     class="w-full bg-primary text-white fill-white flex flex-col items-center py-6 px-4">
+  <%= image_tag user.photo, class: "rounded-full mb-3 w-24 h-24 object-cover", alt: user.username %>
+  <h5 class="mb-0 text-lg font-medium"><%= user.full_name %></h5>
+  <div class="mb-3">@<%= user.username %></div>
+  <% if user.headline.present? %>
+    <div class="mb-3 text-center"><%= user.headline %></div>
+  <% end %>
+
+  <% if user.location.present? %>
+    <div class="text-sm mb-1 flex items-center gap-1">
+      <%= lucide_icon("map-pin", class: "w-4 h-4") %> <%= user.location %>
+    </div>
+  <% end %>
+  <% if user.link.present? %>
+    <div class="text-sm mb-1 flex items-center gap-1">
+      <%= lucide_icon("globe", class: "w-4 h-4") %>
+      <%= link_to user.link, user.link, target: "_blank", rel: "noopener nofollow", class: "text-white underline" %>
+    </div>
+  <% end %>
+
+  <div class="text-sm mt-1 flex items-center gap-1">
+    <%= lucide_icon("bar-chart-2", class: "w-4 h-4") %>
+    <span><%= user.votes.size %></span>
+    <span class="mx-2">·</span>
+    <%= lucide_icon("message-circle", class: "w-4 h-4") %>
+    <span><%= user.hujahs.size %></span>
+  </div>
+</div>

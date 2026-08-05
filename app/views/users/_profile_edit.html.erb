@@ -1,0 +1,91 @@
+<%# Owner-only "Edit your profile" modal — faithful port of the legacy SPA
+    `User/form.js`, minus the email field (email stays API-only).
+
+    One wrapper drives two behaviors: `dialog` (native <dialog> open/close/backdrop/
+    focus-restore) and `cloudinary-upload` (photo widget → hidden field). The trigger
+    pencil sits top-right of the header card (absolute). The PATCH form posts to
+    /u/:username and comes back as a Turbo Stream (update.turbo_stream.erb) that
+    refreshes the header and fires `close_dialog`.
+
+    Locals: user. Optional: open (true renders the dialog inline for the no-JS
+    /u/:username/edit fallback page). %>
+<% open = local_assigns.fetch(:open, false) %>
+<div data-controller="dialog cloudinary-upload" class="absolute top-4 right-4">
+  <button type="button" data-action="dialog#open"
+          class="btn btn-link fill-white text-white p-0" aria-label="Edit your profile">
+    <%= lucide_icon("edit", class: "w-5 h-5") %>
+  </button>
+
+  <dialog id="<%= dom_id(user, :edit_dialog) %>"
+          data-dialog-target="dialog"
+          data-action="click->dialog#backdropClose close->dialog#restoreFocus"
+          aria-labelledby="dialog-title-profile-edit"
+          <%= "open" if open %>
+          class="rounded-lg shadow-lg p-0 w-full max-w-md backdrop:bg-black/40">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+      <h5 id="dialog-title-profile-edit" class="text-lg font-medium m-0">Edit your profile</h5>
+      <button type="button" data-action="dialog#close" aria-label="Close"
+              class="text-grey fill-grey p-0 leading-none">
+        <%= lucide_icon("x", class: "w-5 h-5") %>
+      </button>
+    </div>
+
+    <%= form_with model: user, url: profile_path(user.username), method: :patch, class: "p-4" do |f| %>
+      <% if user.errors.any? %>
+        <div class="mb-3 rounded bg-red-50 text-red-700 text-sm px-3 py-2">
+          <ul class="list-disc pl-4 m-0">
+            <% user.errors.full_messages.each do |msg| %><li><%= msg %></li><% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="flex flex-col items-center mb-4">
+        <%= image_tag user.photo, class: "rounded-full mb-3 w-24 h-24 object-cover", alt: user.username %>
+        <button type="button" data-action="cloudinary-upload#open"
+                data-cloudinary-upload-target="button"
+                class="shadow rounded-full px-4 py-1 border-2 border-primary text-primary fill-primary cursor-pointer">
+          Update photo
+        </button>
+        <%= f.hidden_field :photo, data: {"cloudinary-upload-target": "hidden"} %>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :full_name, "Full name", class: "block text-sm text-grey mb-1" %>
+        <%= f.text_field :full_name, placeholder: "Your name",
+              class: "w-full border border-gray-200 rounded px-3 py-2" %>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :username, "User name", class: "block text-sm text-grey mb-1" %>
+        <div class="flex">
+          <span class="inline-flex items-center px-3 border border-r-0 border-gray-200 rounded-l bg-gray-50 text-grey">@</span>
+          <%= f.text_field :username, placeholder: "Your @username",
+                class: "w-full border border-gray-200 rounded-r px-3 py-2" %>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :location, "Location", class: "block text-sm text-grey mb-1" %>
+        <%= f.text_field :location, placeholder: "Where you're from",
+              class: "w-full border border-gray-200 rounded px-3 py-2" %>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :link, "Link", class: "block text-sm text-grey mb-1" %>
+        <%= f.text_field :link, placeholder: "Your website",
+              class: "w-full border border-gray-200 rounded px-3 py-2" %>
+      </div>
+
+      <div class="mb-4">
+        <%= f.label :headline, "Headline", class: "block text-sm text-grey mb-1" %>
+        <%= f.text_area :headline, rows: 3, placeholder: "Add some jazz to your profile!",
+              class: "w-full border border-gray-200 rounded px-3 py-2 resize-none" %>
+      </div>
+
+      <div class="text-right">
+        <%= f.submit "Save changes",
+              class: "shadow rounded-full px-4 py-2 bg-primary text-white cursor-pointer border-0" %>
+      </div>
+    <% end %>
+  </dialog>
+</div>

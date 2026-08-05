@@ -1,0 +1,34 @@
+<%# Port of `Hujah/form.js` render(): a fixed subnav (back + submit), the optional
+    parent card + stance picker (reply only), then the avatar + textarea.
+    Posts to `hujahs#create` (POST /hoojah). `body` is stored raw. %>
+<%= form_with model: hujah, url: "/hoojah", method: :post, local: true, class: "block" do |f| %>
+  <% if parent.present? %>
+    <%= f.hidden_field :parent_id, value: parent.id %>
+  <% end %>
+
+  <nav class="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100">
+    <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+      <%= link_to((parent.present? ? hujah_path(parent.slug) : root_path),
+            class: "fill-primary text-primary no-underline", aria: {label: "Back"}) do %>
+        <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
+      <% end %>
+      <%= f.submit "Post hoojah",
+            class: "shadow inline-flex items-center gap-1 rounded-full px-4 py-2 border-2 border-primary text-primary fill-primary no-underline cursor-pointer" %>
+    </div>
+  </nav>
+  <div class="h-14"></div>
+
+  <main class="max-w-xl mx-auto px-4 py-4">
+    <% if parent.present? %>
+      <%= render "hujahs/parent_card", parent: parent %>
+      <%= render "hujahs/stance_picker", form: f, parent: parent %>
+    <% end %>
+
+    <div class="flex mt-4">
+      <%= image_tag current_user.photo, class: "rounded-full w-11 h-11 mr-3 shrink-0", alt: current_user.username %>
+      <%= f.text_area :body, rows: 10, placeholder: "What's your hoojah?",
+            class: "flex-1 border-0 p-0 bg-transparent text-lg leading-snug focus:ring-0 resize-none",
+            "aria-label": "What's your hoojah?" %>
+    </div>
+  </main>
+<% end %>

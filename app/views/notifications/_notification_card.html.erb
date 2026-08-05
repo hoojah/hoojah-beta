@@ -1,0 +1,51 @@
+<%# One notification row — faithful port of the legacy SPA `Notifications/card.js`.
+    Left border colored read/unread; a category-specific Lucide icon + copy; the body
+    is a PATCH button (mark read → redirect to the hoojah); a trash button DELETEs it
+    (Turbo-Stream removes this card). Locals: notification. %>
+<% read = notification.read? %>
+<div id="<%= dom_id(notification) %>"
+     class="shadow border-l-8 border-<%= read ? "read" : "unread" %> pr-2 flex items-center mb-1 bg-white">
+  <div class="flex items-center py-1 w-full">
+    <div class="flex items-center ml-3 fill-grey shrink-0">
+      <% case notification.category %>
+      <% when "announcement" %>
+        <%= lucide_icon("megaphone", class: "w-4 h-4") %>
+      <% when "new_hoojah_response" %>
+        <%= lucide_icon("message-circle", class: "w-4 h-4") %>
+      <% when "new_vote" %>
+        <%= lucide_icon("bar-chart-3", class: "w-4 h-4") %>
+      <% end %>
+    </div>
+
+    <div class="flex flex-col text-sm text-grey pr-1 ml-3 min-w-0">
+      <span>
+        <% case notification.category %>
+        <% when "announcement" %>
+          Announcement
+        <% when "new_hoojah_response" %>
+          @<%= notification.subject_user&.username %> posted a new argument on your hoojah
+        <% when "new_vote" %>
+          You have a new vote on your hoojah
+        <% end %>
+      </span>
+
+      <% if notification.category == "announcement" %>
+        <%= button_to notification_path(notification), method: :patch,
+              class: "text-left p-0 bg-transparent border-0 text-grey truncate no-underline" do %>
+          <%= notification.body %>
+        <% end %>
+      <% elsif notification.hujah %>
+        <%= button_to notification_path(notification), method: :patch,
+              class: "block text-left p-0 bg-transparent border-0 text-grey truncate no-underline max-w-[350px]" do %>
+          <%= format_body(notification.hujah.body) %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <%= button_to notification_path(notification), method: :delete,
+          class: "flex items-center ml-auto mr-2 fill-grey bg-transparent border-0 p-0",
+          aria: {label: "Delete notification"} do %>
+      <%= lucide_icon("trash-2", class: "w-4 h-4") %>
+    <% end %>
+  </div>
+</div>

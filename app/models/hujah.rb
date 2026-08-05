@@ -7,6 +7,8 @@ class Hujah < ApplicationRecord
 
   validates :body, presence: true
 
+  after_create_commit :notify_parent_owner, if: :has_parent?
+
   extend FriendlyId
 
   friendly_id :slug_source, use: [:slugged, :history]
@@ -51,7 +53,7 @@ class Hujah < ApplicationRecord
   end
 
   def has_children?
-    children != 0
+    children.exists?
   end
 
   def current_user_vote(logged_in: nil, current_user_id: nil)
@@ -69,5 +71,12 @@ class Hujah < ApplicationRecord
         end
       end
     end
+  end
+
+  private
+
+  def notify_parent_owner
+    Notification.create!(user_id: parent.user_id, category: :new_hoojah_response,
+      hujah_id: parent.id, subject_user_id: user_id)
   end
 end

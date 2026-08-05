@@ -1,7 +1,8 @@
 # Hoojah
 
-Server-rendered Hotwire app (feed, single-hujah, voting) with a Devise auth layer and a
-JSON `Api::V1` API for native clients — https://beta.hoojah.my
+Server-rendered Hotwire app (feed, single-hujah, voting, compose/respond, profiles,
+notifications, flagging, social share) with a Devise auth layer, Pundit authorization,
+and a JSON `Api::V1` API for native clients — https://beta.hoojah.my
 
 ## Stack
 
@@ -11,10 +12,25 @@ JSON `Api::V1` API for native clients — https://beta.hoojah.my
 - **Hotwire** — Turbo + Stimulus over **importmap-rails** (no Node/Webpacker)
 - **Propshaft** asset pipeline + **Tailwind CSS** (`tailwindcss-rails`)
 - **Devise** ~> 5.0 (`/login`, `/signup`, `/logout`, password reset)
+- **Pundit** ~> 2.5 authorization (per-action policies; app-wide `verify_authorized`)
 - **RSpec** + FactoryBot + Capybara/Cuprite (headless-Chrome system specs)
 - **rack-attack** throttling, **invisible_captcha** honeypot, nonce-based CSP
 - **Solid Queue / Solid Cache / Solid Cable** (production infrastructure)
 - **Kamal** + Thruster (deploy; registry/host still placeholders)
+
+## Screens (Hotwire)
+
+- **Feed** + **single-hujah** with per-stance **voting** and a client-side response filter.
+- **Compose / respond** — `/hoojah/new` and `/hoojah/:slug/respond` (stance-tagged replies;
+  a reply notifies the parent owner).
+- **Profile** — public view + owner edit at `/u/:username`, a native `<dialog>` edit modal
+  with a Cloudinary photo widget (host-validated URLs).
+- **Notifications** — `/notifications`, mark-read + Turbo-Stream delete.
+- **Flag** — a `<dialog>` reason picker on the single-hujah page (spam / abusive / irrelevant).
+- **Share** — server-rendered social intent links (WhatsApp / X / Telegram / Reddit /
+  Facebook / Email) with a progressively-enhanced Web Share button.
+
+Modals use native `<dialog>` plus a custom `close_dialog` Turbo Stream action.
 
 ## Setup
 
@@ -63,7 +79,7 @@ Code style is enforced with **StandardRB** (`bundle exec standardrb`).
 
 ## Known follow-on work
 
-- **Project 2 Slice 2:** compose/new-hujah form, user profile, notifications index, flag
-  modal, social-share menu (see HANDOVER for the deferred list).
+- **Project 2 Slice 2 — done:** compose/respond, profiles, notifications, flag, share, and
+  Pundit adoption all shipped (see HANDOVER for the deferred list).
 - **Project 3:** Hotwire Native (mobile).
 - **Security:** remaining app-logic findings in `SECURITY-FINDINGS.md`.

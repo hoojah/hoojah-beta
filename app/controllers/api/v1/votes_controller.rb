@@ -2,6 +2,7 @@ class Api::V1::VotesController < Api::V1::BaseController
   before_action :authenticate_user!, only: :create
 
   def create
+    authorize hujah, :vote?
     hujah.cast_vote(by: current_user, choice: vote_params[:vote])
     render json: {message: "ok"}
   end
