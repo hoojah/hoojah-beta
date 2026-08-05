@@ -1,144 +1,135 @@
 # Slice 7b: Private Accounts
 
-_Design spec. Date: 2026-08-06. Status: **design (from social sketch)**, pending specialist review + plan.
-"Land everything" program (roadmap: `docs/superpowers/ROADMAP-future-features.md`). Highest-blast-radius
-visibility change — turns the "everything public" model into opt-in privacy._
+_Design spec. Date: 2026-08-06. Status: **design + specialist-reviewed** (security, simplicity — folded,
+v2). "Land everything" program. Highest-blast-radius visibility change._
 
-## Context
+> **Review incorporation (v2).** Security found three leaks the v1 spec missed — **all folded as must-fix**:
+> concluded **debate transcripts** (D-1), **notification bodies** rendering private content (N-1), and the
+> **followers/following list pages** (L-1); plus **trending-cache staleness on the privacy flip** (T-1),
+> the **`Api::V1` no-auth bypass** (A-1 — gated now because private is a *hard* boundary), and
+> `HujahPolicy#create?` parent-visibility (C-1). Simplicity: accepted-only `following`/`followers` via the
+> **through-association scope**; **3-state follow button**; accept-notification in the **model**
+> (`after_update_commit`); `find_or_initialize_by` + explicit status; **defer the `/follow_requests` inbox
+> page** (accept/decline from the notification card); private→public auto-accept via `update_all`; don't
+> memoize `visible_to?`.
 
-Shipped through Slice 7 (Block). This adds **private accounts**: a user can make their account private, so
-their content is visible only to **accepted followers** (+ themselves), and following them becomes a
-**request → approve** flow. Public accounts (the default) are unchanged.
+## Goal
 
-## Goals
+A user can make their account **private**: their content (top-level hoojahs, replies, debate turns) and
+profile hoojah-list/followers-list are visible only to **accepted followers** (+ themselves), and
+following them is a **request → approve** flow. Public accounts (default) unchanged.
 
-1. **`users.private`** toggle (default false; on the profile-edit form).
-2. **Follow request/approve** for private targets: following a private user creates a **pending** request;
-   the private user **approves** (→ accepted) or **declines**. Following a public user stays instant.
-3. **Visibility gating** — a private user's hoojahs (top-level + replies) and their profile hoojah-list are
-   visible only to `visible_to?` viewers (self or accepted follower). Private users are **excluded from
-   discovery** (global "Everyone" feed + trending).
-4. Follow **counts/lists count only accepted** follows.
+## The single gate
 
-## Non-goals (deferred)
+`User#visible_to?(viewer) = !private? || viewer == self || accepted_follower?(viewer)`
+where `accepted_follower?(v) = v && passive_follows.accepted.exists?(follower_id: v.id)`.
+`Hujah#visible_to?(viewer) = user.visible_to?(viewer)`. **Every content surface below goes through this.**
+Not memoized (the list surfaces use SQL, the rest call it once).
 
-`Api::V1::*` private gating (consistent with the Block deferral — a future native client needs the same
-gates); private DMs; per-hoojah visibility (privacy is per-account, all-or-nothing); approving with a
-"close friends" tier; hiding a private user's *existence* (their name/handle/avatar + "private account"
-state are still shown — like Instagram; only their *content* is gated).
+## Schema + follow status
 
-## Architecture
-
-### 1. Schema + core helpers
-
-- `add_column :users, :private, :boolean, default: false, null: false` (+ index).
+- `add_column :users, :private, :boolean, default: false, null: false`.
 - `add_column :follows, :status, :integer, default: 0, null: false` (`enum status: { pending: 0,
-  accepted: 1 }`); **backfill existing follows to `accepted`** (they predate privacy).
-- `Follow` scope `accepted`. **`User#following`/`#followers` count/list ACCEPTED only** — change the
-  `has_many :through` to go through an `accepted_active_follows`/`accepted_passive_follows` scope (or add
-  `-> { accepted }` to the through associations). `following_ids` (used by `timeline_for`) must be
-  accepted-only.
-- **`User#visible_to?(viewer)`** = `!private? || viewer == self || accepted_follower?(viewer)` where
-  `accepted_follower?(v) = v && passive_follows.accepted.exists?(follower_id: v.id)`.
-- `Hujah#visible_to?(viewer) = user.visible_to?(viewer)`.
+  accepted: 1 }`); **backfill existing → accepted**.
+- `Follow` scope `accepted`. **`User#following`/`#followers` accepted-only via the through scope:**
+  `has_many :following, -> { where(follows: { status: :accepted }) }, through: :active_follows, source:
+  :followed` (and the passive side) → `following_ids`, counts, lists all become accepted-only in one edit.
+  (Confirmed safe: Slice-7 reciprocal-follow `delete_all` targets `Follow` directly, all statuses.)
 
-### 2. Follow flow (request → approve)
+## Follow flow (request → approve)
 
-- **`FollowsController#create`:** `status = @target.private? ? :pending : :accepted`; build the follow with
-  that status. Notification: private target → `follow_request` to the target; public → the existing
-  `new_follower` (fired by `Follow after_create_commit` only when **accepted** — move `notify_followed` to
-  fire on accepted, and add a `follow_request` notification for pending). Button state: **Follow** →
-  **Requested** (pending) / **Following** (accepted) / **Unblock**-aware from Slice 7.
-- **`FollowRequestsController`** (private user manages incoming requests): `index` (list
-  `current_user.passive_follows.pending` requesters), `update`/`accept` (set accepted → notify requester
-  `follow_accepted`, fire the normal `new_follower`), `destroy`/`decline` (delete the pending follow). All
-  `authenticate_user!`; authorize the follow (only the followed user acts on their own request).
-- Toggling **private → public**: auto-accept all pending requests (they'd be accepted on request anyway).
-  **public → private**: existing accepted followers stay; new follows become requests.
+- **`FollowsController#create`:** `f = current_user.active_follows.find_or_initialize_by(followed: @target);
+  f.status = @target.private? ? :pending : :accepted if f.new_record?; f.save` (rescue `RecordNotUnique`).
+  (The pending default is security-conservative — a forgotten status is inert, not a leak.)
+- **`Follow` model (all notifications/badges in the model, gated on accepted):**
+  - `after_create_commit`: if `accepted?` → `notify_followed` (`new_follower`) + `UserBadge.award(followed,
+    "first_follower")`; if `pending?` → `follow_request` notification to the target.
+  - `after_update_commit :notify_accepted, if: -> { saved_change_to_status? && accepted? }` → `follow_accepted`
+    to the requester + `new_follower` + `UserBadge.award(followed, "first_follower")`.
+  - **Fixes the v1 bug:** `award_first_follower` must NOT fire on a pending request.
+- **`FollowRequestsController`** (no index — deferred): `update` (accept → `@follow.update!(status:
+  :accepted)`) and `destroy` (decline → `@follow.destroy`). `authenticate_user!` +
+  `authorize @follow, :update?/:destroy?`. `FollowRequestPolicy#update?/#destroy? = record.followed_id ==
+  user.id` (only the followed user acts). Requests are managed **from the `follow_request` notification
+  card** (accept/decline `button_to`s). Cancelling your own pending request reuses the existing unfollow.
+- **Button** (`_follow_button`): **3-state** — Following (accepted) / Requested
+  (`current_user.active_follows.pending.exists?(followed_id: user.id)`) / Follow. (Unblock from Slice 7.)
+- Notification enum append `follow_request: 12, follow_accepted: 13`; card branches (accept/decline for
+  `follow_request`; link to profile for `follow_accepted`).
 
-### 3. Visibility gating (all via `visible_to?`)
+## Visibility gates (every content surface)
 
-- **Global feed** (`HujahsController#index` else-branch): exclude private authors —
-  `.joins(:user).where(users: { private: false })` (private users are discovery-excluded; their content
-  reaches followers via the Following feed). Applies to anonymous + signed-in.
-- **Following feed** (`timeline_for`): unchanged in shape — but `following_ids` is now **accepted-only**, so
-  a private user you follow (accepted) appears; one you've only *requested* does not. No extra gate needed
-  (you're an accepted follower by construction).
-- **Trending** (`Hujah.trending` candidates): exclude private authors —
-  `.joins(:user).where(users: { private: false })`.
-- **Profile** (`UsersController#show`): if `!@user.visible_to?(current_user)` → render the **gated view**
-  (avatar/name/@handle + "This account is private" + a Follow/Requested button + follower/following counts
-  only), **no hoojah list**. Else the full profile. `@user.followers`/`following` counts show accepted.
-- **Hoojah show** (`HujahsController#show`): gate via Pundit — change `skip_authorization` to
-  `authorize @hujah` with **`HujahPolicy#show? = record.user.visible_to?(user)`** (a private author's
-  hoojah 403/redirects for non-followers). Keep the Slice-7 `@children` block filter; **also filter
-  `@children` by author visibility** (`@children.select { |c| c.visible_to?(current_user) }` or a
-  visible-authors scope) so a private replier's argument under a public hoojah is hidden from non-followers.
-- **Mentions/notifications:** a private user can still be *mentioned* and notified (being addressed isn't
-  gated content); the mention links to their (gated) profile. No change.
+1. **Global feed** (`HujahsController#index` else-branch): `.joins(:user).where(users: { private: false })`
+   — **UNCONDITIONAL** (anonymous too; do NOT wrap in `if user_signed_in?`).
+2. **Following feed** (`timeline_for`): unchanged shape; accepted-only `following_ids` gates it.
+3. **Trending** (`Hujah.trending`): query excludes private (`.joins(:user).where(users: {private: false})`);
+   **AND** invalidate the cache on flip — `User after_update_commit { Rails.cache.delete("trending:v1") if
+   saved_change_to_private? }` (T-1: else a cached hoojah stays visible ≤15 min after going private).
+4. **Profile** (`UsersController#show`): if `!@user.visible_to?(current_user)` → **gated view**
+   (avatar + name + @handle + "This account is private" + follow/request button + follower/following
+   **counts only**; **no** hoojah list, headline, location, link, or badges — V-2 whitelist). Else full.
+5. **Hoojah show** (`HujahsController#show`): `skip_authorization` → **`authorize @hujah`** with
+   **`HujahPolicy#show? = record.user.visible_to?(user)`** (nil-safe; anonymous → Pundit rescue redirects,
+   not a bare 403). Keep the Slice-7 `@children` block filter AND add the visibility filter (next).
+6. **`@children`** (replies): **unconditional** per-viewer SQL predicate (reuses accepted-only ids):
+   `visible_ids = user_signed_in? ? current_user.following_ids + [current_user.id] : []`;
+   `@children = @children.joins(:user).where("users.private = false OR hujahs.user_id IN (?)", visible_ids)`
+   (no N+1; accepted followers see a private user's reply, strangers/anonymous don't).
+7. **Followers/following lists** (`UsersController#followers`/`#following`, L-1): when
+   `!@user.visible_to?(current_user)` → gated (redirect / empty). (Not in v1 — must-fix.)
+8. **Debate transcript** (`DebatePolicy`, D-1): `show? = record.participant?(user) || (record.concluded? &&
+   record.challenger.visible_to?(user) && record.opponent.visible_to?(user))`; the `Scope` (Debates lens
+   on the hoojah page) must likewise exclude concluded debates whose participants aren't both visible.
+9. **Notification render** (N-1): `_notification_card`'s hoojah-body branch →
+   `elsif notification.hujah && notification.hujah.visible_to?(current_user)`; mirror the guard in
+   `NotificationSerializer#hujah` (reachable from the HTML app).
+10. **`HujahPolicy#create?`** (C-1): also require `record.parent.visible_to?(user)` for a reply (a
+    non-follower must not write into a thread they can't see).
+11. **`Api::V1` read endpoints** (A-1): gate `Api::V1::HujahsController#index/#show` (exclude/deny private
+    authors) + `Api::V1::UsersController#show` with `visible_to?`. Full native parity (serializer children,
+    etc.) stays deferred to Project 3, but the raw content the feature hides must not be one guessable URL
+    away.
 
-### 4. Notification enum
+**Mentions:** a private user can still be mentioned/notified (being addressed isn't gated content); the
+mention links to their gated profile — no change (but the notification's *hoojah body* is gated by N-1).
 
-Append `follow_request: 12, follow_accepted: 13`. `_notification_card` branches: `follow_request`
-(→ the requests inbox, "@x requested to follow you" — with accept/decline, or link to
-`/follow_requests`), `follow_accepted` (→ the accepter's profile).
+## Toggle
 
-### 5. Pundit / routes
-
-- `HujahPolicy#show?` (new — gates private authors). `HujahsController#show` switches to `authorize @hujah`.
-  (index/new stay `skip_authorization`.)
-- `FollowRequestPolicy` (only the followed user manages their requests): `update?/destroy? = record.followed_id
-  == user.id`.
-- Routes: `get "/follow_requests"` (index); `patch/delete "/follow_requests/:id"` (accept/decline); the
-  `private` toggle rides the existing profile-edit form (`user_params` gains `:private`).
-- rack-attack: the existing `follow/user` throttle covers request creation (same route).
-
-## Component boundaries
-
-- `User#private` + `visible_to?`/`accepted_follower?`; `Follow#status` + `accepted` scope + accepted-only
-  `following`/`followers`. `Hujah#visible_to?`.
-- `FollowsController#create` (pending vs accepted); `FollowRequestsController` (index/accept/decline);
-  `FollowRequestPolicy`; `HujahPolicy#show?`; profile-edit `:private`.
-- Views: gated profile view; `follow_requests/index`; button "Requested" state; `_notification_card`
-  branches. Content-filter edits: global feed, trending, `@children`, `HujahsController#show` authorize.
-- No Stimulus, no gems.
+`private` rides the profile-edit form (`user_params` += `:private`). **private→public:**
+`current_user.passive_follows.pending.update_all(status: :accepted)` (bulk, no notification blast).
+**public→private:** existing accepted followers stay; new follows become requests.
 
 ## Testing (visibility completeness is the property)
 
-- **Model:** `visible_to?` (public → everyone; private → self + accepted follower only; not a
-  pending-requester, not a stranger); `following`/`followers` count accepted only; `Hujah#visible_to?`.
-- **Follow flow:** following a public user → accepted + `new_follower`; following a private user → pending +
-  `follow_request` (no `new_follower` yet); the private user accepts → accepted + `new_follower` +
-  `follow_accepted` to requester; decline → follow removed; only the followed user can accept/decline
-  (`FollowRequestPolicy`, non-owner → 403).
-- **Visibility:** a private user's top-level hoojahs are absent from the global feed + trending for
-  everyone (incl. anonymous); present in an **accepted follower's** Following feed; a **stranger/pending**
-  requester gets the gated profile (no hoojah list) and a **403/redirect on the hoojah show page**; an
-  accepted follower + the owner see everything; a private user's reply under a public hoojah is hidden from
-  non-followers in `@children`. Public users unchanged throughout.
-- **Toggle:** private→public auto-accepts pending; public→private keeps existing accepted followers.
-- **System (cuprite):** make account private → a stranger sees the gated profile; accept a follow request →
-  the requester then sees the content.
+- **Model:** `visible_to?` (public→all; private→self+accepted only, NOT pending/stranger/anonymous);
+  `following`/`followers` accepted-only; `Hujah#visible_to?`.
+- **Follow flow:** public target → accepted + `new_follower` + badge; private target → pending +
+  `follow_request` (no `new_follower`/badge yet); accept → accepted + `new_follower` + `follow_accepted` +
+  badge; decline → removed; only the followed user accepts/declines (`FollowRequestPolicy`, else 403);
+  3-state button; public follow lands `accepted` (enum-default footgun test).
+- **Every gate (must each have a test):** private author absent from global feed + trending **for
+  anonymous and strangers**; present in an accepted follower's Following feed; gated profile (no hoojah
+  list); hoojah show 403/redirect for non-followers; `@children` hides a private replier from
+  non-followers (incl. anonymous) but not from accepted followers; **followers/following list gated**;
+  **concluded debate transcript hidden** from a non-follower of a private participant; **notification body**
+  of a private hoojah not rendered to a non-follower; `Api::V1` hoojah/user endpoints gate a private
+  author; `HujahPolicy#create?` rejects a reply to an unseen private parent. Public users unchanged.
+- **Toggle:** private→public auto-accepts pending; trending cache invalidated on flip.
+- **System (cuprite):** make private → stranger sees gated profile; accept a request → requester then sees
+  content.
 - Full suite green; brakeman 0; bundler-audit clean; StandardRB clean.
 
-## Risks / open questions
+## Risks / notes
 
-- **Completeness is the property** (like Block): the `visible_to?` helper is the single driver; the security
-  review must confirm EVERY content surface (global feed, following feed, trending, profile hoojah-list,
-  hoojah show, `@children`, and any serializer/API path) gates a private author. A missed surface leaks
-  private content.
-- **`Api::V1` gating deferred** — the JSON feed/children/user endpoints do NOT gate private authors yet
-  (pre-existing lack of any visibility filtering; native client is Project 3). Documented, not silent.
-- **Global-feed exclusion vs per-hoojah visibility:** MVP excludes private authors from the global feed
-  wholesale (simpler + safe) rather than per-viewer per-hoojah inclusion; a private user's own global-feed
-  view therefore omits their own posts (they see them on their profile/following). Acceptable MVP boundary.
-- **Existing debates/mentions with a now-private user:** a private user in an active debate — the debate
-  transcript is gated by `DebatePolicy#show?` (participants/concluded) already; confirm a private
-  participant's turns aren't leaked to a non-follower via the (public, concluded) debate view — likely fine
-  since debate visibility is its own gate, but flag for the review.
-- **Counter/derived correctness:** switching `following`/`followers` to accepted-only must not break the
-  Slice-3 profile counts or the Slice-7 reciprocal-follow-removal (which should target any-status follows).
+- **Count leaks (pre-existing, Low):** `children_count`/`hujah_count`/`vote_count` count unfiltered rows
+  (same as Slice 7); a private author's reply still nudges a counter by 1. Noted, not fixed here.
+- **Api::V1 full parity** (serializer children/parent, notifications) beyond the gated index/show/user is
+  deferred to Project 3 — documented.
+- **Block + private:** confirmed compatible (block's `delete_all` is status-unscoped; block gates are
+  independent and compose).
+- `private` column name is AR-safe (`private?`/`private=` generated; no `DangerousAttributeError`).
 
 ## Deferred
 
-`Api::V1` private gating; DMs; visibility tiers; then debate Increments (Slice 8), Project 3.
+`/follow_requests` inbox page (7b-ii, UI polish); full `Api::V1` visibility parity; DMs; visibility tiers.
+Then debate Increments (Slice 8), Project 3.
