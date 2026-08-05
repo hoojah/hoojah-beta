@@ -52,7 +52,10 @@ class Hujah < ApplicationRecord
       else
         votes.create!(user: by, vote: [choice])
         increment!(COUNTER_FOR[choice])
-        Notification.create!(user_id: user_id, category: :new_vote, hujah_id: id, subject_user_id: by.id)
+        # Privacy: the new_vote notification deliberately carries NO subject_user_id.
+        # Votes are an effectively secret ballot; recording the first voter's id here
+        # let the owner de-anonymize them via NotificationSerializer (Slice 5, Part A).
+        Notification.create!(user_id: user_id, category: :new_vote, hujah_id: id)
       end
     end
   end
