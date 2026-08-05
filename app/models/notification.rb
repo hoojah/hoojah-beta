@@ -2,6 +2,7 @@ class Notification < ApplicationRecord
   belongs_to :user
   belongs_to :hujah, optional: true
   belongs_to :subject_user, class_name: "User", optional: true
+  belongs_to :debate, optional: true
 
   enum :category, {
     admin: 0,
@@ -10,7 +11,11 @@ class Notification < ApplicationRecord
     new_hoojah_response: 3,
     new_vote: 4,
     mention: 5,
-    new_follower: 6
+    new_follower: 6,
+    debate_challenge: 7,
+    debate_declined: 8,
+    debate_your_turn: 9,
+    debate_concluded: 10
   }
 
   scope :unread, -> { where(read: false) }
