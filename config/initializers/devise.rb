@@ -123,7 +123,7 @@ Devise.setup do |config|
   # a value less than 10 in other environments. Note that, for bcrypt (the default
   # algorithm), the cost increases exponentially with the number of stretches (e.g.
   # a value of 20 is already extremely slow: approx. 60 seconds for 1 calculation).
-  config.stretches = 12                 # match has_secure_password bcrypt cost so $2a$12$ hashes round-trip
+  config.stretches = 12                 # match the prior bcrypt cost so existing $2a$12$ hashes round-trip
 
   # Set up a pepper to generate the hashed password.
   config.pepper = nil                   # MUST stay unset — a pepper would invalidate existing hashes

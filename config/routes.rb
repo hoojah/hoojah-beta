@@ -25,7 +25,7 @@ Rails.application.routes.draw do
     end
   end
 
-  # HTML (Hotwire) screens — the server-rendered replacement for the React SPA.
+  # HTML (Hotwire) screens — the server-rendered replacement for the legacy SPA.
   root "hujahs#index"
   get "/hoojah/:slug", to: "hujahs#show", as: :hujah
   # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`

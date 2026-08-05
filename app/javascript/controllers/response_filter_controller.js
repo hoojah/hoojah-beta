@@ -9,7 +9,6 @@ import { Controller } from "@hotwired/stimulus"
 //   items: data-response-filter-target="item" + data-response-filter-vote="<stance>"
 export default class extends Controller {
   static targets = ["tab", "item"]
-  static classes = ["hidden"]
   static values = { active: { type: String, default: "all" } }
 
   filter(event) {

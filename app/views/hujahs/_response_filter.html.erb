@@ -1,12 +1,11 @@
-<%# Port of the React response-filter tab group. The filtering itself is driven by
+<%# Port of the legacy SPA response-filter tab group. The filtering itself is driven by
     `response_filter_controller.js` (Task 4.4) — purely client-side show/hide, no
     fetch/re-render. Markup contract:
-      root:  data-controller="response-filter" + hidden class
+      root:  data-controller="response-filter"
       tabs:  role="group", data-action="response-filter#filter",
              data-response-filter-filter-param="all|agree|neutral|disagree"
       items: data-response-filter-target="item" data-response-filter-vote="<stance>" %>
 <div data-controller="response-filter"
-     data-response-filter-hidden-class="hidden"
      data-response-filter-active-value="all"
      class="shadow bg-white pb-3">
   <div class="p-4">
