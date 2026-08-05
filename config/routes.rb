@@ -46,6 +46,12 @@ Rails.application.routes.draw do
   # Public followers / following lists (Slice 3, Task 2.2).
   get "/u/:username/followers", to: "users#followers", as: :user_followers
   get "/u/:username/following", to: "users#following", as: :user_following
+  # Follow requests (Slice 7b). Accept (PATCH) / decline (DELETE) a pending follow —
+  # only the followed user may act (FollowRequestPolicy). Managed from the
+  # follow_request notification card; the standalone inbox page is deferred. `:id`
+  # is the Follow id; both verbs share the path so only PATCH is named.
+  patch "/follow_requests/:id", to: "follow_requests#update", as: :follow_request
+  delete "/follow_requests/:id", to: "follow_requests#destroy"
   # Block / unblock (Slice 7). Main routes (NOT Api::V1) so CSRF stays on. Bidirectional
   # block: rejects interactions at the policy layer + removes reciprocal follows.
   post "/u/:username/block", to: "blocks#create", as: :block_user

@@ -5,7 +5,7 @@ RSpec.describe Follow, type: :model do
   let(:b) { create(:user) }
 
   it "is valid between two different users and notifies the followed" do
-    expect { a.active_follows.create!(followed: b) }
+    expect { a.active_follows.create!(followed: b, status: :accepted) }
       .to change { Notification.where(user: b, category: "new_follower").count }.by(1)
   end
 

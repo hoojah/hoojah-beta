@@ -4,7 +4,12 @@ class FollowsController < ApplicationController
 
   def create
     authorize Follow.new(follower: current_user, followed: @target), :create?
-    current_user.active_follows.find_or_create_by(followed: @target)
+    # The enum default is `pending` (a forgotten status is inert, never a leak), so
+    # set the status EXPLICITLY: a private target starts a request, a public target
+    # is followed outright. find_or_initialize_by keeps a re-follow idempotent.
+    follow = current_user.active_follows.find_or_initialize_by(followed: @target)
+    follow.status = @target.private? ? :pending : :accepted if follow.new_record?
+    follow.save
     render_button
   rescue ActiveRecord::RecordNotUnique
     # A concurrent double-click races past find_or_create_by's SELECT and both

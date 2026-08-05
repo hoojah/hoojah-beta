@@ -8,6 +8,10 @@ class Hujah < ApplicationRecord
 
   validates :body, presence: true
 
+  # A hoojah inherits its author's visibility (Slice 7b). Every content surface
+  # that renders a hoojah gates through this.
+  def visible_to?(viewer) = user.visible_to?(viewer)
+
   # @handle mention pattern. The `(?<!\w)` lookbehind means an `@` preceded by a
   # word char (e.g. inside an email `foo@bar`) is NOT a mention.
   MENTION_RE = /(?<!\w)@([a-zA-Z0-9_]+)/
@@ -48,7 +52,10 @@ class Hujah < ApplicationRecord
   # recency gate (voting bumps updated_at via increment!). No background job.
   def self.trending
     ids = Rails.cache.fetch("trending:v1", expires_in: 15.minutes) do
-      where(parent_id: nil).where("updated_at > ?", 48.hours.ago).to_a
+      # Slice 7b: trending candidates exclude a private author's hoojahs (with the
+      # User#after_update_commit cache-bust so the flip is reflected immediately).
+      where(parent_id: nil).where("hujahs.updated_at > ?", 48.hours.ago)
+        .joins(:user).where(users: {private: false}).to_a
         .map { |h|
           [h.id, ((h.agree_count + h.neutral_count + h.disagree_count + h.children.size).to_f /
             (((Time.current - h.created_at) / 3600) + 2)**1.5)]

@@ -27,6 +27,14 @@
             <%= lucide_icon("user-check", class: "w-4 h-4") %>
             <span>Following</span>
           <% end %>
+        <% elsif current_user.active_follows.pending.exists?(followed_id: user.id) %>
+          <%# Private target with a pending request (Slice 7b). The button cancels the
+              request — reuses the unfollow route (DELETE removes the pending follow). %>
+          <%= button_to unfollow_user_path(user.username), method: :delete,
+                class: "flex items-center gap-1 px-4 py-1 rounded-full text-sm bg-white/70 text-primary" do %>
+            <%= lucide_icon("clock", class: "w-4 h-4") %>
+            <span>Requested</span>
+          <% end %>
         <% else %>
           <%= button_to follow_user_path(user.username),
                 class: "flex items-center gap-1 px-4 py-1 rounded-full text-sm border border-white text-white" do %>

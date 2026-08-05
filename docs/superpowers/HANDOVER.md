@@ -1,6 +1,6 @@
 # Hoojah — Session Handover
 
-_Last updated: 2026-08-05. Read this first when resuming._
+_Last updated: 2026-08-06. Read this first when resuming._
 
 ## TL;DR
 
@@ -414,6 +414,77 @@ dir is **22 examples**, reliably green across repeated runs). brakeman **0**; `s
   reply via the API as a side effect — filtering of *reads* is what's deferred.)
 - **Grandfathered debate:** an in-progress blocked-pair debate is not auto-concluded (its
   notifications keep firing) — deferred.
+- Carried forward: **debate Increments 2a/2b/3** (Slice 8, incl. `debate_won`), **Vote array→scalar**,
+  **serializer N+1 / prosopite**, **`config.require_master_key`** (L4), **`rack-cors`** (M1),
+  **Project 3 — Hotwire Native**.
+
+---
+
+## Slice 7b (Private Accounts) — DONE
+
+_Branch: `slice-7b-private`. Suite: **225 examples / 0 failures / 2 pending** (request + Cuprite
+system specs; +40 over the 185 Slice-7 baseline: private-account visibility gates + follow
+request/approve + toggle + a cuprite system spec). brakeman **0**; `standardrb` clean;
+`bundler-audit` clean. Two new columns (`users.private`, `follows.status`), no new tables._
+
+**The single gate — `User#visible_to?(viewer)`:** `!private? || viewer == self ||
+accepted_follower?(viewer)` (`accepted_follower?` = `passive_follows.accepted.exists?(follower_id:)`).
+`Hujah#visible_to?(v) = user.visible_to?(v)`. Not memoized (list surfaces gate in SQL). **Every
+content surface routes through this.**
+
+**Schema + follow flow (Phases 1–2):**
+- `users.private` (bool, default false, indexed); `follows.status` (enum `pending: 0, accepted: 1`,
+  default `pending`; **existing rows backfilled → accepted**). `User#following`/`#followers` are
+  **accepted-only** via a through-association scope — `following_ids`, counts, and the list pages all
+  become accepted-only in one place. **Watch-out:** any test that does `active_follows.create!` with
+  no `status:` now gets a **pending** follow (not a following-feed entry) — the request timeline spec
+  and the fixed `spec/system/timeline_spec.rb` pass `status: :accepted`.
+- `FollowsController#create` = `find_or_initialize_by` + explicit status (`private? ? :pending :
+  :accepted`; a forgotten status is inert, never a leak). `FollowRequestsController` (accept =
+  PATCH → `update!(status: :accepted)`; decline = DELETE → destroy), `FollowRequestPolicy` (only the
+  followed user acts). All follow notifications/badges live in the `Follow` model
+  (`after_create_commit` branches accepted vs pending; `after_update_commit :notify_accepted`); the
+  **v1 first_follower-on-pending bug is fixed**. 3-state button (Following / Requested / Follow);
+  requests accepted/declined from the `follow_request` notification card (**inbox page deferred**).
+
+**The 11 visibility gates (Phase 3, each with a test in `spec/requests/private_visibility_spec.rb`):**
+1. **Global feed** else-branch `.joins(:user).where(users: {private: false})` — **UNCONDITIONAL**
+   (anonymous too).
+2. **Following feed** — automatic (accepted-only `following_ids` gates it).
+3. **Trending** — `Hujah.trending` candidates exclude private; `User after_update_commit` busts
+   `trending:v1` on the privacy flip (no ≤15-min stale leak). (`hujahs.updated_at` qualified after
+   the join.)
+4. **Profile** (`UsersController#show`) — `@gated = !visible_to?`; the `_gated_header` partial shows
+   avatar/name/@handle/"This account is private"/follow button/**counts only** (no hoojah list,
+   headline, location, link, badges).
+5. **Hoojah show** — `authorize @hujah`; `HujahPolicy#show? = record.user.visible_to?(user)`
+   (nil-safe; anonymous → Pundit rescue redirects).
+6. **`@children`** — UNCONDITIONAL SQL predicate `users.private = false OR hujahs.user_id IN
+   (following_ids + [self])` (accepted followers see private replies; strangers/anonymous don't),
+   composed with the Slice-7 block filter.
+7. **Follower/following lists** — `UsersController#followers`/`#following` redirect to the profile
+   when `!visible_to?`.
+8. **Debate transcript** — `DebatePolicy#show? = participant? || (concluded? && both participants
+   visible_to?)`; `Scope` filters the concluded set in Ruby (the lens is one hoojah's debates).
+9. **Notification body** — `_notification_card` hoojah branch `&& notification.hujah.visible_to?(current_user)`;
+   `NotificationSerializer#hujah` mirrors it (`notification.user` IS the recipient/viewer).
+10. **`HujahPolicy#create?`** += `record.parent.visible_to?(user)` (no reply to an unseen private parent).
+11. **`Api::V1`** — `HujahsController#index` excludes private authors, `#show` denies (404) a private
+    author; `UsersController#show` denies (404) a private account. (Full follower-aware parity deferred.)
+
+**Toggle (Phase 3.2):** `:private` in the profile `user_params` + a checkbox in `_profile_edit`; on
+private→public (`was_private && !private?`) `passive_follows.pending.update_all(status: :accepted)`
+(bulk, no notification blast). `spec/system/private_spec.rb` drives it end-to-end (owner makes
+private → stranger sees the gated profile + requests → owner accepts from notifications → requester
+then sees the content), reusing `login_as_system` and switching the acting user mid-flow.
+
+**Documented deferrals / still open:**
+- **`/follow_requests` inbox page** (7b-ii, UI polish) — requests are managed from the notification card.
+- **Full `Api::V1` visibility parity** — the gated index/show/user endpoints are hardened, but
+  serializer `children`/`parent` and the notifications endpoint's deeper parity stay deferred to
+  Project 3 (the raw content the feature hides is no longer one guessable URL away).
+- **Count leaks (pre-existing, Low):** `hujah_count`/`vote_count`/`children_count` still count
+  unfiltered rows (same as Slice 7) — a private author's reply nudges a counter by 1. Noted, not fixed.
 - Carried forward: **debate Increments 2a/2b/3** (Slice 8, incl. `debate_won`), **Vote array→scalar**,
   **serializer N+1 / prosopite**, **`config.require_master_key`** (L4), **`rack-cors`** (M1),
   **Project 3 — Hotwire Native**.

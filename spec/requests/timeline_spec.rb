@@ -5,7 +5,7 @@ RSpec.describe "Following feed", type: :request do
   let(:followed) { create(:user) }
   let(:stranger) { create(:user) }
   before do
-    me.active_follows.create!(followed: followed)
+    me.active_follows.create!(followed: followed, status: :accepted)
     @mine = create(:hujah, user: me)
     @theirs = create(:hujah, user: followed)
     @other = create(:hujah, user: stranger)

@@ -11,9 +11,15 @@ class User < ApplicationRecord
   # Follow graph. active_follows = follows I initiated (I am the follower);
   # passive_follows = follows pointed at me (I am the followed).
   has_many :active_follows, class_name: "Follow", foreign_key: :follower_id, dependent: :destroy
-  has_many :following, through: :active_follows, source: :followed
+  # `following`/`followers` are ACCEPTED-ONLY (Slice 7b). The through-association
+  # scope makes `following_ids`, counts, and the list pages all accepted-only in one
+  # place — a pending follow request never counts as a follow anywhere. Existing rows
+  # were backfilled to accepted; new private-target follows land pending.
+  has_many :following, -> { where(follows: {status: Follow.statuses[:accepted]}) },
+    through: :active_follows, source: :followed
   has_many :passive_follows, class_name: "Follow", foreign_key: :followed_id, dependent: :destroy
-  has_many :followers, through: :passive_follows, source: :follower
+  has_many :followers, -> { where(follows: {status: Follow.statuses[:accepted]}) },
+    through: :passive_follows, source: :follower
 
   # Block graph. blocks_made = blocks I initiated; blocks_received = blocks pointed
   # at me. Block is bidirectional invisibility/interaction cutoff (Slice 7).
@@ -40,6 +46,12 @@ class User < ApplicationRecord
 
   after_create :assign_random_photo
 
+  # Slice 7b (T-1): a cached trending hoojah must not stay visible after its author
+  # goes private. Trending caches only ids for 15 min; busting the cache on the
+  # privacy flip forces a recompute (which excludes the now-private author) instead
+  # of leaking the hoojah for up to 15 minutes.
+  after_update_commit :bust_trending_cache, if: -> { saved_change_to_private? }
+
   def self.random_photo
     [
       "https://res.cloudinary.com/hoojah/image/upload/v1586909321/user_photo_2.gif",
@@ -51,6 +63,18 @@ class User < ApplicationRecord
 
   def unread_notifications_count
     notifications.unread.count
+  end
+
+  # The single visibility gate every private-content surface consults (Slice 7b).
+  # Public users are visible to everyone (incl. anonymous); a private user is
+  # visible only to themselves and to an ACCEPTED follower. Deliberately NOT
+  # memoized — most callers invoke it once, and the list surfaces gate in SQL.
+  def visible_to?(viewer)
+    !private? || viewer == self || accepted_follower?(viewer)
+  end
+
+  def accepted_follower?(viewer)
+    viewer.present? && passive_follows.accepted.exists?(follower_id: viewer.id)
   end
 
   # The single source of truth every block filter/policy consults (bidirectional):
@@ -76,6 +100,8 @@ class User < ApplicationRecord
   end
 
   private
+
+  def bust_trending_cache = Rails.cache.delete("trending:v1")
 
   def assign_random_photo
     update_column(:photo, User.random_photo) if photo.blank?
