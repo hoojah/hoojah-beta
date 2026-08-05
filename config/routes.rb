@@ -28,5 +28,4 @@ Rails.application.routes.draw do
   resources :users, only: :create
 
   root 'hujah#index'
-  get '/*path' => 'hujah#index'
 end
