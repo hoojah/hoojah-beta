@@ -47,7 +47,7 @@ RSpec.describe "Block visibility (content filters)", type: :request do
     it "excludes a hidden author even if a stale follow survives" do
       # Block via the model directly so the follow is NOT auto-removed — exercises
       # timeline_for's hidden_user_ids exclusion, not the follow-removal path.
-      a.active_follows.create!(followed: b)
+      a.active_follows.create!(followed: b, status: :accepted)
       create(:hujah, user: b, body: "BBB followed take")
       create(:hujah, user: a, body: "AAA own take")
       a.blocks_made.create!(blocked: b)

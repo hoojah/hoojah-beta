@@ -23,7 +23,7 @@ RSpec.describe "Profile", type: :request do
 
   it "shows the followers list publicly (signed out)" do
     fan = create(:user, username: "fan")
-    fan.active_follows.create!(followed: user)
+    fan.active_follows.create!(followed: user, status: :accepted)
     get "/u/rudz/followers"
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("@fan")
@@ -31,7 +31,7 @@ RSpec.describe "Profile", type: :request do
 
   it "shows the following list publicly (signed out)" do
     idol = create(:user, username: "idol")
-    user.active_follows.create!(followed: idol)
+    user.active_follows.create!(followed: idol, status: :accepted)
     get "/u/rudz/following"
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("@idol")

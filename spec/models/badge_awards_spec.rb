@@ -13,7 +13,7 @@ RSpec.describe "Badge awards", type: :model do
   it "first_follower on follow; first_debate on conclude (both participants)" do
     a = create(:user)
     b = create(:user)
-    a.active_follows.create!(followed: b)
+    a.active_follows.create!(followed: b, status: :accepted)
     expect(b.user_badges.pluck(:badge_key)).to include("first_follower")
     hujah = create(:hujah)
     create(:hujah, parent: hujah, user: b, vote: 3)

@@ -8,6 +8,10 @@ class Hujah < ApplicationRecord
 
   validates :body, presence: true
 
+  # A hoojah inherits its author's visibility (Slice 7b). Every content surface
+  # that renders a hoojah gates through this.
+  def visible_to?(viewer) = user.visible_to?(viewer)
+
   # @handle mention pattern. The `(?<!\w)` lookbehind means an `@` preceded by a
   # word char (e.g. inside an email `foo@bar`) is NOT a mention.
   MENTION_RE = /(?<!\w)@([a-zA-Z0-9_]+)/

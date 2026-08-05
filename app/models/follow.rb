@@ -2,6 +2,11 @@ class Follow < ApplicationRecord
   belongs_to :follower, class_name: "User"
   belongs_to :followed, class_name: "User"
 
+  # A follow of a private user starts `pending` (request→approve); a follow of a
+  # public user is set `accepted` by the controller. The DB default is pending
+  # (security-conservative: a forgotten status is inert, never a leak).
+  enum :status, {pending: 0, accepted: 1}
+
   validates :followed_id, uniqueness: {scope: :follower_id}
   validate :not_self
 

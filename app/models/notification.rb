@@ -16,7 +16,9 @@ class Notification < ApplicationRecord
     debate_declined: 8,
     debate_your_turn: 9,
     debate_concluded: 10,
-    badge_earned: 11
+    badge_earned: 11,
+    follow_request: 12,
+    follow_accepted: 13
   }
 
   scope :unread, -> { where(read: false) }
