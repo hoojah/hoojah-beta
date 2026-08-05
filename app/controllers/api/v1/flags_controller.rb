@@ -1,4 +1,4 @@
-class Api::V1::FlagsController < ApplicationController
+class Api::V1::FlagsController < Api::V1::BaseController
   def create
     flag = current_user.flags.create(flag_params)
     if flag

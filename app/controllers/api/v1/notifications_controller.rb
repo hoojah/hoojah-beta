@@ -1,10 +1,10 @@
-class Api::V1::NotificationsController < ApplicationController
+class Api::V1::NotificationsController < Api::V1::BaseController
   before_action :find_user
 
   def index
     notifications = @user.notifications.order(created_at: :asc)
 
-    serialized_notifications = NotificationSerializer.new(notifications, params: {logged_in: logged_in?, current_user_id: current_user&.id }).serializable_hash
+    serialized_notifications = NotificationSerializer.new(notifications, params: {logged_in: user_signed_in?, current_user_id: current_user&.id }).serializable_hash
 
     render json: serialized_notifications
   end

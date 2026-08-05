@@ -1,4 +1,4 @@
-class Api::V1::VotesController < ApplicationController
+class Api::V1::VotesController < Api::V1::BaseController
   def index
     votes = Vote.all.order(updated_at: :desc)
     render json: votes
