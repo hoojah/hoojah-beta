@@ -6,6 +6,7 @@ class User < ApplicationRecord
   has_many :challenged_debates, class_name: "Debate", foreign_key: :challenger_id, dependent: :destroy
   has_many :defended_debates, class_name: "Debate", foreign_key: :opponent_id, dependent: :destroy
   has_many :debate_turns, dependent: :destroy
+  has_many :user_badges, dependent: :destroy
 
   # Follow graph. active_follows = follows I initiated (I am the follower);
   # passive_follows = follows pointed at me (I am the followed).
@@ -46,6 +47,11 @@ class User < ApplicationRecord
   def unread_notifications_count
     notifications.unread.count
   end
+
+  # Earned badges as their registry hashes (name/description/icon). `filter_map`
+  # drops any award whose key was renamed/removed from Badge::REGISTRY so a future
+  # registry edit can't 500 the public profile.
+  def badges = user_badges.filter_map { |ub| Badge::REGISTRY[ub.badge_key] }
 
   def photo_from_cloudinary
     return if photo.blank?

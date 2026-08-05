@@ -1,21 +1,29 @@
 <%= render "shared/navbar" %>
 
-<main class="max-w-xl mx-auto px-4 py-6">
-  <%= render "shared/pinned" unless user_signed_in? %>
+<main class="max-w-5xl mx-auto px-4 py-6 lg:flex lg:gap-8 lg:justify-center">
+  <div class="w-full max-w-xl mx-auto lg:mx-0">
+    <%= render "shared/pinned" unless user_signed_in? %>
 
-  <%= render "feed_tabs" %>
+    <%= render "feed_tabs" %>
 
-  <% if params[:filter] == "following" && user_signed_in? && @hujahs.empty? %>
-    <p class="text-center text-grey py-8">
-      Your Following feed is empty. Follow some people to see their hoojahs here.
-    </p>
-  <% end %>
+    <% if params[:filter] == "following" && user_signed_in? && @hujahs.empty? %>
+      <p class="text-center text-grey py-8">
+        Your Following feed is empty. Follow some people to see their hoojahs here.
+      </p>
+    <% end %>
 
-  <div id="hujah-feed">
-    <%= render partial: "hujah_card", collection: @hujahs, as: :hujah %>
+    <div id="hujah-feed">
+      <%= render partial: "hujah_card", collection: @hujahs, as: :hujah %>
+    </div>
+
+    <div id="load-more">
+      <%= render "load_more" if @pagy.next %>
+    </div>
   </div>
 
-  <div id="load-more">
-    <%= render "load_more" if @pagy.next %>
-  </div>
+  <%# Trending sidebar — wide viewports only; lazily loads the public /trending
+      frame so the feed's first paint isn't blocked on the cache compute. %>
+  <aside class="hidden lg:block w-64 shrink-0">
+    <%= turbo_frame_tag "trending", src: trending_path, loading: :lazy %>
+  </aside>
 </main>

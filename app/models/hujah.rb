@@ -21,6 +21,9 @@ class Hujah < ApplicationRecord
 
   after_create_commit :notify_parent_owner, if: :has_parent?
   after_create_commit :notify_mentions # create only -- edit-mention handling deferred with the edit UI
+  # Off the hot path (after commit, never inside cast_vote's transaction): the
+  # first top-level hoojah earns first_hoojah; the first reply earns first_argument.
+  after_create_commit :award_authoring_badge
 
   extend FriendlyId
 
@@ -35,6 +38,23 @@ class Hujah < ApplicationRecord
   end
 
   COUNTER_FOR = {1 => :agree_count, 2 => :neutral_count, 3 => :disagree_count}.freeze
+
+  # Trending top-level hoojahs by Hacker-News gravity on TOTAL activity (votes +
+  # child arguments), decayed by age. Computed on read and cached for 15 min: the
+  # cache stores only the ordered ids, then we reload `where(id:).includes(:user)`
+  # and re-sort into cache order. The `updated_at > 48h` candidate filter is the
+  # recency gate (voting bumps updated_at via increment!). No background job.
+  def self.trending
+    ids = Rails.cache.fetch("trending:v1", expires_in: 15.minutes) do
+      where(parent_id: nil).where("updated_at > ?", 48.hours.ago).to_a
+        .map { |h|
+          [h.id, ((h.agree_count + h.neutral_count + h.disagree_count + h.children.size).to_f /
+            (((Time.current - h.created_at) / 3600) + 2)**1.5)]
+        }
+        .sort_by { |_, score| -score }.first(10).map(&:first)
+    end
+    where(id: ids).includes(:user).sort_by { |h| ids.index(h.id) }
+  end
 
   def cast_vote(by:, choice:)
     choice = choice.to_i
@@ -90,6 +110,10 @@ class Hujah < ApplicationRecord
   end
 
   private
+
+  def award_authoring_badge
+    UserBadge.award(user, is_parent? ? "first_hoojah" : "first_argument")
+  end
 
   def notify_parent_owner
     Notification.create!(user_id: parent.user_id, category: :new_hoojah_response,

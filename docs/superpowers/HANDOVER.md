@@ -287,9 +287,67 @@ rounding/suppression on the public pages (a much bigger change).
   (formula rabbit hole + a k-filter-before-selection subtlety); needs its own spec + a
   `rails-security-auditor` pass and must inherit the 2a public-card caveat.
 - **Tracked follow-up:** the **2a public per-hoojah count suppression** above.
-- Still open from earlier: **Badges/Trending**, **Block/mute + private accounts**, **debate Increments
+- Still open from earlier: **Block/mute + private accounts**, **debate Increments
   2a/2b/3**, **Vote array→scalar** migration, **serializer N+1 / prosopite**,
   **`config.require_master_key`** (L4), **`rack-cors`** (M1), **Project 3 — Hotwire Native**.
+
+---
+
+## Slice 6 (Badges + Trending) — DONE
+
+_Branch: `slice-6-badges-trending`. Suite: **161 examples / 0 failures / 2 pending** (+12 over the 149
+baseline: badges + trending model/request/system). brakeman **0**; `standardrb` clean; `bundler-audit`
+clean. One new table (`user_badges`)._
+
+**Badges — 4 event-driven achievements (no vote milestones):**
+- **Registry in code, not a table:** `app/models/badge.rb` — `Badge::REGISTRY` maps the 4 keys
+  (`first_hoojah`, `first_argument`, `first_follower`, `first_debate`) to `{name, description, icon}`
+  (Lucide). Only *awards* persist: `user_badges (user_id FK, badge_key)` with a **unique
+  `[user_id, badge_key]`** index (migration `20260805150000_create_user_badges`). `UserBadge` validates
+  `badge_key` inclusion against the registry keys.
+- **`UserBadge.award(user, key)`** is idempotent + notifies once: `exists?` guard → `create!` →
+  `Notification.create!(category: :badge_earned, body: key)` → `rescue ActiveRecord::RecordNotUnique`
+  (race no-op, no dup row/notification). `User#badges` uses **`filter_map`** over the registry so a
+  stale/renamed key can never 500 the public profile (spec-asserted).
+- **Award sites are all off the hot path** (after commit / outside any open transaction):
+  `Hujah after_create_commit` (`first_hoojah` for a top-level, `first_argument` for a reply),
+  `Follow after_create_commit` (`first_follower` → the *followed* user), `Debate#conclude!` after the
+  status update (`first_debate` → both participants). **`Hujah#cast_vote`'s transaction is deliberately
+  untouched** — a duplicate badge insert inside it would poison the vote tx on Postgres and lose the vote.
+  `spec/models/badge_awards_spec.rb` includes the **regression test that `cast_vote` still commits the
+  vote**.
+- **Notification enum** appends `badge_earned: 11` (no renumber). `_notification_card` gets a
+  `badge_earned` branch (Lucide `award` + the registry **name**, not raw `body`) with its own **mark-read
+  `button_to`** (it carries no hujah/subject_user, so the existing mark-read affordances didn't cover it).
+  `NotificationSerializer` gains a computed **`badge`** attribute (`{key, name, icon}` from the registry,
+  nil for other categories) for API/native parity. `_profile_header` renders `user.badges` as public
+  Lucide chips with `title` tooltips.
+
+**Trending — `Hujah.trending` (class method, cached; no new model, no jobs):**
+- `Rails.cache.fetch("trending:v1", expires_in: 15.minutes)` computes **plain HN gravity on TOTALS**
+  (`agree+neutral+disagree + children.size`) over candidates filtered to `parent_id: nil` +
+  `updated_at > 48.hours.ago` (voting bumps `updated_at` via `increment!`), caches the **ordered ids
+  only** (top 10), then reloads `where(id:).includes(:user)` and re-sorts into cache order.
+- **Test env cache store** switched `:null_store` → `:memory_store` (`config/environments/test.rb`) so
+  the low-level cache actually persists (only `Hujah.trending` uses `Rails.cache`; cache-dependent specs
+  clear it in a `before`).
+- `TrendingController#index` is **public** (`skip_authorization`; derived only from public top-level
+  hoojahs). Route `get "/trending", as: :trending`. `_trending` partial (compact links + empty state) is
+  reused by a standalone `/trending` page (nav link, `flame` icon) **and** by the feed's
+  `<aside class="hidden lg:block">` `turbo_frame_tag "trending", src: trending_path, loading: :lazy` —
+  the feed column is wrapped in a minimal `lg:flex` grid (single column unchanged below `lg`).
+- **Rebuilt `app/assets/builds/tailwind.css`** (`tailwindcss:build`) so the new `lg:flex`/`lg:block`/
+  `w-64` utility classes compile — the sidebar's `hidden lg:block` needs `lg:block` present in the CSS.
+
+**Still open / deferred (per the roadmap + reviews):**
+- **Vote-milestone badges** (`ten_votes`/`hundred_votes`) — **cut** (hot-path tx hazard + self-vote
+  farmable); revisit with **distinct-voter** counting after the Slice 5 2a public-count follow-up.
+- **`debate_won`** badge — needs the verdict increment (**Slice 8**).
+- Recurring-job trending (Solid Queue) — only if the read-time compute grows; fine at beta scale.
+- **Trending privacy re-check when Slice 7 (Block/mute) ships** — candidates must then exclude
+  blocked/private content.
+- **HTML vote endpoint** (`POST /hoojah/:slug/votes`) isn't in the rack-attack `votes/user` throttle
+  (pre-existing; only the API path is) — flagged for the rack-attack owner, out of scope here.
 
 ---
 

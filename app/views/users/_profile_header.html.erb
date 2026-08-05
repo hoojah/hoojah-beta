@@ -13,6 +13,20 @@
     <%= render "follow_button", user: user %>
   </div>
 
+  <%# Achievement badges (public). Each chip is a Lucide icon + name with the
+      description as a `title` tooltip. %>
+  <% if user.badges.any? %>
+    <div class="mb-3 flex flex-wrap justify-center gap-2">
+      <% user.badges.each do |badge| %>
+        <span class="inline-flex items-center gap-1 text-xs bg-white/20 rounded-full px-2 py-1"
+              title="<%= badge[:description] %>">
+          <%= lucide_icon(badge[:icon], class: "w-3.5 h-3.5") %>
+          <%= badge[:name] %>
+        </span>
+      <% end %>
+    </div>
+  <% end %>
+
   <% if user.headline.present? %>
     <div class="mb-3 text-center"><%= user.headline %></div>
   <% end %>

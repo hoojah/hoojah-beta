@@ -63,6 +63,9 @@ class Debate < ApplicationRecord
     return false unless active? && participant?(by)
     update!(status: :concluded)
     notify(other(by), :debate_concluded)
+    # After the status update commits — both participants earn first_debate.
+    UserBadge.award(challenger, "first_debate")
+    UserBadge.award(opponent, "first_debate")
     true
   end
 

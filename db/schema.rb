@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_05_145333) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_05_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -103,6 +103,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_145333) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
+  create_table "user_badges", force: :cascade do |t|
+    t.string "badge_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "badge_key"], name: "index_user_badges_on_user_id_and_badge_key", unique: true
+    t.index ["user_id"], name: "index_user_badges_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", default: ""
@@ -141,5 +150,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_145333) do
   add_foreign_key "follows", "users", column: "follower_id"
   add_foreign_key "hujahs", "users"
   add_foreign_key "notifications", "users"
+  add_foreign_key "user_badges", "users"
   add_foreign_key "votes", "users"
 end
