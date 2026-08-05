@@ -14,6 +14,13 @@ Rails.application.configure do
     policy.frame_src   "https://widget.cloudinary.com", "https://*.drift.com"
   end
 
-  config.content_security_policy_nonce_generator = ->(request) { request.session.id.to_s }
+  # SecureRandom, not request.session.id: the session id is blank on a
+  # visitor's very first request (no cookie yet, session not persisted until
+  # something writes to it), which produced an empty 'nonce-' in the CSP
+  # header and an empty nonce="" on the inline Drift <script> tag — CSP
+  # silently blocked Drift for every first-time anonymous visitor. A fresh
+  # random nonce is generated (and memoized) per request regardless of
+  # session state, so header and inline tag always agree on a real value.
+  config.content_security_policy_nonce_generator = ->(request) { SecureRandom.base64(16) }
   config.content_security_policy_nonce_directives = %w[script-src]
 end

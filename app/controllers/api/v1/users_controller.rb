@@ -1,4 +1,6 @@
 class Api::V1::UsersController < Api::V1::BaseController
+  before_action :authenticate_user!, only: :update
+
   def show
     if user
       render json: UserSerializer.new(user).serializable_hash
