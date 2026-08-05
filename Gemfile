@@ -22,6 +22,7 @@ gem "friendly_id", "~> 5.7"
 gem "rails_autolink"
 gem "lucide-rails"
 gem "pagy", "~> 43.6"
+gem "pundit", "~> 2.5"
 gem "rack-attack", "~> 6.8"
 gem "invisible_captcha", "~> 0.8"
 gem "bootsnap", ">= 1.4.2", require: false
