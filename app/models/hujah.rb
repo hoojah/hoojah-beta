@@ -10,6 +10,29 @@ class Hujah < ApplicationRecord
 
   slug :set_slug
 
+  COUNTER_FOR = { 1 => :agree_count, 2 => :neutral_count, 3 => :disagree_count }.freeze
+
+  def cast_vote(by:, choice:)
+    choice = choice.to_i
+    return unless COUNTER_FOR.key?(choice)
+
+    transaction do
+      existing = votes.find_by(user_id: by.id)
+      if existing
+        previous = existing.vote.last
+        return if previous == choice
+
+        existing.update!(vote: existing.vote + [choice])
+        decrement!(COUNTER_FOR[previous]) if COUNTER_FOR.key?(previous)
+        increment!(COUNTER_FOR[choice])
+      else
+        votes.create!(user: by, vote: [choice])
+        increment!(COUNTER_FOR[choice])
+        Notification.create!(user_id: user_id, category: :new_vote, hujah_id: id, subject_user_id: by.id)
+      end
+    end
+  end
+
   def is_parent?
     self.parent == nil
   end
