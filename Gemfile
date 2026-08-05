@@ -6,12 +6,14 @@ ruby '3.4.9'
 gem 'rails', '~> 8.1'
 gem 'pg', '>= 0.18', '< 2.0'
 gem 'puma', '~> 7.0', '>= 7.2.1'
-gem 'sass-rails', '>= 6'
-# shakapacker v6: maintained webpacker successor that keeps the Webpacker constant,
-# webpacker.yml filename, and pack helpers -> minimal churn. The React/webpack JS
-# build itself is deferred to Project 2 (Hotwire), which deletes this whole layer.
-gem 'shakapacker', '~> 6.6'
 gem 'jbuilder', '~> 2.7'
+
+# Asset pipeline + Hotwire (Project 2)
+gem 'propshaft'
+gem 'importmap-rails'
+gem 'turbo-rails'
+gem 'stimulus-rails'
+gem 'tailwindcss-rails'
 gem 'bcrypt', '~> 3.1.7'
 gem 'rack-cors'
 gem 'jsonapi-serializer'

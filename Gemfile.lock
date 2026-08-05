@@ -117,6 +117,10 @@ GEM
       activesupport (>= 6.1)
     i18n (1.15.2)
       concurrent-ruby (~> 1.0)
+    importmap-rails (2.2.3)
+      actionpack (>= 6.0.0)
+      activesupport (>= 6.0.0)
+      railties (>= 6.0.0)
     io-console (0.8.2)
     irb (1.18.0)
       pp (>= 0.6.0)
@@ -188,6 +192,10 @@ GEM
       prettyprint
     prettyprint (0.2.0)
     prism (1.9.0)
+    propshaft (1.3.2)
+      actionpack (>= 7.0.0)
+      activesupport (>= 7.0.0)
+      rack
     public_suffix (7.0.5)
     puma (7.2.1)
       nio4r (~> 2.0)
@@ -197,8 +205,6 @@ GEM
     rack-cors (3.0.0)
       logger
       rack (>= 3.0.14)
-    rack-proxy (1.0.1)
-      rack (>= 2.0, < 4)
     rack-session (2.1.2)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -268,23 +274,7 @@ GEM
       rspec-mocks (~> 3.13)
       rspec-support (~> 3.13)
     rspec-support (3.13.7)
-    sass-rails (6.0.0)
-      sassc-rails (~> 2.1, >= 2.1.1)
-    sassc (2.4.0)
-      ffi (~> 1.9)
-    sassc-rails (2.1.2)
-      railties (>= 4.0.0)
-      sassc (>= 2.0)
-      sprockets (> 3.0)
-      sprockets-rails
-      tilt
     securerandom (0.4.1)
-    semantic_range (3.1.1)
-    shakapacker (6.6.0)
-      activesupport (>= 5.2)
-      rack-proxy (>= 0.6.1)
-      railties (>= 5.2)
-      semantic_range (>= 2.3.0)
     slug (4.1.1)
       activerecord (> 3.0.0)
       activesupport (> 3.0.0)
@@ -305,14 +295,6 @@ GEM
       fugit (~> 1.11)
       railties (>= 7.1)
       thor (>= 1.3.1)
-    sprockets (4.2.2)
-      concurrent-ruby (~> 1.0)
-      logger
-      rack (>= 2.2.4, < 4)
-    sprockets-rails (3.5.2)
-      actionpack (>= 6.1)
-      activesupport (>= 6.1)
-      sprockets (>= 3.0.0)
     sshkit (1.25.1)
       base64
       logger
@@ -320,12 +302,21 @@ GEM
       net-sftp (>= 2.1.2)
       net-ssh (>= 2.8.0)
       ostruct
+    stimulus-rails (1.3.4)
+      railties (>= 6.0.0)
+    tailwindcss-rails (4.6.0)
+      railties (>= 7.0.0)
+      tailwindcss-ruby (~> 4.0)
+    tailwindcss-ruby (4.3.3)
+    tailwindcss-ruby (4.3.3-arm64-darwin)
     thor (1.5.0)
     thruster (0.1.23)
     thruster (0.1.23-arm64-darwin)
-    tilt (2.8.0)
     timeout (0.6.1)
     tsort (0.2.0)
+    turbo-rails (2.0.23)
+      actionpack (>= 7.1.0)
+      railties (>= 7.1.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     uri (1.1.1)
@@ -352,23 +343,26 @@ DEPENDENCIES
   bundler-audit
   byebug
   factory_bot_rails
+  importmap-rails
   jbuilder (~> 2.7)
   json-schema
   jsonapi-serializer
   kamal
   listen (~> 3.3)
   pg (>= 0.18, < 2.0)
+  propshaft
   puma (~> 7.0, >= 7.2.1)
   rack-cors
   rails (~> 8.1)
   rspec-rails (~> 7.0)
-  sass-rails (>= 6)
-  shakapacker (~> 6.6)
   slug
   solid_cable
   solid_cache
   solid_queue
+  stimulus-rails
+  tailwindcss-rails
   thruster
+  turbo-rails
   tzinfo-data
   web-console (>= 3.3.0)
 
