@@ -1,8 +1,8 @@
 # Hoojah
 
 Server-rendered Hotwire app (feed, single-hujah, voting, compose/respond, profiles,
-notifications, flagging, social share) with a Devise auth layer, Pundit authorization,
-and a JSON `Api::V1` API for native clients — https://beta.hoojah.my
+notifications, flagging, social share, follow + @mentions) with a Devise auth layer,
+Pundit authorization, and a JSON `Api::V1` API for native clients — https://beta.hoojah.my
 
 ## Stack
 
@@ -29,6 +29,15 @@ and a JSON `Api::V1` API for native clients — https://beta.hoojah.my
 - **Flag** — a `<dialog>` reason picker on the single-hujah page (spam / abusive / irrelevant).
 - **Share** — server-rendered social intent links (WhatsApp / X / Telegram / Reddit /
   Facebook / Email) with a progressively-enhanced Web Share button.
+- **Follow** — follow / unfollow any public profile from `/u/:username`; the button and
+  follower count refresh via Turbo Stream (idempotent, rack-attack throttled). Public
+  followers / following lists at `/u/:username/followers` and `/u/:username/following`.
+- **Following feed** — a **Following** tab on the feed shows your own + followed users'
+  hoojahs (`Hujah#timeline_for`); an anonymous `?filter=following` request falls back to
+  the global feed.
+- **@mentions** — `@handle` in a hoojah body renders an injection-safe link to
+  `/u/:handle` (tokenized before `simple_format`/`auto_link` so an `@` inside an email or
+  URL is never linkified) and notifies each mentioned user once on create.
 
 Modals use native `<dialog>` plus a custom `close_dialog` Turbo Stream action.
 
@@ -81,5 +90,6 @@ Code style is enforced with **StandardRB** (`bundle exec standardrb`).
 
 - **Project 2 Slice 2 — done:** compose/respond, profiles, notifications, flag, share, and
   Pundit adoption all shipped (see HANDOVER for the deferred list).
+- **Project 2 Slice 3 — done:** follow/unfollow, Following feed, @mentions (see HANDOVER).
 - **Project 3:** Hotwire Native (mobile).
 - **Security:** remaining app-logic findings in `SECURITY-FINDINGS.md`.

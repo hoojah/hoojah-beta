@@ -21,6 +21,22 @@ RSpec.describe "Profile", type: :request do
     expect(user.reload.photo).not_to include("evil.com")
   end
 
+  it "shows the followers list publicly (signed out)" do
+    fan = create(:user, username: "fan")
+    fan.active_follows.create!(followed: user)
+    get "/u/rudz/followers"
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("@fan")
+  end
+
+  it "shows the following list publicly (signed out)" do
+    idol = create(:user, username: "idol")
+    user.active_follows.create!(followed: idol)
+    get "/u/rudz/following"
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("@idol")
+  end
+
   it "forbids editing someone else" do
     sign_in create(:user)
     patch "/u/rudz", params: {user: {headline: "hacked"}},

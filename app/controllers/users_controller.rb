@@ -8,6 +8,18 @@ class UsersController < ApplicationController
     @hujahs = @user.hujahs.includes(:user).order(updated_at: :desc)
   end
 
+  # Public follower / following lists. Follows are public, so no policy scoping —
+  # skip_authorization (else verify_authorized 500s).
+  def followers
+    skip_authorization
+    @users = @user.followers.order(:username)
+  end
+
+  def following
+    skip_authorization
+    @users = @user.following.order(:username)
+  end
+
   def edit
     authorize @user
   end

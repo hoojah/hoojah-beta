@@ -1,0 +1,9 @@
+<%# Compact user row for the followers / following lists. Locals: user. %>
+<%= link_to profile_path(user.username),
+      class: "flex items-center gap-3 p-3 bg-white border-b hover:bg-neutral-50" do %>
+  <%= image_tag user.photo, class: "rounded-full w-10 h-10 object-cover", alt: user.username %>
+  <div class="flex flex-col">
+    <span class="font-medium"><%= user.full_name %></span>
+    <span class="text-sm text-light-grey">@<%= user.username %></span>
+  </div>
+<% end %>

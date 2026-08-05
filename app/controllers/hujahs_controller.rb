@@ -3,10 +3,14 @@ class HujahsController < ApplicationController
 
   def index
     skip_authorization
-    @pagy, @hujahs = pagy(
-      :countless,
+    # Anonymous `?filter=following` must fall back to the global feed (no 500 on
+    # current_user being nil), so the branch also requires user_signed_in?.
+    base = if params[:filter] == "following" && user_signed_in?
+      Hujah.timeline_for(current_user).includes(:user).order(updated_at: :desc)
+    else
       Hujah.where(parent_id: nil).includes(:user).order(updated_at: :desc)
-    )
+    end
+    @pagy, @hujahs = pagy(:countless, base)
 
     respond_to do |format|
       format.html

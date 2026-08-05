@@ -121,6 +121,58 @@ suite is reliably green across repeated runs (14 examples). No product-behaviour
 
 ---
 
+## Project 2 Slice 3 — Social Foundation — DONE
+
+_Branch: `slice-3-social-foundation`. Suite: **113 examples / 0 failures / 2 pending**
+(request + Cuprite system specs; system dir is **17 examples**, reliably green across repeated
+runs). brakeman **0**; `standardrb` clean; `bundler-audit` clean._
+
+**What shipped:**
+- **Follow / unfollow (public)** — `Follow` join (owner forced from `current_user`, self-follow
+  blocked at model validation **and** a DB check constraint, uniqueness index for idempotency).
+  `FollowsController` (Pundit `FollowPolicy`) responds with a **Turbo Stream** that replaces the
+  follow button + follower-count chip in place; `find_or_create_by` + a `RecordNotUnique` rescue
+  make a double-click a no-op. A **rack-attack** `follow/user` throttle (20/min/user) caps
+  follow↔unfollow churn (which would otherwise spam `new_follower` notifications). Each new follow
+  fires a single `new_follower` notification (`after_create_commit`).
+- **Followers / following lists** — public `/u/:username/followers` and `/u/:username/following`
+  (signed-out viewable), plus counts on the profile header.
+- **Following feed** — `Hujah#timeline_for(user)` (own + followed, top-level only); the feed index
+  branches to it for a signed-in `?filter=following` request and **falls back to the global feed**
+  for an anonymous following request (no 500). A **Following** tab (signed-in only) + empty-state.
+- **@mentions** — injection-safe render in `HujahsHelper#format_body`: `@handle`s are **tokenized on
+  the raw text BEFORE `simple_format`/`auto_link`**, then substituted as `ERB::Util`-escaped anchors
+  keyed on private-use markers — so an `@` inside an auto-linked email/URL is never spliced into
+  (email/URL stay intact, hostile handles can't inject a live tag). `Hujah#notify_mentions`
+  (`after_create_commit`, create-only) notifies each existing mentioned user **once** (idempotency
+  guard, skips self + unknown, caps at 10).
+
+**Test-harness fix (important for future system specs):** `login_as_system` no longer uses
+Warden::Test's `login_as`. That injection is **one-shot** (`Warden.on_next_request` is shifted off
+after the first request), so the SECOND request in a browser flow lost the login and fell back to
+Devise 5.0.4's session deserialiser, which **500s** (`serialize_from_session` wrong arity — "given
+10, expected 2"). That is why the pre-existing authenticated system specs (profile owner-edit, votes)
+only passed when an earlier example warmed the shared Chrome cookie jar — each fails in isolation on
+the old helper. A real-form credential login is **also** rejected in this suite, so `login_as_system`
+now registers a **persistent Warden `on_request` hook** (`spec/support/devise.rb`) that re-`set_user`s
+the designated user with `store: false` on every request — the user stays authenticated for the whole
+flow and the broken serialiser is never touched. No product change; request specs (which use
+`sign_in`) are unaffected.
+
+**Still open / deferred — per the program roadmap:**
+- **Debate** — the structured debate/argument feature is not built.
+- **Analytics** — plus the **`new_vote` voter-identity privacy fix** (vote records/serializers still
+  expose voter identity; scope/redact before analytics ship).
+- **Badges** — reputation/achievement badges.
+- **Trending** — trending hoojahs/topics ranking.
+- **Block / mute + private accounts** — no blocking, muting, or protected (approval-gated) follows
+  yet; follow is unconditionally public this slice.
+- Carried from earlier slices: **Vote array→scalar** migration, **serializer N+1 / prosopite**,
+  **ActionCable** real-time push, **`config.require_master_key`** (L4), **`rack-cors`** tightening (M1),
+  **Project 3 — Hotwire Native**.
+
+---
+
 ## ⚠️ Environment quirks — you MUST know these to run anything
 
 This machine is arm64 / Darwin 25 with modern clang. The repo carries build helpers:

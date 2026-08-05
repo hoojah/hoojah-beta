@@ -14,6 +14,10 @@
         <%= lucide_icon("message-circle", class: "w-4 h-4") %>
       <% when "new_vote" %>
         <%= lucide_icon("bar-chart-3", class: "w-4 h-4") %>
+      <% when "mention" %>
+        <%= lucide_icon("at-sign", class: "w-4 h-4") %>
+      <% when "new_follower" %>
+        <%= lucide_icon("user-plus", class: "w-4 h-4") %>
       <% end %>
     </div>
 
@@ -26,6 +30,10 @@
           @<%= notification.subject_user&.username %> posted a new argument on your hoojah
         <% when "new_vote" %>
           You have a new vote on your hoojah
+        <% when "mention" %>
+          @<%= notification.subject_user&.username %> mentioned you in a hoojah
+        <% when "new_follower" %>
+          @<%= notification.subject_user&.username %> started following you
         <% end %>
       </span>
 
@@ -39,6 +47,9 @@
               class: "block text-left p-0 bg-transparent border-0 text-grey truncate no-underline max-w-[350px]" do %>
           <%= format_body(notification.hujah.body) %>
         <% end %>
+      <% elsif notification.new_follower? && notification.subject_user %>
+        <%= link_to "View profile", profile_path(notification.subject_user.username),
+              class: "text-left text-primary no-underline" %>
       <% end %>
     </div>
 

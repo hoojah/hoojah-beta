@@ -7,7 +7,19 @@ class Hujah < ApplicationRecord
 
   validates :body, presence: true
 
+  # @handle mention pattern. The `(?<!\w)` lookbehind means an `@` preceded by a
+  # word char (e.g. inside an email `foo@bar`) is NOT a mention.
+  MENTION_RE = /(?<!\w)@([a-zA-Z0-9_]+)/
+
+  # Home timeline: top-level hoojahs from the people you follow, plus your own.
+  # Uses the association's `_ids` (not raw SQL) so a future Block filter slots in
+  # as plain Ruby (`following_ids - blocked_ids`).
+  scope :timeline_for, ->(user) {
+    where(parent_id: nil).where(user_id: user.following_ids + [user.id])
+  }
+
   after_create_commit :notify_parent_owner, if: :has_parent?
+  after_create_commit :notify_mentions # create only -- edit-mention handling deferred with the edit UI
 
   extend FriendlyId
 
@@ -78,5 +90,17 @@ class Hujah < ApplicationRecord
   def notify_parent_owner
     Notification.create!(user_id: parent.user_id, category: :new_hoojah_response,
       hujah_id: parent.id, subject_user_id: user_id)
+  end
+
+  # Inline, create-only, idempotent (matches every existing notification
+  # callback). Cap 10 unique handles/hoojah (anti-spam + dedup); skip self and
+  # unknown handles; the `exists?` guard makes it "at most once per (hoojah,
+  # mentioner, mentioned)" -- robust to any future edit churn without body-diffing.
+  def notify_mentions
+    handles = body.scan(MENTION_RE).flatten.uniq.first(10)
+    User.where(username: handles).where.not(id: user_id).each do |u|
+      next if Notification.exists?(user: u, hujah_id: id, category: :mention, subject_user_id: user_id)
+      Notification.create!(user: u, category: :mention, hujah_id: id, subject_user_id: user_id)
+    end
   end
 end

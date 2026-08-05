@@ -8,7 +8,9 @@ class Notification < ApplicationRecord
     announcement: 1,
     flag: 2,
     new_hoojah_response: 3,
-    new_vote: 4
+    new_vote: 4,
+    mention: 5,
+    new_follower: 6
   }
 
   scope :unread, -> { where(read: false) }

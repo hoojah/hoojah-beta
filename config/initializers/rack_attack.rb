@@ -35,4 +35,11 @@ class Rack::Attack
       req.env["warden"]&.user&.id
     end
   end
+  # Cap follow/unfollow churn per user — without it, cycling follow↔unfollow would
+  # spam the target with `new_follower` notifications.
+  throttle("follow/user", limit: 20, period: 1.minute) do |req|
+    if req.path.match?(%r{\A/u/[^/]+/follow\z}) && (req.post? || req.delete?)
+      req.env["warden"]&.user&.id
+    end
+  end
 end
