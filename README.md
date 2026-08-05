@@ -45,8 +45,19 @@ Pundit authorization, and a JSON `Api::V1` API for native clients — https://be
   authorization is turn-scoped (`DebateTurnPolicy` — only the current-turn user may post);
   active debates are participants-only, concluded ones public. Request-driven Turbo Streams
   (broadcasting deferred); rack-attack throttled.
+- **Dashboard** — an owner-only `/dashboard` showing the signed-in user's own aggregate
+  stats (votes received, arguments received) and a per-hoojah vote distribution, computed
+  on read from the denormalized `hujahs` counters with **zero new tables**. Owner-only by
+  construction (always `current_user`, no username in the URL, no `AnalyticsPolicy`); the
+  query never joins `votes`→`users`, and a per-hoojah split below 5 votes is suppressed
+  ("fewer than 5 votes"). See the **Privacy** note below.
 
 Modals use native `<dialog>` plus a custom `close_dialog` Turbo Stream action.
+
+**Privacy — secret ballot.** The `new_vote` notification carries **no voter identity** (Slice 5):
+`Hujah#cast_vote` does not record `subject_user_id`, so the API notifications serializer never hands a
+hoojah owner the username of who voted (choice was already secret). A one-off backfill nulled the id on
+existing rows. Known follow-up: per-hoojah counts are still public on hoojah cards at any N (tracked).
 
 ## Setup
 
@@ -101,5 +112,8 @@ Code style is enforced with **StandardRB** (`bundle exec standardrb`).
 - **Project 2 Slice 4 — done:** one-on-one Debate MVP (challenge → accept/decline →
   alternating turns → conclude → public transcript; Debates lens). Deferred: debate
   Increments 2a verdict / 2b real-time / 3 timeout (see HANDOVER).
+- **Project 2 Slice 5 — done:** vote-privacy hardening (`new_vote` voter-id leak closed +
+  backfill) and an owner-only `/dashboard` (aggregate stats, k=5 suppression, zero new tables).
+  Deferred: analytics trends/ranking; the tracked public per-hoojah count suppression (2a); see HANDOVER.
 - **Project 3:** Hotwire Native (mobile).
 - **Security:** remaining app-logic findings in `SECURITY-FINDINGS.md`.
