@@ -15,6 +15,7 @@ gem 'turbo-rails'
 gem 'stimulus-rails'
 gem 'tailwindcss-rails'
 gem 'bcrypt', '~> 3.1.7'
+gem 'devise', '~> 5.0'
 gem 'rack-cors'
 gem 'jsonapi-serializer'
 gem 'slug'
@@ -33,11 +34,13 @@ group :development, :test do
   gem 'factory_bot_rails'
   gem 'brakeman', require: false
   gem 'bundler-audit', require: false
+  gem 'strong_migrations', '~> 2.5'
 end
 
 group :development do
   gem 'web-console', '>= 3.3.0'
   gem 'listen', '~> 3.3'
+  gem 'letter_opener'
   # Spring removed: Rails 7 dropped it; spring 2.1 / spring-watcher-listen are incompatible.
 end
 
