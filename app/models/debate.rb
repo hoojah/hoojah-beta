@@ -7,6 +7,7 @@ class Debate < ApplicationRecord
   belongs_to :challenger, class_name: "User"
   belongs_to :opponent, class_name: "User"
   has_many :turns, class_name: "DebateTurn", dependent: :destroy
+  has_many :debate_verdicts, dependent: :destroy
 
   enum :status, {pending: 0, active: 1, concluded: 2, declined: 3}, default: :pending
 
@@ -68,6 +69,22 @@ class Debate < ApplicationRecord
     UserBadge.award(opponent, "first_debate")
     true
   end
+
+  # Spectator verdict — a single insert with a METHOD-LEVEL rescue (no
+  # transaction, no counters: the tally is compute-on-read, so there is nothing
+  # to poison). Immutable one-vote-per-spectator; a second vote races the DB
+  # unique index and is swallowed as an idempotent no-op.
+  def cast_verdict(by:, choice:)
+    return false unless concluded? && !participant?(by) && DebateVerdict.choices.key?(choice.to_s)
+    debate_verdicts.create!(user: by, choice: choice)
+    true
+  rescue ActiveRecord::RecordNotUnique
+    false # already voted — idempotent no-op
+  end
+
+  # Compute-on-read tally (renders on one page, not a list). No denormalized
+  # columns on debates.
+  def verdict_tally = debate_verdicts.group(:choice).count
 
   private
 
