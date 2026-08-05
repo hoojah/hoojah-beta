@@ -18,6 +18,10 @@
         <%= lucide_icon("at-sign", class: "w-4 h-4") %>
       <% when "new_follower" %>
         <%= lucide_icon("user-plus", class: "w-4 h-4") %>
+      <% when "follow_request" %>
+        <%= lucide_icon("user-plus", class: "w-4 h-4") %>
+      <% when "follow_accepted" %>
+        <%= lucide_icon("user-check", class: "w-4 h-4") %>
       <% when "badge_earned" %>
         <%= lucide_icon("award", class: "w-4 h-4") %>
       <% end %>
@@ -36,6 +40,10 @@
           @<%= notification.subject_user&.username %> mentioned you in a hoojah
         <% when "new_follower" %>
           @<%= notification.subject_user&.username %> started following you
+        <% when "follow_request" %>
+          @<%= notification.subject_user&.username %> requested to follow you
+        <% when "follow_accepted" %>
+          @<%= notification.subject_user&.username %> accepted your follow request
         <% when "badge_earned" %>
           You earned the <strong><%= Badge::REGISTRY.dig(notification.body, :name) || "achievement" %></strong> badge
         <% end %>
@@ -52,6 +60,18 @@
           <%= format_body(notification.hujah.body) %>
         <% end %>
       <% elsif notification.new_follower? && notification.subject_user %>
+        <%= link_to "View profile", profile_path(notification.subject_user.username),
+              class: "text-left text-primary no-underline" %>
+      <% elsif notification.follow_request? && (req_follow = Follow.find_by(follower_id: notification.subject_user_id, followed_id: notification.user_id)) %>
+        <%# Accept/decline the pending request in place (Slice 7b). Both button_to's
+            hit /follow_requests/:id; FollowRequestPolicy restricts them to this user. %>
+        <div class="flex items-center gap-3">
+          <%= button_to "Accept", follow_request_path(req_follow), method: :patch,
+                class: "text-left p-0 bg-transparent border-0 text-primary no-underline" %>
+          <%= button_to "Decline", follow_request_path(req_follow), method: :delete,
+                class: "text-left p-0 bg-transparent border-0 text-grey no-underline" %>
+        </div>
+      <% elsif notification.follow_accepted? && notification.subject_user %>
         <%= link_to "View profile", profile_path(notification.subject_user.username),
               class: "text-left text-primary no-underline" %>
       <% elsif notification.badge_earned? %>
