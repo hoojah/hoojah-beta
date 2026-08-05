@@ -1,0 +1,24 @@
+<%# The turn-posting form. Shown only to the current_turn_user; everyone else sees a
+    "waiting" note (or a concluded note). Local: debate. Wrapped in the pinned dom_id
+    so the Turbo-Stream replace lands here — the debate_composer controller refocuses
+    the field on both first paint and that post-turn replace. %>
+<div id="<%= dom_id(debate, :composer) %>" class="my-4">
+  <% if debate.active? && debate.current_turn_user == current_user %>
+    <div data-controller="debate-composer" class="shadow bg-white p-4">
+      <%= form_with url: debate_turns_path(debate.slug), method: :post do |f| %>
+        <%= f.text_area :body, rows: 3, required: true, "aria-label": "Your turn",
+              data: {"debate-composer-target": "field"},
+              placeholder: "Make your argument…",
+              class: "debate-composer-field w-full resize-none rounded border border-light-grey p-2 text-black focus:outline-none focus:border-primary" %>
+        <div class="text-right mt-2">
+          <%= f.submit "Post turn",
+                class: "shadow inline-flex items-center rounded-full px-5 py-2 border-2 border-primary text-primary fill-primary bg-white cursor-pointer" %>
+        </div>
+      <% end %>
+    </div>
+  <% elsif debate.active? %>
+    <p class="text-grey text-center py-3">Waiting for @<%= debate.current_turn_user&.username %>…</p>
+  <% elsif debate.concluded? %>
+    <p class="text-grey text-center py-3">This debate has concluded.</p>
+  <% end %>
+</div>

@@ -1,0 +1,28 @@
+<%# Status + per-participant actions (accept/decline while pending; conclude while
+    active). Local: debate. Wrapped in the pinned dom_id so the accept/decline/conclude
+    Turbo-Stream replaces land here. %>
+<% state_color = {"pending" => "agree", "active" => "primary", "concluded" => "grey", "declined" => "light-grey"}[debate.status] || "grey" %>
+<div id="<%= dom_id(debate, :status) %>" class="debate-status shadow bg-white px-4 py-3 flex items-center justify-between gap-2">
+  <span class="flex flex-col min-w-0">
+    <span class="debate-state text-xs uppercase tracking-wide text-<%= state_color %>"><%= debate.status.titleize %></span>
+    <% if debate.declined? %>
+      <span class="text-sm text-grey">@<%= debate.opponent.username %> declined the challenge.</span>
+    <% end %>
+  </span>
+
+  <% if user_signed_in? %>
+    <% if debate.pending? && current_user == debate.opponent %>
+      <span class="flex items-center gap-2 shrink-0">
+        <%= button_to "Accept", accept_debate_path(debate.slug), method: :patch,
+              class: "shadow rounded-full px-4 py-1 border-2 border-primary text-primary bg-white cursor-pointer" %>
+        <%= button_to "Decline", decline_debate_path(debate.slug), method: :patch,
+              class: "shadow rounded-full px-4 py-1 border-2 border-grey text-grey bg-white cursor-pointer" %>
+      </span>
+    <% elsif debate.pending? && current_user == debate.challenger %>
+      <span class="text-sm text-grey shrink-0">Waiting for @<%= debate.opponent.username %> to accept…</span>
+    <% elsif debate.active? && debate.participant?(current_user) %>
+      <%= button_to "Conclude", conclude_debate_path(debate.slug), method: :patch,
+            class: "shadow rounded-full px-4 py-1 border-2 border-grey text-grey bg-white cursor-pointer shrink-0" %>
+    <% end %>
+  <% end %>
+</div>

@@ -173,6 +173,69 @@ flow and the broken serialiser is never touched. No product change; request spec
 
 ---
 
+## Project 2 Slice 4 — Debate (MVP) — DONE
+
+_Branch: `slice-4-debate`. Suite: **141 examples / 0 failures / 2 pending** (request + Cuprite
+system specs; system dir is **18 examples**, reliably green across repeated runs — the debate
+system spec drives the full flow headless). brakeman **0**; `standardrb` clean; `bundler-audit`
+clean._
+
+**What shipped — the signature one-on-one, turn-based Debate (Increment 1):**
+- **Data model** — two tables (`debates`, `debate_turns`) + a nullable `notifications.debate_id`,
+  kept **outside** the `Hujah` tree (no feed/vote/slug/flag entanglement). Derived state, not
+  columns: `current_turn_user` (challenger first, then whoever did NOT author the last turn; nil
+  unless active) and `current_round`. The real concurrency guard is the **`unique [debate_id,
+  position]`** index; a **partial-unique** `[hujah_id, challenger_id, opponent_id] WHERE status IN
+  (pending, active)` index blocks a duplicate *live* challenge (directional).
+- **Rich-model state machine** (thin controllers, mirroring `cast_vote`): `after_create_commit`
+  challenge notify; `accept!` / `decline!` (opponent + pending only); `post_turn` (`with_lock`;
+  only `current_turn_user`, only while active; assigns `position`); `conclude!` (either participant
+  while active). Each transition creates **one** notification (4 new categories: `debate_challenge`,
+  `debate_declined`, `debate_your_turn`, `debate_concluded`). Stance-opposition + distinct-participant
+  validations.
+- **Authorization (per-action Pundit)** — `DebatePolicy` (`show?` = concluded → anyone incl.
+  logged-out, else participant; `accept?`/`decline?` = opponent + pending; `conclude?` = participant +
+  active) + a **nil-safe `Scope`** (the Debates lens renders on the public hoojah page). **C1
+  (security-critical):** `DebateTurnsController#create` authorizes a **`DebateTurn` instance**
+  (`DebateTurnPolicy#create?` — only `current_turn_user` may post), NOT the debate — authorizing the
+  debate would resolve `DebatePolicy#create? = user.present?` and let any signed-in user post any turn.
+- **Controllers / routes** — RESTful member actions only (`create`, `show`, `accept`, `decline`,
+  `conclude`, `turns#create`); every write derives the actor from `current_user`; strong params
+  permit only `:argument_id`/`:challenger_stance` (challenge) and `:body` (turn). The challenge
+  validates the argument belongs to the URL hoojah (→ 422 on a forged `argument_id`), rescues
+  `RecordNotUnique` (dup-live race) and validation failure (→ 422, never 500). Two **rack-attack**
+  throttles (challenge 10/min/user, turns 20/min/user).
+- **Views + Hotwire (Phase 4)** — real Tailwind UI: debate `show` (`_debate_transcript` at the
+  pinned `dom_id(@debate, :transcript)`, `_debate_turn` via `format_body` + `local-time`,
+  `_turn_composer` at `dom_id(@debate, :composer)` shown only to the current-turn user else a
+  waiting/concluded note), `_debate_status` accept/decline/conclude region, a **Debates lens** on
+  `hujahs/show` (`dom_id(@hujah, :debates)`), and a **challenge `<dialog>`** on the argument card
+  (`_challenge_dialog`, `dom_id(argument, :challenge_dialog)`, via the existing `dialog_controller`)
+  shown only to a signed-in non-author. Request-driven Turbo Streams throughout (append the turn +
+  replace the composer; replace the status region; append the debate card + `close_dialog`). New
+  minimal `debate_composer_controller` (autofocus on connect — first paint + post-turn replace);
+  CSS `field-sizing: content` for auto-grow (no JS). Pinned dom_ids so Increment 2b broadcasting
+  drops in untouched.
+- **System spec** — `spec/system/debate_spec.rb` drives challenge → accept → alternating turns
+  (append in place + composer refocus, asserted via `textarea:focus`) → conclude → read-only public
+  transcript, switching participants mid-flow via the Slice-3 `login_as_system` harness.
+
+**Still open / deferred — per the program roadmap:**
+- **Debate Increment 2a** — spectator "who argued better?" **verdict** (reuse the vote-counter idiom).
+- **Debate Increment 2b** — **real-time broadcasting** via Solid Cable (the pinned transcript/composer
+  dom_ids are ready for it).
+- **Debate Increment 3** — **turn-timeout + turn-cap auto-conclude** via Solid Queue (MVP has no
+  auto-timeout; a ghosted `active` debate persists until a participant concludes).
+- **Privacy + Analytics** — incl. the **`new_vote` voter-identity** privacy fix (carried from Slice 3).
+- **Badges** — reputation/achievement badges, incl. **`debate_won`**.
+- **Trending** — trending hoojahs/topics ranking.
+- **Block / mute + private accounts** — closes the cross-hoojah harassment gap (one user challenging a
+  victim across many hoojahs; the partial-unique index + per-user throttle bound dup/burst but not this).
+- Carried forward: **Vote array→scalar** migration, **serializer N+1 / prosopite**,
+  **`config.require_master_key`** (L4), **`rack-cors`** tightening (M1), **Project 3 — Hotwire Native**.
+
+---
+
 ## ⚠️ Environment quirks — you MUST know these to run anything
 
 This machine is arm64 / Darwin 25 with modern clang. The repo carries build helpers:

@@ -1,0 +1,61 @@
+<%# "Challenge to debate" control on an argument (child) card. Only rendered for a
+    signed-in viewer who is NOT the argument's author (guarded by the caller).
+
+    The <dialog> exists BEFORE any Debate does, so its element id is scoped to the
+    argument — dom_id(argument, :challenge_dialog) — NOT a debate. DebatesController's
+    create.turbo_stream.erb closes it remotely with the exact same dom_id.
+
+    Each opposing stance is its own button_to POST /hoojah/:slug/debates (params
+    argument_id + challenger_stance) — the model enforces challenger_stance !=
+    opponent_stance, and offering only the opposing stances keeps the pick valid by
+    construction and works with JS off (plain form POST → the debate show page).
+
+    Locals: argument (the child hoojah being challenged), hujah (the root hoojah),
+    stance (the argument author's stance name, for the response-filter sync). %>
+<% stance_labels = {1 => "Agree", 2 => "Neutral", 3 => "Disagree"} %>
+<% opponent_stance = argument.vote %>
+<div data-controller="dialog"
+     data-response-filter-target="item"
+     data-response-filter-vote="<%= stance %>"
+     class="flex justify-end -mt-1 mb-1 pr-2">
+  <button type="button" data-action="dialog#open"
+          class="inline-flex items-center gap-1 text-xs text-neutral fill-neutral no-underline cursor-pointer bg-transparent border-0">
+    <%= lucide_icon("swords", class: "w-3.5 h-3.5") %> Challenge to debate
+  </button>
+
+  <dialog id="<%= dom_id(argument, :challenge_dialog) %>"
+          data-dialog-target="dialog"
+          data-action="click->dialog#backdropClose close->dialog#restoreFocus"
+          aria-labelledby="dialog-title-challenge-<%= argument.id %>"
+          class="rounded-lg shadow-lg p-0 w-full max-w-md backdrop:bg-black/40">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+      <h5 id="dialog-title-challenge-<%= argument.id %>" class="text-lg font-medium m-0">
+        Challenge @<%= argument.user.username %> to a debate
+      </h5>
+      <button type="button" data-action="dialog#close" aria-label="Close"
+              class="text-grey fill-grey p-0 leading-none">
+        <%= lucide_icon("x", class: "w-5 h-5") %>
+      </button>
+    </div>
+
+    <div class="p-4">
+      <p class="text-sm text-grey mb-3">
+        They argued <strong><%= stance_labels[opponent_stance] || "their side" %></strong>.
+        Pick the side you'll argue — you move first.
+      </p>
+      <div class="flex flex-col gap-2">
+        <% ([1, 2, 3] - [opponent_stance]).each do |cs| %>
+          <%= button_to "/hoojah/#{hujah.slug}/debates",
+                params: {argument_id: argument.id, challenger_stance: cs},
+                class: "w-full text-left px-4 py-3 rounded border border-gray-100 hover:bg-gray-50 bg-white cursor-pointer" do %>
+            Argue <strong><%= stance_labels[cs] %></strong>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="text-right mt-4">
+        <button type="button" data-action="dialog#close"
+                class="text-grey no-underline px-4 py-2 bg-transparent border-0 cursor-pointer">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+</div>

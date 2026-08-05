@@ -3,6 +3,9 @@ class User < ApplicationRecord
   has_many :votes, dependent: :destroy
   has_many :notifications, dependent: :destroy
   has_many :flags, dependent: :destroy
+  has_many :challenged_debates, class_name: "Debate", foreign_key: :challenger_id, dependent: :destroy
+  has_many :defended_debates, class_name: "Debate", foreign_key: :opponent_id, dependent: :destroy
+  has_many :debate_turns, dependent: :destroy
 
   # Follow graph. active_follows = follows I initiated (I am the follower);
   # passive_follows = follows pointed at me (I am the followed).

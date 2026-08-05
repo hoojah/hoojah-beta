@@ -34,7 +34,7 @@
 
   <% if children.any? %>
     <% children.each do |child| %>
-      <%= render "hujahs/child_card", child: child %>
+      <%= render "hujahs/child_card", child: child, hujah: hujah %>
     <% end %>
   <% else %>
     <div class="flex items-center text-sm text-light-grey fill-light-grey px-4 pt-0">

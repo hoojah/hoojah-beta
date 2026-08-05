@@ -1,0 +1,6 @@
+<%# The debate transcript — the pinned Turbo-Stream target that new turns append to
+    (debate_turns/create.turbo_stream.erb) and that Increment 2b broadcasting will
+    reuse untouched. Locals: debate, turns (eager-loaded, ordered by position). %>
+<div id="<%= dom_id(debate, :transcript) %>" class="debate-transcript flex flex-col gap-2 my-4">
+  <%= render partial: "debates/debate_turn", collection: turns, as: :debate_turn %>
+</div>

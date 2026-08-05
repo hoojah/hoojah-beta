@@ -3,6 +3,7 @@ class Hujah < ApplicationRecord
   has_many :votes, dependent: :destroy
   has_many :flags, dependent: :destroy
   has_many :children, class_name: "Hujah", foreign_key: "parent_id", dependent: :destroy
+  has_many :debates, dependent: :destroy
   belongs_to :parent, class_name: "Hujah", optional: true
 
   validates :body, presence: true

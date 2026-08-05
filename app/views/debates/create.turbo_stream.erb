@@ -1,0 +1,8 @@
+<%# Challenge created: append the debate card to the hoojah "Debates" lens, then
+    close the challenge dialog remotely. The close_dialog target uses the SAME
+    dom_id(argument, :challenge_dialog) the dialog was opened with (scoped to the
+    argument — no Debate existed when the dialog rendered). %>
+<%= turbo_stream.append dom_id(@hujah, :debates) do %>
+  <%= render "debates/debate_card", debate: @debate %>
+<% end %>
+<turbo-stream action="close_dialog" target="<%= dom_id(@argument, :challenge_dialog) %>"></turbo-stream>

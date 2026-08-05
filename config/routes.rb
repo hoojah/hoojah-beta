@@ -53,6 +53,16 @@ Rails.application.routes.draw do
   # show page. Records under current_user; responds as a Turbo Stream that closes
   # the dialog + shows a confirmation.
   post "/hoojah/:slug/flags", to: "flags#create", as: :hujah_flags
+  # Debate (Slice 4). One-on-one turn-based debate escalated from an argument.
+  # RESTful member actions only (no generic PATCH /debates/:slug); every write
+  # derives the actor from `current_user`. `create` is nested under the hoojah so
+  # the argument can be validated against the URL's :slug. Turns POST to the debate.
+  post "/hoojah/:slug/debates", to: "debates#create"
+  get "/debates/:slug", to: "debates#show", as: :debate
+  patch "/debates/:slug/accept", to: "debates#accept", as: :accept_debate
+  patch "/debates/:slug/decline", to: "debates#decline", as: :decline_debate
+  patch "/debates/:slug/conclude", to: "debates#conclude", as: :conclude_debate
+  post "/debates/:slug/turns", to: "debate_turns#create", as: :debate_turns
   # Notifications (Task 4.1). Always the current user's own list (policy_scope, no
   # username in the URL). PATCH marks read + redirects to the hoojah; DELETE removes
   # the card via Turbo-Stream.
