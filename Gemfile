@@ -20,6 +20,7 @@ gem 'rack-cors'
 gem 'jsonapi-serializer'
 gem 'friendly_id', '~> 5.7'
 gem 'rails_autolink'
+gem 'lucide-rails'
 gem 'rack-attack', '~> 6.8'
 gem 'invisible_captcha', '~> 0.8'
 gem 'bootsnap', '>= 1.4.2', require: false
