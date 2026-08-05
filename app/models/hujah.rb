@@ -7,6 +7,13 @@ class Hujah < ApplicationRecord
 
   validates :body, presence: true
 
+  # Home timeline: top-level hoojahs from the people you follow, plus your own.
+  # Uses the association's `_ids` (not raw SQL) so a future Block filter slots in
+  # as plain Ruby (`following_ids - blocked_ids`).
+  scope :timeline_for, ->(user) {
+    where(parent_id: nil).where(user_id: user.following_ids + [user.id])
+  }
+
   after_create_commit :notify_parent_owner, if: :has_parent?
 
   extend FriendlyId

@@ -1,0 +1,11 @@
+<%# Server-rendered feed tabs: Everyone (global) | Following (signed-in only).
+    Not a client filter — plain links that reload the feed with ?filter=. %>
+<% following = params[:filter] == "following" && user_signed_in? %>
+<nav class="flex gap-4 border-b border-gray-100 mb-4 text-sm font-medium">
+  <%= link_to "Everyone", root_path,
+        class: "py-2 no-underline #{following ? "text-grey" : "text-primary border-b-2 border-primary"}" %>
+  <% if user_signed_in? %>
+    <%= link_to "Following", root_path(filter: "following"),
+          class: "py-2 no-underline #{following ? "text-primary border-b-2 border-primary" : "text-grey"}" %>
+  <% end %>
+</nav>
