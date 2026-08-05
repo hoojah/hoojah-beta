@@ -1,0 +1,28 @@
+<%# Port of `Hujah/form.js` response-vote buttons: pick the stance this reply is
+    posted as. CSS-only (no Stimulus) — hidden radios + `peer-checked` styling.
+    Defaults to the replier's existing vote on the parent. Values are the Hujah
+    `vote` integer column: agree=1, neutral=2, disagree=3.
+    Locals: form, parent. %>
+<%
+  default_stance = parent.current_user_vote(logged_in: true, current_user_id: current_user.id)
+  stance_value = {"agree" => 1, "neutral" => 2, "disagree" => 3}
+  default_value = stance_value[default_stance]
+%>
+<div class="bg-white mt-2 pt-1 pb-3">
+  <small class="text-grey">Post this response hoojah as:</small>
+  <div class="flex justify-around mt-2" role="radiogroup" aria-label="Response stance">
+    <% [["agree", 1], ["neutral", 2], ["disagree", 3]].each do |stance, value| %>
+      <label class="cursor-pointer">
+        <%= form.radio_button :vote, value,
+              checked: (default_value == value),
+              class: "sr-only peer",
+              aria: {label: stance.capitalize} %>
+        <span class="shadow w-12 h-12 rounded-full border-2 flex items-center justify-center transition
+                     border-<%= stance %> fill-<%= stance %> text-<%= stance %>
+                     peer-checked:bg-<%= stance %> peer-checked:fill-white peer-checked:text-white">
+          <%= stance_icon(stance, class: "w-4 h-4") %>
+        </span>
+      </label>
+    <% end %>
+  </div>
+</div>

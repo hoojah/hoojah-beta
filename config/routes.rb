@@ -27,6 +27,11 @@ Rails.application.routes.draw do
 
   # HTML (Hotwire) screens — the server-rendered replacement for the legacy SPA.
   root "hujahs#index"
+  # Compose / respond (Task 2.1). `/hoojah/new` is the top-level compose entry;
+  # `/hoojah/:slug/respond` seeds the form with a parent (reply). Both hit #new.
+  get "/hoojah/new", to: "hujahs#new", as: :new_hujah
+  get "/hoojah/:slug/respond", to: "hujahs#new", as: :respond_hujah
+  post "/hoojah", to: "hujahs#create"
   get "/hoojah/:slug", to: "hujahs#show", as: :hujah
   # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`
   # resolves when `_vote_bars` renders inside the card in the feed AND the show page.
