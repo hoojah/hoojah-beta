@@ -16,7 +16,10 @@ class User < ApplicationRecord
   validates :username, presence: true, uniqueness: true,
     format: {with: /\A[a-zA-Z0-9_]+\z/},
     exclusion: {in: RESERVED_USERNAMES}
-  validates :link, format: {with: %r{\Ahttps?://}i}, allow_blank: true
+  # Anchored at both ends with no whitespace (\S+\z): the trailing \z blocks
+  # newline-injection (a `\n` after a valid prefix) that an unanchored regex would
+  # allow — closing the M7 link-XSS finding brakeman flags as Format Validation.
+  validates :link, format: {with: %r{\Ahttps?://\S+\z}i}, allow_blank: true
   validate :photo_from_cloudinary
 
   after_create :assign_random_photo
