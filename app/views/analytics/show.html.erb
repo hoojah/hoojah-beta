@@ -1,0 +1,22 @@
+<%# Owner-only analytics dashboard (Slice 5, Part B). Aggregates only, off the
+    denormalized hujahs counters — no per-voter data anywhere. %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <h1 class="text-xl font-bold text-black mb-4">Your dashboard</h1>
+
+  <div class="flex gap-3 mb-6">
+    <%= render "stat", label: "Votes received", value: @analytics.total_votes_received %>
+    <%= render "stat", label: "Arguments received", value: @analytics.total_arguments_received %>
+  </div>
+
+  <h2 class="text-sm font-semibold text-grey mb-3">Your hoojahs</h2>
+  <% if @analytics.distributions.any? %>
+    <%= render partial: "distribution_bar", collection: @analytics.distributions, as: :dist %>
+  <% else %>
+    <div class="flex items-center text-sm text-light-grey fill-light-grey p-3 bg-white rounded">
+      <%= lucide_icon("bar-chart-3", class: "w-4 h-4") %>
+      <span class="ml-1">You haven't posted any hoojahs yet</span>
+    </div>
+  <% end %>
+</main>

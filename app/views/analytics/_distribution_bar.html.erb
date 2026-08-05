@@ -1,0 +1,28 @@
+<%#
+  Read-only per-hoojah vote distribution. Local: dist (a UserAnalytics::Distribution).
+
+  The bar markup is copied — NOT shared — from hujahs/_vote_bars: that partial is
+  welded to a button_to vote form, this one only reads. Below k=5 total votes the
+  split is suppressed ("fewer than 5 votes") instead of rendering the numbers.
+%>
+<%
+  rows = [["agree", dist.agree, dist.agree_pct],
+    ["neutral", dist.neutral, dist.neutral_pct],
+    ["disagree", dist.disagree, dist.disagree_pct]]
+%>
+<div class="rounded border border-gray-100 bg-white px-4 py-3 mb-3 last:mb-0">
+  <p class="text-sm text-black mb-2 line-clamp-2"><%= strip_tags(dist.body) %></p>
+  <% if dist.suppressed? %>
+    <p class="text-xs text-light-grey">fewer than 5 votes</p>
+  <% else %>
+    <% rows.each do |stance, count, pct| %>
+      <div class="flex items-center mb-2 last:mb-0">
+        <small class="w-16 text-<%= stance %>"><%= stance.capitalize %></small>
+        <div class="flex-1 mx-3 h-2 bg-gray-200 rounded overflow-hidden">
+          <div class="h-2 rounded bg-<%= stance %>" style="width: <%= pct %>%"></div>
+        </div>
+        <small class="w-10 text-right text-<%= stance %>"><%= pct %>%</small>
+      </div>
+    <% end %>
+  <% end %>
+</div>

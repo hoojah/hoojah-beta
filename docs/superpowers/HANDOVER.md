@@ -236,6 +236,63 @@ clean._
 
 ---
 
+## Slice 5 — Privacy Hardening + Analytics (MVP) — DONE
+
+_Branch: `slice-5-privacy-analytics`. Suite: **149 examples / 0 failures / 2 pending** (request +
+Cuprite system specs; +8 over the 141 baseline). brakeman **0**; `standardrb` clean; `bundler-audit`
+clean. Zero new tables._
+
+**Part A — vote-privacy fix (the `new_vote` voter-identity leak, carried from Slice 3):**
+- `Hujah#cast_vote` no longer passes `subject_user_id: by.id` to the `new_vote` `Notification.create!`,
+  so the vote notification carries **no voter id**. `NotificationSerializer`'s existing
+  `if subject_user_id` guard then emits **no `subject_user`** for a `new_vote` (verified via
+  `spec/requests/api/v1/notifications_spec.rb` — `new_hoojah_response` still legitimately carries one).
+  The other notification callbacks (`notify_parent_owner`, `notify_mentions`, debate/follow) keep
+  `subject_user_id` — they name a genuinely *public* actor and were **not** touched.
+- **Backfill** `db/migrate/20260805145333_backfill_new_vote_subject_user.rb` (`disable_ddl_transaction!`,
+  data-only) nulls `subject_user_id` on existing rows via
+  `Notification.where(category: 4).update_all(subject_user_id: nil)` (integer `4` = `new_vote`, so the
+  migration doesn't couple to the model constant).
+- **Accepted residual:** the `new_vote` notification's own `created_at` still tells the owner *a* vote
+  landed *and when* (never *who*) — inherent to any activity notification, documented in the spec.
+
+**Part B — owner-only `/dashboard` (zero new tables):**
+- **`UserAnalytics` PORO** (`app/models/user_analytics.rb`) — compute-on-read aggregates off the
+  **denormalized** `agree/neutral/disagree_count` on `hujahs`. `total_votes_received` =
+  `SUM(agree+neutral+disagree)` over the user's own hoojahs; `total_arguments_received` = child count via
+  a `hujahs`-only sub-select; `distributions` = one `pluck` over the user's top-level hoojahs mapped to a
+  read-only `Distribution` value object (`Struct`) owning **k=5 suppression** (`suppressed? = total < 5`)
+  and the `agree/neutral/disagree_pct` helpers. **Never joins `votes` or `users`** — a spec subscribes to
+  `sql.active_record` and asserts every SELECT touches only `hujahs` (no `votes`/`users`/`JOIN`).
+- **`AnalyticsController#show`** — `before_action :authenticate_user!` + `skip_authorization`. **No
+  `AnalyticsPolicy`** (it would be tautological): owner-only holds **by construction** because the query
+  is `Hujah.where(user_id: current_user.id)` and there is **no `:username`/other-user route** (mirrors
+  `NotificationsController#index`). Route `get "/dashboard", as: :dashboard`.
+- **Views** — `analytics/show` renders totals as `_stat` chips + each top-level hoojah via a read-only
+  `_distribution_bar`. The bar markup is **copied** (~3 lines of Tailwind width-% divs) from
+  `hujahs/_vote_bars` — **not shared**, because `_vote_bars` is welded to a `button_to` vote form. No
+  SVG, no chart lib, no JS, no lazy frames. A split below k=5 renders "fewer than 5 votes". Signed-in
+  navbar gets a **Dashboard** link. System spec `spec/system/analytics_spec.rb` (reuses `login_as_system`)
+  drives it headless (totals, a 60% split, the suppressed label).
+
+**Honest scope note (security 2a — tracked follow-up, OUT of scope):** per-hoojah `agree/neutral/disagree`
+counts + % are **already public + unsuppressed at any N** on hoojah cards/show pages to anonymous
+visitors — the app's largest real secret-ballot gap, independent of this slice. The dashboard's k-gate does
+**not** close it; it only stops the dashboard being an efficient discovery index and future-proofs the
+`UserAnalytics` suppression pattern for the later trends increment. Closing 2a needs product-level
+rounding/suppression on the public pages (a much bigger change).
+
+**Still open / deferred — per the roadmap:**
+- **Analytics trends** (day/week rollup via Solid Queue) + **divisive/consensus ranking** — deferred here
+  (formula rabbit hole + a k-filter-before-selection subtlety); needs its own spec + a
+  `rails-security-auditor` pass and must inherit the 2a public-card caveat.
+- **Tracked follow-up:** the **2a public per-hoojah count suppression** above.
+- Still open from earlier: **Badges/Trending**, **Block/mute + private accounts**, **debate Increments
+  2a/2b/3**, **Vote array→scalar** migration, **serializer N+1 / prosopite**,
+  **`config.require_master_key`** (L4), **`rack-cors`** (M1), **Project 3 — Hotwire Native**.
+
+---
+
 ## ⚠️ Environment quirks — you MUST know these to run anything
 
 This machine is arm64 / Darwin 25 with modern clang. The repo carries build helpers:

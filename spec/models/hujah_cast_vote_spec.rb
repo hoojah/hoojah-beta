@@ -24,4 +24,13 @@ RSpec.describe "Hujah#cast_vote", type: :model do
     hujah.cast_vote(by: voter, choice: 2)
     expect { hujah.cast_vote(by: voter, choice: 2) }.not_to change { hujah.reload.neutral_count }
   end
+
+  it "does not record the voter identity on the new_vote notification (privacy)" do
+    owner = create(:user)
+    voter = create(:user)
+    h = create(:hujah, user: owner)
+    h.cast_vote(by: voter, choice: 1)
+    n = Notification.where(user: owner, category: "new_vote").last
+    expect(n.subject_user_id).to be_nil
+  end
 end
