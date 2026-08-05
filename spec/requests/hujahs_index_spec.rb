@@ -12,4 +12,15 @@ RSpec.describe 'Hujahs index', type: :request do
     expect(response.media_type).to eq('text/vnd.turbo-stream.html')
     expect(response.body).to include('turbo-stream action="append"')
   end
+
+  it 'shows the Login control to logged-out visitors' do
+    get '/'
+    expect(response.body).to include('Login')
+  end
+
+  it 'shows the logout control to signed-in users' do
+    sign_in create(:user)
+    get '/'
+    expect(response.body).to include('Log Out')
+  end
 end
