@@ -41,4 +41,10 @@ Rails.application.routes.draw do
   # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`
   # resolves when `_vote_bars` renders inside the card in the feed AND the show page.
   post "/hoojah/:slug/votes", to: "votes#create", as: :hujah_votes
+  # Notifications (Task 4.1). Always the current user's own list (policy_scope, no
+  # username in the URL). PATCH marks read + redirects to the hoojah; DELETE removes
+  # the card via Turbo-Stream.
+  get "/notifications", to: "notifications#index", as: :notifications
+  patch "/notifications/:id", to: "notifications#update", as: :notification
+  delete "/notifications/:id", to: "notifications#destroy"
 end

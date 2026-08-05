@@ -1,0 +1,16 @@
+<%# Notifications screen — faithful port of the legacy SPA `NotificationsIndex.jsx`.
+    Always the current user's own list (policy_scope), newest first. %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <div class="flex flex-col">
+    <% if @notifications.any? %>
+      <%= render partial: "notification_card", collection: @notifications, as: :notification %>
+    <% else %>
+      <div class="flex items-center text-sm text-light-grey fill-light-grey card-body p-3 bg-white">
+        <%= lucide_icon("bell", class: "w-4 h-4") %>
+        <span class="ml-1">You have no notifications</span>
+      </div>
+    <% end %>
+  </div>
+</main>

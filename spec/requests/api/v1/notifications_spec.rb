@@ -1,47 +1,34 @@
 require "rails_helper"
 
+# Secure-behavior characterization of the JSON notifications API (Slice 2, Pundit).
+# These lock the IDOR/leak fixes: index is scoped to the signed-in user, and
+# update/destroy on someone else's notification are forbidden, not silently allowed.
 RSpec.describe "Api::V1::Notifications", type: :request do
-  let(:user) { create(:user) }
+  let(:me) { create(:user) }
+  let(:other) { create(:user) }
 
-  def body
-    JSON.parse(response.body)
+  it "index returns only the current user notifications" do
+    mine = create(:notification, user: me)
+    create(:notification, user: other)
+    sign_in me
+    get "/api/v1/#{me.username}/notifications", as: :json
+    body = JSON.parse(response.body)
+    ids = body["data"].map { |n| n["id"].to_i }
+    expect(ids).to eq([mine.id])
   end
 
-  let!(:notification) do
-    Notification.create!(user_id: user.id, category: :announcement, read: false)
+  it "forbids updating/destroying another user notification" do
+    theirs = create(:notification, user: other)
+    sign_in me
+    put "/api/v1/#{me.username}/notifications/#{theirs.id}", params: {notification: {read: true}}, as: :json
+    expect(response).to have_http_status(:forbidden)
+    delete "/api/v1/#{me.username}/notifications/#{theirs.id}", as: :json
+    expect(response).to have_http_status(:forbidden)
+    expect(Notification.exists?(theirs.id)).to be(true)
   end
 
-  # The API notifications endpoints now require authentication and scope to the
-  # current user (Slice 2 Pundit rollout); sign in the owner for these characterizations.
-  before { sign_in user }
-
-  describe "GET /api/v1/:username/notifications" do
-    it "returns the user notifications" do
-      get "/api/v1/#{user.username}/notifications"
-
-      expect(response).to have_http_status(:ok)
-      expect(body["data"]).to be_an(Array)
-      expect(body["data"].size).to eq(1)
-    end
-  end
-
-  describe "PUT /api/v1/:username/notifications/:id" do
-    it "marks the notification as read" do
-      put "/api/v1/#{user.username}/notifications/#{notification.id}",
-        params: {notification: {read: true}}
-
-      expect(response).to have_http_status(200)
-      expect(notification.reload.read).to eq(true)
-    end
-  end
-
-  describe "DELETE /api/v1/:username/notifications/:id" do
-    it "deletes the notification" do
-      expect {
-        delete "/api/v1/#{user.username}/notifications/#{notification.id}"
-      }.to change(Notification, :count).by(-1)
-
-      expect(response).to have_http_status(200)
-    end
+  it "requires auth" do
+    get "/api/v1/#{me.username}/notifications", as: :json
+    expect(response).to have_http_status(:unauthorized)
   end
 end

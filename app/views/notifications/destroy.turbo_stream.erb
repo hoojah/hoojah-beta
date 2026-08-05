@@ -1,0 +1,4 @@
+<%# Removes the deleted notification card from the list in place. The target id —
+    dom_id(@notification) => "notification_<id>" — is the same id the card partial
+    wraps itself in. %>
+<%= turbo_stream.remove dom_id(@notification) %>
