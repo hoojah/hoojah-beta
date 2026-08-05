@@ -61,6 +61,18 @@ Pundit authorization, and a JSON `Api::V1` API for native clients — https://be
   Filters are **signed-in only** (anonymous is unfiltered); votes stay anonymous and are
   deliberately not filtered. rack-attack throttled.
 
+- **Private accounts** — a user can flip their profile to **private** (profile-edit toggle).
+  Following a private user becomes a **request → approve** flow (3-state Follow / Requested /
+  Following button; accept or decline from the `follow_request` notification card). A private
+  author's content is visible only to **accepted followers** (+ themselves) through **one gate**
+  (`User#visible_to?` / `Hujah#visible_to?`), enforced on **every** content surface: the global
+  feed and trending exclude them (unconditionally, anonymous too; trending's cache is busted on
+  the privacy flip); the profile shows a **gated header** (avatar / name / @handle / counts, no
+  hoojah list); the hoojah show page, reply thread (`@children`), follower/following lists,
+  concluded **debate transcripts**, **notification bodies**, and the **`Api::V1`** hoojah/user
+  read endpoints all gate a private author; and you can't reply to a private parent you can't
+  see. Flipping back to public **auto-accepts** all pending requests.
+
 Modals use native `<dialog>` plus a custom `close_dialog` Turbo Stream action.
 
 **Privacy — secret ballot.** The `new_vote` notification carries **no voter identity** (Slice 5):
@@ -136,5 +148,11 @@ Code style is enforced with **StandardRB** (`bundle exec standardrb`).
   removal. Deferred: mute + private accounts (Slice 7b — Block does not yet hide a blocked user's
   profile/show page or their appearance in third-party follower lists reached by direct URL);
   `Api::V1` block filters; see HANDOVER.
+- **Project 2 Slice 7b — done:** **Private accounts** — `users.private` + `follows.status`
+  (request → approve) + `User#visible_to?` gating every content surface (global feed + trending,
+  gated profile, hoojah show, `@children`, follower/following lists, debate transcripts,
+  notification bodies, `Api::V1` reads, reply-create) with a 3-state follow button and a
+  private→public auto-accept. Deferred: the `/follow_requests` inbox page; full `Api::V1`
+  visibility parity (serializer children/notifications); see HANDOVER.
 - **Project 3:** Hotwire Native (mobile).
 - **Security:** remaining app-logic findings in `SECURITY-FINDINGS.md`.

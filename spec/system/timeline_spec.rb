@@ -8,7 +8,7 @@ RSpec.describe "Following timeline", type: :system, js: true do
     me = create(:user)
     followed = create(:user)
     stranger = create(:user)
-    me.active_follows.create!(followed: followed)
+    me.active_follows.create!(followed: followed, status: :accepted)
     create(:hujah, user: me, body: "my own take")
     create(:hujah, user: followed, body: "a followed take")
     create(:hujah, user: stranger, body: "a stranger take")
