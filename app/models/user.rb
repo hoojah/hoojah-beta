@@ -15,6 +15,11 @@ class User < ApplicationRecord
   has_many :passive_follows, class_name: "Follow", foreign_key: :followed_id, dependent: :destroy
   has_many :followers, through: :passive_follows, source: :follower
 
+  # Block graph. blocks_made = blocks I initiated; blocks_received = blocks pointed
+  # at me. Block is bidirectional invisibility/interaction cutoff (Slice 7).
+  has_many :blocks_made, class_name: "Block", foreign_key: :blocker_id, dependent: :destroy
+  has_many :blocks_received, class_name: "Block", foreign_key: :blocked_id, dependent: :destroy
+
   devise :database_authenticatable, :registerable,
     :recoverable, :rememberable, :validatable
 
@@ -46,6 +51,14 @@ class User < ApplicationRecord
 
   def unread_notifications_count
     notifications.unread.count
+  end
+
+  # The single source of truth every block filter/policy consults (bidirectional):
+  # users I blocked ∪ users who blocked me. Memoized because the trending
+  # post-filter consults it once per candidate — current_user is one memoized
+  # instance per request, so this is safe.
+  def hidden_user_ids
+    @hidden_user_ids ||= (blocks_made.pluck(:blocked_id) + blocks_received.pluck(:blocker_id)).uniq
   end
 
   # Earned badges as their registry hashes (name/description/icon). `filter_map`

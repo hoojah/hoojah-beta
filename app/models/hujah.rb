@@ -13,8 +13,9 @@ class Hujah < ApplicationRecord
   MENTION_RE = /(?<!\w)@([a-zA-Z0-9_]+)/
 
   # Home timeline: top-level hoojahs from the people you follow, plus your own.
-  # Uses the association's `_ids` (not raw SQL) so a future Block filter slots in
-  # as plain Ruby (`following_ids - blocked_ids`).
+  # Uses the association's `_ids` (not raw SQL). Slice 7 adds a `hidden_user_ids`
+  # exclusion here (blocked authors are already dropped from `following_ids` when a
+  # block removes the follow; the exclusion is belt-and-suspenders).
   scope :timeline_for, ->(user) {
     where(parent_id: nil).where(user_id: user.following_ids + [user.id])
   }
