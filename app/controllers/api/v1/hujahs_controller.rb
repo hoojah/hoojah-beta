@@ -50,7 +50,7 @@ class Api::V1::HujahsController < Api::V1::BaseController
   end
 
   def hujah
-    @hujah ||= Hujah.find_by_slug(params[:slug])
+    @hujah ||= Hujah.friendly.find(params[:slug])
   end
 
 end
