@@ -1,4 +1,5 @@
 class Users::RegistrationsController < Devise::RegistrationsController
+  invisible_captcha only: [:create], honeypot: :subtitle
   before_action :configure_permitted_parameters
 
   protected

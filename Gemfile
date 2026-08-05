@@ -19,6 +19,8 @@ gem 'devise', '~> 5.0'
 gem 'rack-cors'
 gem 'jsonapi-serializer'
 gem 'slug'
+gem 'rack-attack', '~> 6.8'
+gem 'invisible_captcha', '~> 0.8'
 gem 'bootsnap', '>= 1.4.2', require: false
 
 # Rails 8 default infrastructure (adopted in Phase 8 modernization).
