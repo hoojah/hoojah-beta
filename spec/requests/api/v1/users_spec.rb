@@ -25,5 +25,17 @@ RSpec.describe 'Api::V1::Users', type: :request do
       expect(response).to have_http_status(:ok)
       expect(user.reload.headline).to eq('New headline')
     end
+
+    # The controller reads flat params (params.permit), not params.require(:user),
+    # so an id-reassignment attack injects :id at the top level. This asserts the
+    # core invariant: an injected :id cannot reassign the record's primary key.
+    it 'ignores an injected :id on update (no mass-assignment)' do
+      user = create(:user)
+      sign_in user
+      other_id = create(:user).id
+      post "/api/v1/#{user.username}/update",
+           params: { id: other_id, full_name: 'New Name' }, as: :json
+      expect(user.reload.id).not_to eq(other_id)
+    end
   end
 end
