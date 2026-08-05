@@ -18,7 +18,13 @@
         <% if user_signed_in? && @hujah.user_id == current_user.id %>
           <span class="block px-3 py-1 text-grey">Delete hoojah (Slice 2)</span>
         <% end %>
-        <span class="block px-3 py-1 text-neutral fill-neutral">Flag this hoojah (Slice 2)</span>
+        <% if user_signed_in? %>
+          <%= render "hujahs/flag_dialog", hujah: @hujah %>
+        <% else %>
+          <%= link_to new_user_session_path, class: "flex items-center gap-1 px-3 py-1 text-neutral fill-neutral no-underline" do %>
+            <%= lucide_icon("flag", class: "w-4 h-4") %> Login to flag this hoojah
+          <% end %>
+        <% end %>
       </div>
     </details>
   </nav>

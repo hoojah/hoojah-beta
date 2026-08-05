@@ -1,0 +1,12 @@
+<%# Successful flag: close the flag modal remotely via the custom `close_dialog`
+    Turbo Stream action (registered in application.js), then swap the dialog's
+    trigger for a small confirmation so the user gets feedback in place. %>
+<turbo-stream action="close_dialog" target="<%= dom_id(@hujah, :flag_dialog) %>"></turbo-stream>
+<%= turbo_stream.replace dom_id(@hujah, :flag_control) do %>
+  <div id="<%= dom_id(@hujah, :flag_control) %>"
+       class="flex items-center gap-1 px-3 py-1 text-sm text-neutral fill-neutral"
+       role="status">
+    <%= lucide_icon("flag", class: "w-4 h-4") %>
+    <span>Hoojah flagged. Thank you.</span>
+  </div>
+<% end %>

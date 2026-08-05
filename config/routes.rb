@@ -41,6 +41,10 @@ Rails.application.routes.draw do
   # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`
   # resolves when `_vote_bars` renders inside the card in the feed AND the show page.
   post "/hoojah/:slug/votes", to: "votes#create", as: :hujah_votes
+  # Flag (Task 5.1). POST a flag against a hoojah from the native <dialog> on the
+  # show page. Records under current_user; responds as a Turbo Stream that closes
+  # the dialog + shows a confirmation.
+  post "/hoojah/:slug/flags", to: "flags#create", as: :hujah_flags
   # Notifications (Task 4.1). Always the current user's own list (policy_scope, no
   # username in the URL). PATCH marks read + redirects to the hoojah; DELETE removes
   # the card via Turbo-Stream.
