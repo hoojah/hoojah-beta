@@ -1,133 +1,177 @@
 # Slice 8: Debate Increments — Verdict, Real-time, Timeout
 
-_Design spec. Date: 2026-08-06. Status: **design (from Slice-4 debate sketch's deferred increments)**,
-pending specialist review + plan. **Final slice** of the "land everything" program (roadmap:
-`docs/superpowers/ROADMAP-future-features.md`)._
+_Design spec. Date: 2026-08-06. Status: **design + specialist-reviewed** (security, better-stimulus,
+simplicity — folded, v2). **Final slice** of the "land everything" program._
+
+> **Review incorporation (v2).** **2a:** compute-on-read (drop the 3 denormalized counters) — this also
+> **dissolves the Critical transaction-poison bug** (no counter increment → `cast_verdict` is a single
+> `create!` with a method-level rescue), and add the **Slice-7b visibility gate** to the verdict policy
+> (must-fix — write endpoint bypassed the read gate). **2b ships** (better-stimulus resolved the DOM/composer
+> issues) **with subscribe-time channel authorization** (security High — the signed stream token is a
+> durable unrevocable credential; the app's first Action Cable use must gate the socket). **3:** fix the
+> **`conclude!(by: nil)` crash** (`other(nil).id`) → notify both; **`touch: true`** on `DebateTurn` so the
+> idle clock tracks turns. Drops: denormalized verdict columns, redundant `[debate_id]` index.
 
 ## Context
 
-Slice 4 shipped the debate MVP (challenge→accept/decline→turns→conclude→public transcript, `Debate` +
-`DebateTurn`, in-model state machine, request-driven Turbo, `dom_id(@debate, :transcript)`/`(:composer)`
-pinned). This slice adds the three deferred increments:
+Slice 4 shipped the debate MVP. This adds the three deferred increments. Reuse the pinned
+`dom_id(@debate, :transcript)`/`(:composer)`, the `_vote_bars` width-% idiom, and the C1 instance-authorize
+discipline.
 
-- **2a — Spectator verdict:** on a **concluded** debate, logged-in **non-participants** vote "who argued
-  better?" (challenger / opponent / draw). Reuses the denormalized vote-counter idiom.
-- **2b — Real-time turns:** turns/status broadcast live via Turbo Streams (Action Cable) — the app's first
-  broadcasting. No new infra (cable: dev `async`, test `test`, prod `solid_cable`).
-- **3 — Timeout auto-conclude:** a Solid Queue **recurring** job concludes debates left idle past a
-  threshold.
+## Part 2a — Spectator verdict (concluded debates)
 
-## Part 2a — Spectator verdict
+### Model — compute-on-read (no denormalized counters)
 
-### Model
-
-- `add_column :debates`, denormalized (mirrors hoojah counters): `challenger_votes_count`,
-  `opponent_votes_count`, `draw_votes_count` (integer, default 0, null false).
-- `debate_verdicts (debate_id FK, user_id FK, choice integer)`, unique `[debate_id, user_id]`, index
-  `[debate_id]`. `choice` enum `{ challenger: 0, opponent: 1, draw: 2 }`. **One vote per spectator,
-  immutable** for MVP (find_or_create; changeable is a later nicety).
-- `Debate#cast_verdict(by:, choice:)` (mirrors `cast_vote` shape, simpler — scalar): guard `concluded?`
-  + `!participant?(by)`; `debate_verdicts.create!(user: by, choice:)` (rescue `RecordNotUnique` → no-op);
-  `increment!` the matching count. Wrapped in a transaction. Notifications: none (low value; the debate is
-  concluded).
+- `debate_verdicts (debate_id FK, user_id FK, choice integer)`, unique `[debate_id, user_id]` **DB index**
+  (no standalone `[debate_id]` index — the composite's leftmost prefix covers it). `choice` enum
+  `{ challenger: 0, opponent: 1, draw: 2 }`. `DebateVerdict belongs_to :debate, :user`.
+- **Tally is compute-on-read** (renders on one page, not a list): `debate.verdict_tally =
+  debate_verdicts.group(:choice).count`. **No columns on `debates`, no counter sync.**
+- **`Debate#cast_verdict(by:, choice:)`** — a single insert; **no transaction, method-level rescue**
+  (this is why dropping the counters matters — there is nothing to poison):
+  ```ruby
+  def cast_verdict(by:, choice:)
+    return false unless concluded? && !participant?(by) && DebateVerdict.choices.key?(choice.to_s)
+    debate_verdicts.create!(user: by, choice: choice)
+    true
+  rescue ActiveRecord::RecordNotUnique
+    false                       # already voted — idempotent no-op
+  end
+  ```
+  Immutable one-vote per spectator (changeable is deferred). No verdict notifications.
 
 ### Controller / auth / UI
 
 - Route `post "/debates/:slug/verdicts", to: "debate_verdicts#create"`.
-- `DebateVerdictsController#create` (`authenticate_user!`): `authorize @debate.debate_verdicts.new(user:
-  current_user), :create?` → **`DebateVerdictPolicy#create? = user.present? && record.debate.concluded? &&
-  !record.debate.participant?(user)`** (spectators only, concluded only — parallels the C1 turn-policy
-  discipline: authorize a *verdict* instance so Pundit resolves `DebateVerdictPolicy`, not `DebatePolicy`).
-  Call `@debate.cast_verdict`, respond with `turbo_stream.replace dom_id(@debate, :verdict)`.
-- The concluded debate show page renders a `_verdict` partial: three `button_to` buttons (challenger /
-  opponent / draw) for eligible spectators, and a **result bar** (counts + %) — reuse the `_vote_bars`
-  Tailwind width-% idiom. Participants + anonymous see the tally read-only. Respects Slice-7b visibility
-  (the debate show is already gated by `DebatePolicy#show?`).
-- rack-attack: a `debate_verdicts/user` throttle (like votes).
-- **`debate_won` badge deferred** — with live spectator tallies the "winner" is dynamic; a badge here is
-  awkward. Keep `first_debate` (Slice 6); revisit `debate_won` if verdicts finalize.
+- `DebateVerdictsController#create` (`authenticate_user!`; **`rescue_from Pundit::NotAuthorizedError, with:
+  :render_forbidden`** for a hard 403, matching the sibling debate controllers): `verdict_params =
+  params.permit(:choice)`; `authorize @debate.debate_verdicts.new(user: current_user, choice:
+  verdict_params[:choice]), :create?` (a **DebateVerdict instance** so Pundit resolves the right policy —
+  C1 pattern); `@debate.cast_verdict(...)` (invalid choice → `head :unprocessable_content`);
+  `turbo_stream.replace dom_id(@debate, :verdict)`.
+- **`DebateVerdictPolicy#create?`** (spectators only, concluded only, **AND visible per Slice 7b**):
+  ```ruby
+  def create?
+    user.present? && record.debate.concluded? && !record.debate.participant?(user) &&
+      DebatePolicy.new(user, record.debate).show?   # inherits concluded+both-visible gate
+  end
+  ```
+  (Closes the must-fix gap: without the `show?` clause a blocked/non-follower could POST a verdict on a
+  debate they can't read.)
+- **UI:** `_verdict` partial on the concluded debate show: three `button_to` (challenger/opponent/draw) for
+  an eligible spectator + a result bar (from `verdict_tally`, `_vote_bars` width-% idiom). Participants +
+  anonymous + already-voted see the tally read-only.
+- rack-attack: `throttle("debate_verdicts/user", limit: 10, period: 1.minute)` keyed on the warden user for
+  `POST /debates/:slug/verdicts`.
+- **`debate_won` badge deferred** (dynamic tally → no coherent finalization).
 
-## Part 2b — Real-time turns (Turbo broadcasting)
+## Part 2b — Real-time turns (Turbo broadcasting) — with channel authorization
 
-- **`debates/show`** adds `<%= turbo_stream_from @debate %>` (subscribes the viewer to the debate's stream).
-- **`Debate` model** broadcasts on the same `dom_id`s pinned in Slice 4 (so this drops in without touching
-  the request-driven views): in `post_turn`, after creating the turn, `broadcast_append_to @debate, target:
-  ActionView::RecordIdentifier.dom_id(self, :transcript), partial: "debates/debate_turn", locals: { turn: }`
-  **and** `broadcast_replace_to @debate, target: dom_id(self, :composer), partial: "debates/turn_composer",
-  locals: { debate: self }`. `accept!`/`conclude!` broadcast a `_debate_status`/`_debate_actions` replace.
-  (The controller's own `turbo_stream` response still renders for the acting user — the broadcast updates
-  the *other* participant's open page. To avoid a double-append for the actor, prefer: the controller
-  returns `head :no_content`/a no-op and lets the broadcast update BOTH, OR keeps its response and the
-  broadcast targets only the opponent — **decision for the plan**: simplest correct is to let the model
-  broadcast to the stream and have the controller action return the broadcast-driven update only, avoiding
-  duplicate DOM. Resolve so the actor doesn't see the turn twice.)
-- **Composer visibility:** the `_turn_composer` already renders per `current_turn_user`; after a broadcast
-  swap, each viewer's composer reflects whose turn it is (the partial is rendered per-broadcast, so it must
-  compute "is it *this viewer's* turn" — but a broadcast renders once, not per-subscriber. **Constraint:**
-  a broadcast partial can't be viewer-specific. So broadcast the *transcript append* (viewer-agnostic) and
-  a *neutral* composer state ("waiting…"/"your turn" derived from `current_turn_user` shown generically),
-  and let a full turn-state refresh happen on the acting user's own request response. Keep the composer's
-  enable/disable driven by the server-rendered `current_turn_user == current_user` on page load + the
-  actor's own response; the broadcast just appends the turn + a generic "it's <user>'s turn" status. Pin
-  this in the plan.)
-- Tests: `have_broadcasted_to(debate)` on `post_turn`; a system test with two sessions is out of scope
-  (cuprite single-session) — assert the broadcast fires + the subscription tag renders.
+### Subscribe-time authorization (the app's first Action Cable — security must-fix)
+
+The signed Turbo stream token is durable/unrevocable, so gate the socket, not just the page:
+```ruby
+# app/channels/application_cable/connection.rb
+module ApplicationCable
+  class Connection < ActionCable::Connection::Base
+    identified_by :current_user
+    def connect
+      self.current_user = env["warden"]&.user(scope: :user) || reject_unauthorized_connection
+    end
+  end
+end
+
+# app/channels/debate_channel.rb — a Turbo stream channel that re-checks DebatePolicy#show?
+class DebateChannel < Turbo::StreamsChannel
+  def subscribed
+    debate = GlobalID::Locator.locate(verified_stream_name_from_params&.split(":")&.first) rescue nil
+    # (implementer: derive the Debate from the verified stream name; reject unless authorized)
+    if debate && DebatePolicy.new(current_user, debate).show?
+      super
+    else
+      reject
+    end
+  end
+end
+```
+The debate `show` view only renders the subscription for an authorized viewer (already gated by
+`authorize @debate`), and the channel independently re-verifies `show?` at subscribe time.
+
+### Streams + broadcasts
+
+- **`debates/show`:** `<%= turbo_stream_from @debate, channel: "DebateChannel" %>` (transcript + status —
+  viewer-agnostic) AND `<%= turbo_stream_from [@debate, current_user], channel: "DebateChannel" if
+  @debate.participant?(current_user) %>` (this viewer's composer + actions — user-signed).
+- **Duplicate-DOM is a non-issue** (better-stimulus): `_debate_turn` already wraps each row in
+  `id="<%= dom_id(debate_turn) %>"`, so Turbo's `removeDuplicateTargetChildren` dedups the controller
+  response + the broadcast append by id. **Keep the Slice-4 controller `turbo_stream` response unchanged**;
+  broadcast unconditionally (incl. the actor).
+- **Viewer-scoped composer/actions:** split `_debate_status` → `_debate_status` (state label / declined
+  note — viewer-agnostic) + new **`_debate_actions`** (Accept/Decline/Conclude — viewer-scoped). Both
+  `_turn_composer` and `_debate_actions` take an explicit **`viewer:` local**
+  (`local_assigns.fetch(:viewer) { current_user }`) — NOT the implicit `current_user` (undefined in a
+  broadcast render context; the current draft would blank the opponent's buttons — a bug better-stimulus
+  caught).
+- **Broadcasts — after `with_lock`, `_later` variants (Solid Queue):** `post_turn` →
+  `broadcast_append_later_to @debate, target: dom_id(self, :transcript), partial: "debates/debate_turn"` +
+  per-participant `broadcast_replace_later_to [self, p], target: dom_id(self, :composer), partial:
+  "debates/turn_composer", locals: { debate: self, viewer: p }` for `p in [challenger, opponent]`.
+  `accept!`/`conclude!` broadcast `_debate_status` to `@debate` + `_debate_actions` per-participant.
+- **No new Stimulus controller** — the existing `debate_composer` autofocus reconnects on broadcast-replace
+  for free.
+- Tests: `have_broadcasted_to` on `post_turn`; the subscription tag renders; channel rejects a
+  non-participant/unauthorized subscribe. (Two-session visual real-time is out of cuprite scope.)
 
 ## Part 3 — Timeout auto-conclude
 
+- **`touch: true`** on `DebateTurn belongs_to :debate` (so `debates.updated_at` tracks the last **turn**,
+  not just the last status change — else the job concludes actively-argued debates).
+- **`conclude!(by: nil)` fixed** (the spec-v1 crash: `other(nil).id`):
+  ```ruby
+  def conclude!(by: nil)
+    return false unless active? && (by.nil? || participant?(by))
+    update!(status: :concluded)
+    if by.nil? then notify(challenger, :debate_concluded); notify(opponent, :debate_concluded)
+    else notify(other(by), :debate_concluded) end
+    UserBadge.award(challenger, "first_debate"); UserBadge.award(opponent, "first_debate")
+    true
+  end
+  ```
+  (`conclude` controller action always passes `current_user` behind `authenticate_user!` → the nil/system
+  path is only reachable from the job.)
 - `ConcludeStaleDebatesJob < ApplicationJob`: `Debate.active.where("updated_at < ?", 7.days.ago).find_each
-  { |d| d.conclude!(by: nil) }` — **`conclude!` gains a nil-`by` "system" path** (currently guards
-  `participant?(by)`; allow a system conclude: `def conclude!(by: nil); return false unless active? &&
-  (by.nil? || participant?(by)); ...`). A system conclude notifies **both** participants `debate_concluded`.
-- `config/recurring.yml` (production): `conclude_stale_debates: { class: "ConcludeStaleDebatesJob",
-  schedule: "every day at 3am" }`. Dev has no job worker by default (auto-timeout won't run in dev — note
-  in HANDOVER); prod runs it via Solid Queue recurring.
-- Test: `perform_now` concludes a debate whose `updated_at` is > 7 days old, leaves a fresh one active,
-  notifies both.
+  { |d| d.conclude!(by: nil) }`. `config/recurring.yml` (production): `conclude_stale_debates: { class:
+  "ConcludeStaleDebatesJob", schedule: "every day at 3am" }`. Dev has no worker (documented — prod runs it).
+- Test: `perform_now` concludes an idle (>7d, via a stale `updated_at`) active debate + notifies both; a
+  recent one stays active; concluded/declined untouched.
 
 ## Component boundaries
 
-- Models: `DebateVerdict`; `Debate#cast_verdict` + denormalized counts + broadcast calls +
-  `conclude!(by: nil)` system path.
-- Controllers: `DebateVerdictsController`; `DebatePolicy`/`DebateVerdictPolicy`.
-- Job: `ConcludeStaleDebatesJob` + `recurring.yml`.
-- Views: `_verdict` (buttons + result bar) on `debates/show`; `turbo_stream_from @debate`; broadcast
-  partials reuse `_debate_turn`/`_turn_composer`/`_debate_status`.
-- Notification enum: unchanged (no new categories — verdict has none; system-conclude reuses
-  `debate_concluded`). rack-attack: `debate_verdicts/user`.
+- Models: `DebateVerdict`; `Debate#cast_verdict` + `verdict_tally` + broadcast calls + `conclude!(by: nil)`;
+  `DebateTurn` `touch: true`. Channels: `ApplicationCable::Connection` (identified) + `DebateChannel`.
+  Controllers: `DebateVerdictsController` + `DebateVerdictPolicy`. Job: `ConcludeStaleDebatesJob` +
+  `recurring.yml`. Views: `_verdict`; split `_debate_status`/`_debate_actions` (+ `viewer:` local);
+  `turbo_stream_from` tags. rack-attack: `debate_verdicts/user`. No new gems, no new Stimulus.
 
 ## Testing
 
-- **Verdict:** `cast_verdict` — spectator only + concluded only (a participant → policy 403; an active
-  debate → 403); one immutable vote per spectator (second → no-op, counts unchanged); counts increment
-  correctly; the result bar renders; anonymous sees read-only tally.
-- **Real-time:** `post_turn`/`accept!`/`conclude!` `have_broadcasted_to(debate)`; `debates/show` renders the
-  `turbo_stream_from` subscription; the actor doesn't get a duplicated turn (per the resolved decision).
-- **Timeout:** `ConcludeStaleDebatesJob.perform_now` concludes an idle (>7d) active debate + notifies both;
-  leaves a recent one active; a concluded/declined one untouched.
+- **Verdict:** spectator-only + concluded-only + **visibility** (a non-follower of a private participant →
+  403; a participant → 403; an active debate → 403); one immutable vote (second → no-op); tally correct;
+  invalid `choice` → 422; anonymous read-only.
+- **Real-time:** `post_turn`/`accept!`/`conclude!` `have_broadcasted_to`; subscription tag renders for a
+  participant; **`DebateChannel` rejects an unauthorized subscribe**; the `viewer:`-local partials render
+  the right composer/actions state per participant.
+- **Timeout:** `perform_now` concludes an idle active debate + notifies both + awards first_debate; recent
+  stays active; `touch: true` verified (posting a turn bumps `debate.updated_at`).
 - Full suite green; brakeman 0; bundler-audit clean; StandardRB clean.
-
-## Risks / open questions
-
-- **Broadcast duplicate-DOM** (the actor's request response + the broadcast both touching the transcript) —
-  resolve in the plan (let the broadcast own the transcript append; controller returns a minimal/no-op, or
-  broadcast excludes the actor). This is the one real design decision in 2b.
-- **Broadcast partials are viewer-agnostic** — the composer's per-viewer turn state can't be broadcast
-  per-subscriber; broadcast the transcript + a generic status, keep per-viewer composer enable/disable on
-  page-load/own-response. Pinned above.
-- **Verdict integrity:** participants can't vote (policy); one vote per spectator (unique index);
-  immutable for MVP. `cast_verdict` is transactional (counter + record atomic).
-- **Timeout `conclude!(by: nil)`** must not weaken the participant guard for the normal path — only nil is
-  the system path; a non-participant non-nil `by` still fails.
-- **Dev auto-timeout** doesn't run without a job worker — documented; prod recurring covers it.
 
 ## Deferred
 
-`debate_won` badge; changeable verdict; two-session real-time system test; Project 3 (Hotwire Native — the
-debate/verdict URLs are deep-link-friendly for it).
+`debate_won` badge; changeable verdict; live verdict-tally for other viewers (only the voter's own bar
+updates); two-session real-time system test; Project 3 (Hotwire Native).
 
 ## Program completion
 
-With this slice, the "land everything" roadmap is complete: Social, Debate (MVP + verdict + real-time +
-timeout), Privacy+Analytics, Badges+Trending, Block, Private accounts all shipped. Remaining program items
-are the explicitly-deferred niceties above + **Project 3 (Hotwire Native)**.
+This slice completes the "land everything" roadmap: **Social, Debate (MVP + verdict + real-time +
+timeout), Privacy+Analytics, Badges+Trending, Block, Private accounts** all shipped. Remaining are the
+explicitly-deferred niceties + **Project 3 (Hotwire Native)**.
