@@ -27,4 +27,12 @@ class Rack::Attack
   throttle("votes/user", limit: 30, period: 1.minute) do |req|
     req.env["warden"]&.user&.id if req.path == "/api/v1/votes/create" && req.post?
   end
+  throttle("compose/user", limit: 20, period: 1.minute) do |req|
+    req.env["warden"]&.user&.id if req.path == "/hoojah" && req.post?
+  end
+  throttle("flags/user", limit: 15, period: 1.minute) do |req|
+    if req.post? && req.path.match?(%r{\A/hoojah/[^/]+/flags\z})
+      req.env["warden"]&.user&.id
+    end
+  end
 end
