@@ -1,0 +1,22 @@
+<%# Per-participant actions — VIEWER-SCOPED. Takes an explicit `viewer:` local
+    (NOT the implicit current_user, which is undefined in a broadcast render context;
+    using it would blank the opponent's buttons). accept!/conclude! broadcast this
+    per-participant on each user-signed stream. Locals: debate, viewer (defaults to
+    current_user in the request context). Pinned dom_id so the actions Turbo-Stream
+    replaces land here; the root element always renders so a later replace has a target. %>
+<% viewer = local_assigns.fetch(:viewer) { current_user } %>
+<span id="<%= dom_id(debate, :actions) %>" class="debate-actions flex items-center gap-2 shrink-0">
+  <% if viewer.present? %>
+    <% if debate.pending? && viewer == debate.opponent %>
+      <%= button_to "Accept", accept_debate_path(debate.slug), method: :patch,
+            class: "shadow rounded-full px-4 py-1 border-2 border-primary text-primary bg-white cursor-pointer" %>
+      <%= button_to "Decline", decline_debate_path(debate.slug), method: :patch,
+            class: "shadow rounded-full px-4 py-1 border-2 border-grey text-grey bg-white cursor-pointer" %>
+    <% elsif debate.pending? && viewer == debate.challenger %>
+      <span class="text-sm text-grey">Waiting for @<%= debate.opponent.username %> to accept…</span>
+    <% elsif debate.active? && debate.participant?(viewer) %>
+      <%= button_to "Conclude", conclude_debate_path(debate.slug), method: :patch,
+            class: "shadow rounded-full px-4 py-1 border-2 border-grey text-grey bg-white cursor-pointer" %>
+    <% end %>
+  <% end %>
+</span>

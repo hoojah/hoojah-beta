@@ -2,8 +2,9 @@
     "waiting" note (or a concluded note). Local: debate. Wrapped in the pinned dom_id
     so the Turbo-Stream replace lands here — the debate_composer controller refocuses
     the field on both first paint and that post-turn replace. %>
+<% viewer = local_assigns.fetch(:viewer) { current_user } %>
 <div id="<%= dom_id(debate, :composer) %>" class="my-4">
-  <% if debate.active? && debate.current_turn_user == current_user %>
+  <% if debate.active? && debate.current_turn_user == viewer %>
     <div data-controller="debate-composer" class="shadow bg-white p-4">
       <%= form_with url: debate_turns_path(debate.slug), method: :post do |f| %>
         <%= f.text_area :body, rows: 3, required: true, "aria-label": "Your turn",

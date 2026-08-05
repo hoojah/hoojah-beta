@@ -93,4 +93,42 @@ RSpec.describe "Debates", type: :request do
       expect(response.body).to include("Post turn") # composer form shown to the mover
     end
   end
+
+  # The accept/decline/conclude affordances live in `_debate_actions` (:actions),
+  # split out of `_debate_status` (:status). The synchronous turbo_stream RESPONSE
+  # must still replace the actor's OWN buttons in place — otherwise, with no job
+  # worker running (dev) the buttons stay stale until reload. These lock that in.
+  describe "synchronous actions replace (Task 3.2)" do
+    it "accept replaces both :status and :actions, and clears the opponent's Accept/Decline" do
+      d = challenge!
+      sign_in opponent
+      patch "/debates/#{d.slug}/accept", headers: {"Accept" => "text/vnd.turbo-stream.html"}
+      expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+      expect(response.body).to include("action=\"replace\" target=\"#{dom_id(d, :status)}\"")
+      expect(response.body).to include("action=\"replace\" target=\"#{dom_id(d, :actions)}\"")
+      # Now active → the actor (a participant) sees Conclude, no longer Accept/Decline.
+      expect(response.body).to include("Conclude")
+      expect(response.body).not_to include(">Accept<")
+      expect(response.body).not_to include(">Decline<")
+    end
+
+    it "decline replaces :actions and leaves no accept/decline/conclude affordance" do
+      d = challenge!
+      sign_in opponent
+      patch "/debates/#{d.slug}/decline", headers: {"Accept" => "text/vnd.turbo-stream.html"}
+      expect(response.body).to include("action=\"replace\" target=\"#{dom_id(d, :actions)}\"")
+      expect(response.body).not_to include(">Accept<")
+      expect(response.body).not_to include(">Decline<")
+      expect(response.body).not_to include(">Conclude<")
+    end
+
+    it "conclude replaces :actions and clears the actor's Conclude button" do
+      d = challenge!
+      d.accept!(by: opponent) # active, challenger's turn
+      sign_in challenger
+      patch "/debates/#{d.slug}/conclude", headers: {"Accept" => "text/vnd.turbo-stream.html"}
+      expect(response.body).to include("action=\"replace\" target=\"#{dom_id(d, :actions)}\"")
+      expect(response.body).not_to include(">Conclude<")
+    end
+  end
 end

@@ -41,6 +41,7 @@ class Debate < ApplicationRecord
     return false unless pending? && by == opponent
     update!(status: :active)
     notify(challenger, :debate_your_turn)
+    broadcast_state_change
     true
   end
 
@@ -52,11 +53,18 @@ class Debate < ApplicationRecord
   end
 
   def post_turn(by:, body:)
+    turn = nil
     with_lock do
       return false unless active? && by == current_turn_user
-      turns.create!(user: by, body: body, position: (turns.maximum(:position) || 0) + 1)
+      turn = turns.create!(user: by, body: body, position: (turns.maximum(:position) || 0) + 1)
     end
     notify(other(by), :debate_your_turn)
+    # Real-time: append the new turn to everyone on the debate stream, then refresh
+    # each participant's own composer (the mover flips to "waiting", the other to
+    # the turn form) on their user-signed stream.
+    broadcast_append_later_to self, target: dom_id(self, :transcript),
+      partial: "debates/debate_turn", locals: {debate_turn: turn}
+    broadcast_to_each_participant(target: :composer, partial: "debates/turn_composer")
     true
   end
 
@@ -76,6 +84,7 @@ class Debate < ApplicationRecord
     # After the status update commits — both participants earn first_debate.
     UserBadge.award(challenger, "first_debate")
     UserBadge.award(opponent, "first_debate")
+    broadcast_state_change
     true
   end
 
@@ -96,6 +105,29 @@ class Debate < ApplicationRecord
   def verdict_tally = debate_verdicts.group(:choice).count
 
   private
+
+  # accept!/conclude! share this: the status label is viewer-agnostic (broadcast to
+  # the whole debate), while the accept/decline/conclude affordances are viewer-scoped
+  # (each participant gets their own on their user-signed stream).
+  def broadcast_state_change
+    broadcast_replace_later_to self, target: dom_id(self, :status),
+      partial: "debates/debate_status", locals: {debate: self}
+    broadcast_to_each_participant(target: :actions, partial: "debates/debate_actions")
+  end
+
+  # Replace a viewer-scoped region for each participant on their own user-signed
+  # `[self, participant]` stream — the single home for the "each participant sees
+  # their own render" broadcast intent (composer on post_turn, actions on state change).
+  def broadcast_to_each_participant(target:, partial:)
+    [challenger, opponent].each do |p|
+      broadcast_replace_later_to [self, p], target: dom_id(self, target),
+        partial: partial, locals: {debate: self, viewer: p}
+    end
+  end
+
+  # `dom_id` isn't an instance method on models; delegate to the canonical helper so
+  # the broadcast targets match the view's `dom_id(@debate, :status)` etc.
+  def dom_id(...) = ActionView::RecordIdentifier.dom_id(...)
 
   def notify_challenge = notify(opponent, :debate_challenge)
 
