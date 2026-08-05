@@ -7,6 +7,10 @@ class Hujah < ApplicationRecord
 
   validates :body, presence: true
 
+  # @handle mention pattern. The `(?<!\w)` lookbehind means an `@` preceded by a
+  # word char (e.g. inside an email `foo@bar`) is NOT a mention.
+  MENTION_RE = /(?<!\w)@([a-zA-Z0-9_]+)/
+
   # Home timeline: top-level hoojahs from the people you follow, plus your own.
   # Uses the association's `_ids` (not raw SQL) so a future Block filter slots in
   # as plain Ruby (`following_ids - blocked_ids`).
