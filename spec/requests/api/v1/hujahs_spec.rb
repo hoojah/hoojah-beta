@@ -47,14 +47,27 @@ RSpec.describe 'Api::V1::Hujahs', type: :request do
   end
 
   describe 'DELETE /api/v1/hoojah/destroy/:slug' do
-    it 'deletes the hoojah and returns a confirmation message' do
-      hujah = create(:hujah)
+    let(:owner) { create(:user) }
+    let(:hujah) { create(:hujah, user: owner) }
 
-      expect {
-        delete "/api/v1/hoojah/destroy/#{hujah.slug}"
-      }.to change(Hujah, :count).by(-1)
+    it 'rejects an unauthenticated delete' do
+      delete "/api/v1/hoojah/destroy/#{hujah.slug}", as: :json
+      expect(response).to have_http_status(:unauthorized)
+      expect(Hujah.exists?(hujah.id)).to be(true)
+    end
 
-      expect(body['message']).to eq('Hoojah deleted!')
+    it 'rejects a non-owner delete' do
+      sign_in create(:user)
+      delete "/api/v1/hoojah/destroy/#{hujah.slug}", as: :json
+      expect(response).to have_http_status(:forbidden)
+      expect(Hujah.exists?(hujah.id)).to be(true)
+    end
+
+    it 'allows the owner to delete' do
+      sign_in owner
+      delete "/api/v1/hoojah/destroy/#{hujah.slug}", as: :json
+      expect(response).to have_http_status(:ok)
+      expect(Hujah.exists?(hujah.id)).to be(false)
     end
   end
 end

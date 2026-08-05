@@ -1,4 +1,7 @@
 class Api::V1::HujahsController < Api::V1::BaseController
+  before_action :authenticate_user!, only: :destroy
+  before_action :require_owner!, only: :destroy
+
   def index
     
     hujahs = Hujah.all.order(updated_at: :desc)
@@ -29,7 +32,7 @@ class Api::V1::HujahsController < Api::V1::BaseController
   end
 
   def destroy
-    hujah&.destroy
+    hujah.destroy
     render json: { message: 'Hoojah deleted!' }
   end
 
@@ -37,6 +40,10 @@ class Api::V1::HujahsController < Api::V1::BaseController
   end
 
   private
+
+  def require_owner!
+    head :forbidden unless hujah&.user_id == current_user.id
+  end
 
   def hujah_params
     params.permit(:body, :parent_id, :vote)
