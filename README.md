@@ -115,5 +115,11 @@ Code style is enforced with **StandardRB** (`bundle exec standardrb`).
 - **Project 2 Slice 5 — done:** vote-privacy hardening (`new_vote` voter-id leak closed +
   backfill) and an owner-only `/dashboard` (aggregate stats, k=5 suppression, zero new tables).
   Deferred: analytics trends/ranking; the tracked public per-hoojah count suppression (2a); see HANDOVER.
+- **Project 2 Slice 6 — done:** 4 event-driven achievement badges (`first_hoojah`, `first_argument`,
+  `first_follower`, `first_debate`) — a code registry (`Badge::REGISTRY`) + a `user_badges` awards table,
+  idempotent inline awards off existing after-commit callbacks, a `badge_earned` notification, and public
+  profile chips; plus a cached, public **`/trending`** (`Hujah.trending`, HN-decayed activity) rendered as
+  a lazy `lg` sidebar frame on the feed and a standalone page. Deferred: vote-milestone + `debate_won`
+  badges, recurring-job trending, trending block/private exclusion (Slice 7); see HANDOVER.
 - **Project 3:** Hotwire Native (mobile).
 - **Security:** remaining app-logic findings in `SECURITY-FINDINGS.md`.
