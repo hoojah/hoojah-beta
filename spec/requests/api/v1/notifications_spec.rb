@@ -11,6 +11,10 @@ RSpec.describe "Api::V1::Notifications", type: :request do
     Notification.create!(user_id: user.id, category: :announcement, read: false)
   end
 
+  # The API notifications endpoints now require authentication and scope to the
+  # current user (Slice 2 Pundit rollout); sign in the owner for these characterizations.
+  before { sign_in user }
+
   describe "GET /api/v1/:username/notifications" do
     it "returns the user notifications" do
       get "/api/v1/#{user.username}/notifications"
