@@ -24,6 +24,25 @@ RSpec.describe ConcludeStaleDebatesJob, type: :job do
     expect(d.reload).to be_active
   end
 
+  it "continues the sweep when one debate's conclude! raises" do
+    first = active_debate
+    first.update_column(:updated_at, 8.days.ago)
+    second = active_debate
+    second.update_column(:updated_at, 9.days.ago)
+
+    # Make the first stale debate blow up during conclude!; the sweep must still
+    # process the second one.
+    allow_any_instance_of(Debate).to receive(:conclude!).and_wrap_original do |original, *args, **kwargs|
+      raise "boom" if original.receiver.id == first.id
+      original.call(*args, **kwargs)
+    end
+
+    ConcludeStaleDebatesJob.perform_now
+
+    expect(first.reload).to be_active
+    expect(second.reload).to be_concluded
+  end
+
   it "skips debates that are not active (concluded / declined)" do
     concluded = create(:debate, status: :concluded)
     concluded.update_column(:updated_at, 10.days.ago)

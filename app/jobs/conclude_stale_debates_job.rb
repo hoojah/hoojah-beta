@@ -6,6 +6,8 @@ class ConcludeStaleDebatesJob < ApplicationJob
   def perform
     Debate.active.where("updated_at < ?", 7.days.ago).find_each do |debate|
       debate.conclude!(by: nil)
+    rescue => e
+      Rails.logger.error("ConcludeStaleDebatesJob: failed to conclude debate #{debate.id}: #{e.class}: #{e.message}")
     end
   end
 end

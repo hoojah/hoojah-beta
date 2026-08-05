@@ -30,6 +30,15 @@ RSpec.describe "DebateVerdicts", type: :request do
     expect(d.debate_verdicts.count).to eq(0)
   end
 
+  it "forbids a non-follower of a private participant (visibility gate, 403)" do
+    private_opponent = create(:user, private: true)
+    d = create(:debate, challenger: challenger, opponent: private_opponent, status: :concluded)
+    sign_in spectator # not an accepted follower of private_opponent → debate not visible
+    post "/debates/#{d.slug}/verdicts", params: {choice: "challenger"}
+    expect(response).to have_http_status(:forbidden)
+    expect(d.debate_verdicts.count).to eq(0)
+  end
+
   it "forbids voting on an active debate (403)" do
     d = debate(status: :active)
     sign_in spectator
