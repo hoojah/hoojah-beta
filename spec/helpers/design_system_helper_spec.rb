@@ -283,11 +283,24 @@ RSpec.describe DesignSystemHelper, type: :helper do
     end
 
     # Same convention as `ds_button_classes`: an unpassed local is nil and must take
-    # the default, a typo must be loud.
+    # the default, a typo must be loud. The permitted list is derived from the constant
+    # rather than restated, so reordering `AVATAR_SIZES` cannot fail this on a diff.
+    let(:permitted) { Regexp.escape(DesignSystemHelper::AVATAR_SIZES.keys.join(", ")) }
+
     it "treats a nil size as unset, and a misspelled one as a typo" do
       expect(helper.ds_avatar_classes(size: nil)).to eq(helper.ds_avatar_classes)
       expect { helper.ds_avatar_classes(size: :massive) }
-        .to raise_error(ArgumentError, /massive.*lg, md, row, nav, sm/m)
+        .to raise_error(ArgumentError, /massive.*#{permitted}/m)
+    end
+
+    # Avatar.prompt.md documents these sizes as pixel numbers — 96 profile header, 44
+    # hujah card, 40 follower row — so `size: 44` is the likeliest wrong guess anyone
+    # reading the design contract will make. `Integer#to_sym` does not exist, so without
+    # coercion it lands as a NoMethodError deep in the helper instead of the one message
+    # that would tell them what to write.
+    it "answers a pixel number with the same friendly error, not NoMethodError" do
+      expect { helper.ds_avatar_classes(size: 44) }
+        .to raise_error(ArgumentError, /44.*#{permitted}/m)
     end
   end
 end

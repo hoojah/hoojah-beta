@@ -1,4 +1,11 @@
 <%# Locals: `user`; `size:` one of lg md row nav sm (default md); `class:` extra utilities.
+
+     `size:` IS the pixel box — lg 96 · md 44 · row 40 · nav 36 · sm 32. A `w-*` passed
+     through `class:` does not override that, it competes with it, and the winner is
+     whichever class the Tailwind bundle emits later (numeric order), not the caller's
+     intent: `class: "w-8"` against `size: :lg` loses. Pass margins and other
+     layout-neutral utilities through `class:`; to change the box, change `size:`.
+
      Deliberately NOT a Rails strict-locals signature: one of the locals is `class`, which
      cannot be a Ruby parameter name, so the whole signature is unavailable to this partial.
 
@@ -8,13 +15,23 @@
      so every `image_tag user.photo` in the app is a 500 waiting for a user without a
      photo — see docs/design-system/components/core/Avatar.jsx, which this mirrors.
 
-     `alt` is the handle and `aria-label` the full name because that is what each
-     branch has room for: the photo sits beside the handle in every call site, while
-     the fallback shows two letters that a screen reader must not read out as a word.
+     Three details that look cosmetic and are not:
+
+     - Both branches are block-level (`block` / `flex`, never `inline-flex`). An inline
+       box sits on a line box and collects descender leading that the `block` img does
+       not, so a photoless user would shift the row by a few px — and `.inline-flex`
+       follows `.hidden` in the bundle, so `class: "hidden lg:block"` would hide the
+       photo branch while leaving the initials visible.
+     - `role="img"` on the fallback. ARIA ignores an author-supplied `aria-label` on a
+       bare `<span>` (role=generic), which is exactly the case where a screen reader
+       reads out the raw letters "MZ" instead of the name.
+     - The same name on both branches, as in Avatar.jsx. Announcing one person two
+       different ways depending on whether they uploaded a photo is a bug; the handle
+       is not always adjacent either (see shared/_navbar).
 %><% box = "rounded-full shrink-0 #{ds_avatar_classes(size: local_assigns[:size])} #{local_assigns[:class]}".squish %>
 <% if user.photo.present? %>
-  <%= image_tag user.photo, alt: user.username, class: "#{box} block object-cover" %>
+  <%= image_tag user.photo, alt: user.full_name, class: "#{box} block object-cover" %>
 <% else %>
-  <span aria-label="<%= user.full_name %>"
-        class="<%= box %> inline-flex items-center justify-center bg-primary text-white font-medium tracking-wide"><%= ds_initials(user.full_name) %></span>
+  <span role="img" aria-label="<%= user.full_name %>"
+        class="<%= box %> flex items-center justify-center bg-primary text-white font-medium tracking-wide"><%= ds_initials(user.full_name) %></span>
 <% end %>

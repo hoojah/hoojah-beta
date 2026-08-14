@@ -73,8 +73,13 @@ module DesignSystemHelper
 
   # Same contract as `ds_button_classes`: nil is an unpassed local and takes the
   # default; anything else outside the set is a typo and says so.
+  #
+  # `to_s.to_sym`, not `to_sym`, because Avatar.prompt.md documents these sizes as the
+  # pixel numbers 96/44/40/36/32 — so `size: 44` is the likeliest typo of all, and
+  # `Integer#to_sym` does not exist. Coercing through a string routes it into the same
+  # named error as any other unknown size instead of a bare NoMethodError.
   def ds_avatar_classes(size: :md)
-    AVATAR_SIZES.fetch(ds_option(size&.to_sym, :md, AVATAR_SIZES.keys, "size"))
+    AVATAR_SIZES.fetch(ds_option(size&.to_s&.to_sym, :md, AVATAR_SIZES.keys, "size"))
   end
 
   # The 8px coloured left border of a compact card — Card.prompt.md and the design

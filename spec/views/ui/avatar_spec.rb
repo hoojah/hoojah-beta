@@ -15,6 +15,7 @@ RSpec.describe "ui/_avatar", type: :view do
   # backfills a Cloudinary URL, so a *created* user can never have a blank photo and
   # the branch under test would be unreachable.
   let(:user) { build(:user, full_name: "Maya Zaharudin", username: "maya", photo: nil) }
+  let(:photo_user) { build(:user, full_name: "Maya Zaharudin", username: "maya", photo: photo) }
 
   # `render`'s return value, not `rendered` — the latter accumulates across every
   # render in an example, so the two comparison examples below would each be diffing
@@ -32,8 +33,11 @@ RSpec.describe "ui/_avatar", type: :view do
       expect(avatar).to have_no_css("img")
     end
 
+    # `role="img"` is what makes the label count: ARIA prohibits an author-supplied
+    # name on `role=generic`, which a bare `<span>` is, so without the role a screen
+    # reader may drop "Maya Zaharudin" and announce the letters "MZ" instead.
     it "shows the initials, labelled with the full name so a screen reader hears a person" do
-      expect(avatar).to have_css("span[aria-label='Maya Zaharudin']", text: "MZ")
+      expect(avatar).to have_css("span[role='img'][aria-label='Maya Zaharudin']", text: "MZ")
     end
 
     it "is white on primary, per the design system" do
@@ -48,10 +52,10 @@ RSpec.describe "ui/_avatar", type: :view do
   end
 
   describe "with a photo" do
-    let(:user) { build(:user, full_name: "Maya Zaharudin", username: "maya", photo: photo) }
+    let(:user) { photo_user }
 
-    it "renders the photo, with the handle as alt text" do
-      expect(avatar).to have_css("img[src='#{photo}'][alt='maya']")
+    it "renders the photo, named after the person rather than the handle" do
+      expect(avatar).to have_css("img[src='#{photo}'][alt='Maya Zaharudin']")
     end
 
     it "renders no initials fallback alongside it" do
@@ -68,7 +72,30 @@ RSpec.describe "ui/_avatar", type: :view do
   describe "the circle, on either branch" do
     it "is round and never shrinks in a flex row" do
       expect(avatar).to have_css("span.rounded-full.shrink-0")
-      expect(avatar(user: build(:user, photo: photo))).to have_css("img.rounded-full.shrink-0")
+      expect(avatar(user: photo_user)).to have_css("img.rounded-full.shrink-0")
+    end
+
+    # `inline-flex` here would be two bugs at once. An inline box sits on a line box and
+    # collects descender leading the `block` img does not, so in a non-flex parent — the
+    # `<a>` wrapper in hujahs/_hujah_header — the row shifts a few px for photoless users
+    # only. And `.inline-flex` follows `.hidden` in the compiled bundle, so a caller's
+    # `class: "hidden lg:block"` would hide the photo branch and leave the initials up.
+    it "is block-level on both branches, never inline" do
+      expect(avatar).to have_css("span.flex")
+      expect(avatar).to have_no_css("span.inline-flex")
+      expect(avatar(user: photo_user)).to have_css("img.block")
+    end
+
+    it "centres the initials in the circle" do
+      expect(avatar).to have_css("span.items-center.justify-center")
+    end
+
+    # One person, one name. Announcing the handle for a photo and the full name for the
+    # fallback would make the same user sound like two, and Avatar.jsx uses the name for
+    # both. The handle is not always adjacent to lean on, either — see shared/_navbar.
+    it "announces the same person whichever branch renders" do
+      expect(avatar(user: photo_user)).to have_css("img[alt='Maya Zaharudin']")
+      expect(avatar).to have_css("span[aria-label='Maya Zaharudin']")
     end
 
     it "gives the photo and the fallback the same box at every size" do
@@ -76,7 +103,7 @@ RSpec.describe "ui/_avatar", type: :view do
         box = classes.split.grep(/\A[wh]-/).join(".")
 
         expect(avatar(size: size)).to have_css("span.#{box}")
-        expect(avatar(user: build(:user, photo: photo), size: size)).to have_css("img.#{box}")
+        expect(avatar(user: photo_user, size: size)).to have_css("img.#{box}")
       end
     end
   end
@@ -117,13 +144,20 @@ RSpec.describe "ui/_avatar", type: :view do
     # Action View wraps anything a template raises in `Template::Error`; that it is an
     # ArgumentError underneath is pinned in the helper spec. What matters here is that
     # a typo is loud at the call site and the message names the sizes that do work.
+    # The expectation is derived from the constant so reordering it stays green.
     it "raises on a misspelled size rather than silently rendering the wrong box" do
+      permitted = Regexp.escape(DesignSystemHelper::AVATAR_SIZES.keys.join(", "))
+
       expect { avatar(size: :massive) }
-        .to raise_error(ActionView::Template::Error, /massive.*lg, md, row, nav, sm/m)
+        .to raise_error(ActionView::Template::Error, /massive.*#{permitted}/m)
     end
   end
 
-  it "appends caller classes, for the margins that vary by call site" do
+  # Every one of the eleven call sites this replaces carries its own margin, so the
+  # passthrough is what the Phase 4 refactor leans on hardest — and it has to work on
+  # whichever branch that particular user happens to render.
+  it "appends caller classes on both branches, for the margins that vary by call site" do
     expect(avatar(class: "mr-3")).to have_css("span.mr-3.w-11")
+    expect(avatar(user: photo_user, class: "mr-3")).to have_css("img.mr-3.w-11")
   end
 end
