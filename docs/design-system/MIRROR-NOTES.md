@@ -67,4 +67,6 @@ the app do not silently disagree.
 | `--shadow-sm` | **omitted** | Its value is the Tailwind *v3* number while the DS prose says "Tailwind defaults". Under v4 that value is `shadow-xs`, so declaring it silently lightens every `shadow-sm`. Nothing reads it via `var()`. |
 | `--radius-none` | **omitted** | v4's `rounded-none` is a static utility that ignores the token. |
 | `--space-1`…`--space-6` | **omitted** | They are the 4px steps Tailwind's default `--spacing` already ships. |
-| `--font-sans` | **omitted** | Tailwind v4's default system stack, which is what the DS specifies anyway. |
+| `--font-medium`, `--font-semibold`, `--font-bold` | `--font-weight-medium`, `--font-weight-semibold`, `--font-weight-bold` | v4's namespace for weights is `--font-weight-*`. Under the DS spelling `font-semibold` would generate nothing. |
+| `--text-xs-lh`…`--text-2xl-lh` | `--text-xs--line-height`…`--text-2xl--line-height` | v4 pairs a line-height to a size with the `--text-<size>--line-height` suffix, not a separate `-lh` token. |
+| `--font-sans` | **omitted** | `@layer base` sets `body { font-family: var(--font-sans) }`, so the live stack is Tailwind v4's default — `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, …`. That is **not** what `tokens/typography.css` specifies (`ui-sans-serif, system-ui, sans-serif, …`); the two agree on macOS and Windows but diverge on Linux and Android. The omission is deliberate — restoring the DS value would change rendering on those platforms and needs a visual pass first. |
