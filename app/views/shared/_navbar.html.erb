@@ -6,7 +6,9 @@
     - "New Claim" compose entry (compose form itself lands in Slice 2). %>
 <nav class="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100">
   <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
-    <%= link_to root_path, class: "font-bold text-primary text-xl no-underline" do %>Hoojah<% end %>
+    <%= link_to root_path, class: "flex items-center no-underline", aria: { label: "Hoojah" } do %>
+      <%= image_tag "logo.svg", alt: "Hoojah", class: "h-7 w-auto" %>
+    <% end %>
 
     <div class="flex items-center gap-3">
       <%= link_to trending_path, class: "flex items-center text-grey hover:text-primary no-underline", aria: {label: "Trending"} do %>
