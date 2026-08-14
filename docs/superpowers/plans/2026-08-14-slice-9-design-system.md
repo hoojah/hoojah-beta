@@ -25,7 +25,11 @@ from turn position and a new `debates.rounds_limit` column — no column on `deb
 
 Branch `slice-9-design-system` (already created; spec + mirror committed at `3e2cd3d`).
 Commit per task, **no attribution trailer** (workspace rule).
-Baseline **271 examples / 0 failures / 2 pending**; system dir 24 examples.
+Baseline **273 examples / 0 failures / 2 pending**; system dir 24 examples.
+
+> HANDOVER.md says 271 — that entry was written at `1471474`, and `11be59a` ("harden timeout job +
+> verdict-visibility request spec") added two more before the merge. `rspec --dry-run` on `master`
+> is the authority: **273**. Fix the stale number in HANDOVER during Task 5.1.
 
 ## THE FREEZE RULE (applies to every task in Phase 4)
 
@@ -295,8 +299,17 @@ Test: `spec/views/ui/card_spec.rb`, `spec/views/ui/empty_state_spec.rb` (create)
 - [ ] **Step 2: Run → FAIL.**
 - [ ] **Step 3: Implement.**
 
-`_card` wraps a block, so it is a **layout partial** — call it with `render layout:`, never
-`render partial:`. A plain `render "ui/card" do … end` silently drops the block.
+`_card` wraps a block, so it is a **layout partial**. The three call forms, **verified empirically
+during Task 2.3** (this section previously claimed otherwise and was wrong in both directions):
+
+| Call | Behaviour |
+| --- | --- |
+| `render layout: "ui/card" do … end` | **works** — `yield` receives the block. The canonical form. |
+| `render "ui/card" do … end` | **also works.** A bare string with a block takes the `else` branch and forwards the block to `render_partial`. My earlier claim that this "silently drops the block" was false. |
+| `render partial: "ui/card" do … end` | **raises loudly** — `ArgumentError: 'nil' is not an ActiveModel-compatible object`. Given a Hash *and* a block, `RenderingHelper#render` renders `options[:layout]` and ignores `options[:partial]`, so it looks up nil. |
+
+So the footgun is real but **not silent**, which is what matters for Phase 4: no agent can ship an
+empty card this way. Both behaviours are pinned in `spec/views/ui/card_spec.rb`.
 
 ```erb
 <%# app/views/ui/_card.html.erb — LAYOUT partial. locals: as:, stance:, padded:, id:, class: %>
@@ -615,8 +628,12 @@ subagent reads the rest of this file, and do not assume it reads tasks in order.
 - [ ] **Step 1: Rebuild CSS** — `bin/rails tailwindcss:build` (the refactor introduces utility
   classes that must be present in the compiled bundle; `app/assets/builds/tailwind.css` is
   gitignored and built by the `assets:precompile` hook).
-- [ ] **Step 2: Full suite** — expect **≥ 271 + new examples**, 0 failures, 2 pending. Run the
+- [ ] **Step 2: Full suite** — expect **≥ 273 + new examples**, 0 failures, 2 pending. Run the
   system dir **twice** to confirm stability.
+- [ ] **Step 2b: Drop the dead `.body` class.** Task 1.1's `@layer base` styles the `body`
+  *element*, which is correct. That leaves `class="body"` in `app/views/layouts/application.html.erb`
+  matching no rule anywhere — remove the attribute. (Do **not** add a `.body` selector; the element
+  selector is the right mechanism.)
 - [ ] **Step 3: `standardrb`, `brakeman` (0), `bundler-audit`.**
 - [ ] **Step 4: Grep for regressions** —
   `grep -rn "image_tag .*\.photo" app/views` should return **nothing** (all avatars go through
