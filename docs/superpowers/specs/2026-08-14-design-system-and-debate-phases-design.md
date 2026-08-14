@@ -141,13 +141,28 @@ dependency and a second idiom for no gain.
 | --- | --- | --- |
 | `Card` / `Divider` | `app/views/ui/_card.html.erb`, `_divider.html.erb` | the `shadow bg-white` + `border-gray-100` idiom repeated across the feed, debate, notification and profile views |
 | `EmptyState` | `app/views/ui/_empty_state.html.erb` | the same faint-icon + one-sentence markup in **six** views |
-| `Avatar` | `app/views/ui/_avatar.html.erb` | bare `image_tag user.photo` — **which raises on a blank photo today**; the partial adds the DS initials-on-indigo fallback |
+| `Avatar` | `app/views/ui/_avatar.html.erb` | bare `image_tag user.photo` — **which raises when `photo` is blank** (reachability note below); the partial adds the DS initials-on-indigo fallback |
 | `Button` | `DesignSystemHelper#ds_button_classes(variant:, tone:, size:)` | the hand-repeated `rounded-full border-2 … shadow active:scale-95` string |
 | `Icon` / `STANCE_COLOR` | extend the existing `IconsHelper` (already holds `STANCE_ICON`) | interpolated `text-#{stance}` / `fill-#{stance}` strings |
 
 `ds_button_classes` variants mirror the DS exactly: `outline` (the house pill), `solid` (primary
 submit), `rect` (auth screens + signup CTA), `onPrimary` / `onPrimaryOutline` (white-on-blue, profile
 header only), `link` (bare text control).
+
+**Blank-photo reachability — corrected during implementation.** This section originally implied the
+`image_tag user.photo` crash was routinely hit. It is not, but it is genuinely reachable, and the
+distinction is worth recording:
+
+- `User#assign_random_photo` is `after_create` **only**, so it backfills once and never again.
+- `photo_from_cloudinary` opens with `return if photo.blank?` — blank **passes** validation.
+- `:photo` is permitted in `UsersController#user_params`.
+
+So an update carrying `user[photo]=""` succeeds and leaves the account permanently photo-less, after
+which every surface rendering that avatar 500s — the profile, every feed card, every debate turn.
+The normal UI does not produce it, because `_profile_edit`'s `f.hidden_field :photo` submits the
+current value. `_avatar` is therefore a fix for a latent crash, not a routine one. Note also that a
+`create`d user in specs can never exercise the branch (the callback fills it); tests must use
+`build`.
 
 The `Card` partial takes an optional `stance:` local for the **8px stance-coloured left border** —
 the signature motif — and an optional `as:` for `article` / `a`.
