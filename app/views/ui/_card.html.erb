@@ -1,0 +1,27 @@
+<%# The white, SQUARE-cornered `shadow` surface every piece of Hoojah content sits on
+    (docs/design-system/components/core/Card.jsx + Card.prompt.md, which this mirrors).
+
+    THIS IS A LAYOUT PARTIAL. It wraps a block, so it must be called as
+
+      render layout: "ui/card", locals: {as: "article", id: dom_id(hujah)} do ... end
+
+    inside an ERB output tag. `render partial: "ui/card" do ... end` does NOT work:
+    given a Hash and a block, `RenderingHelper#render` renders `options[:layout]` and
+    ignores `options[:partial]`, so it looks up nil and raises "'nil' is not an
+    ActiveModel-compatible object" — a confusing message, but at least a loud one.
+    The bare `render "ui/card" do ... end` form does forward the block. Both are
+    pinned in spec/views/ui/card_spec.rb.
+
+    Locals: `as:` the tag name (default "div"); `stance:` one of DesignSystemHelper::CARD_STANCES,
+    which adds the 8px coloured left border; `padded:`; `id:`; `class:` extra utilities.
+
+    Deliberately NOT a Rails strict-locals signature: one of the locals is `class`,
+    which cannot be a Ruby parameter name, so the whole signature is unavailable here
+    (same constraint as `ui/_avatar`).
+
+    Cards stack with 8px gaps on a white page and separate their internal sections with
+    `ui/_divider`, not with extra shadow — so this partial owns no margin and no second
+    shadow. Rounding is not a local: "Never round a feed card."
+%><%= content_tag local_assigns.fetch(:as, "div"),
+      id: local_assigns[:id],
+      class: "#{ds_card_classes(stance: local_assigns[:stance], padded: local_assigns[:padded])} #{local_assigns[:class]}".squish do %><%= yield %><% end %>

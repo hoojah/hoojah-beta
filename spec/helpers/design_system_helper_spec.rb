@@ -351,3 +351,30 @@ RSpec.describe "Avatar utilities reach the compiled bundle" do
       "these avatar utilities are absent from app/assets/builds/tailwind.css: #{missing.join(", ")}"
   end
 end
+
+# `ds_card_classes` interpolates the stance into `border-#{stance}` for the 8px left
+# border, so — exactly as with the button tones — Tailwind's scanner never sees those
+# class names and `@source inline(...)` is the only thing putting them in the bundle.
+# The failure mode is quiet: `border-agree` with no rule behind it renders a card that
+# merely looks unstanced, which is the design system motif silently going missing.
+#
+# `border-l-8` is checked alongside them because it is the *width*: the colour without
+# it paints nothing, and unlike the colours it is a literal in the partial, so this
+# example also catches a content glob that stopped reading `app/views`.
+RSpec.describe "Card stance utilities reach the compiled bundle" do
+  before(:all) { TailwindBuild.once! }
+
+  let(:bundle) { Rails.root.join("app/assets/builds/tailwind.css").read }
+  let(:view) { ApplicationController.helpers }
+
+  it "generates the left border and every stance colour a card can take" do
+    wanted = DesignSystemHelper::CARD_STANCES
+      .flat_map { |stance| view.ds_card_classes(stance: stance, padded: true).split }.uniq
+
+    missing = wanted.reject { |klass| bundle.match?(/\.#{Regexp.escape(klass)}(?![\w-])/) }
+
+    expect(missing).to be_empty,
+      "these card utilities are absent from app/assets/builds/tailwind.css — " \
+      "add them to the `@source inline(...)` safelist: #{missing.join(", ")}"
+  end
+end

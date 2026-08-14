@@ -77,6 +77,39 @@ module DesignSystemHelper
     AVATAR_SIZES.fetch(ds_option(size&.to_sym, :md, AVATAR_SIZES.keys, "size"))
   end
 
+  # The 8px coloured left border of a compact card — Card.prompt.md and the design
+  # system's VISUAL FOUNDATIONS both call it "a real motif of this brand".
+  #
+  # `stance` is the design system's name for it, but the closed set is wider than the
+  # stance trio, because three different surfaces reach for the same motif:
+  # `hujahs/_child_card` and `users/_user_hujah` colour it by the responder's vote;
+  # `hujahs/_parent_card` falls back to `primary` when the viewer never voted; and
+  # `notifications/_notification_card` borrows it for read/unread. Narrowing this to
+  # agree/neutral/disagree would leave two of those three unable to use `ui/_card` at
+  # all, so the set is what the product renders, not what the word "stance" implies.
+  #
+  # Every value is interpolated into `border-#{...}`, which the Tailwind scanner cannot
+  # see — all six must stay in the `@source inline(...)` safelist, and the bundle spec
+  # in spec/helpers/design_system_helper_spec.rb derives its expectation from here.
+  CARD_STANCES = %w[agree neutral disagree primary read unread].freeze
+
+  # White, SQUARE-cornered, `shadow`. Card.prompt.md's first line is "Never round a
+  # feed card", so there is deliberately no rounding class and no way to ask for one.
+  CARD_BASE = "shadow bg-white".freeze
+
+  # Backs `app/views/ui/_card.html.erb`. Same contract as the two helpers above: a nil
+  # stance is an unpassed local and means "no left border"; a non-nil one outside the
+  # set is a typo and says so. That last part is why this is a helper rather than
+  # string interpolation in the partial — `stance: "aggree"` interpolated raw yields
+  # `border-aggree`, a class with no rule behind it, so the card renders looking merely
+  # unstanced and neither review nor CI ever sees it.
+  def ds_card_classes(stance: nil, padded: false)
+    stance = ds_option(stance&.to_s, nil, CARD_STANCES, "stance")
+    [CARD_BASE,
+      ("border-l-8 border-#{stance}" if stance),
+      ("px-4 py-3" if padded)].compact.join(" ")
+  end
+
   # The avatar's fallback when a user has no photo. Two letters, because three do not
   # fit a 32px circle and Malaysian names run long ("Nurul Izzah binti Anwar"). A name
   # that yields nothing — blank, whitespace, nil — gets `?` rather than an empty

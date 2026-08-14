@@ -1,0 +1,9 @@
+<%# The hairline rule that separates sections INSIDE a card or a menu
+    (docs/design-system/components/core/Card.jsx `Divider`).
+
+    `#f3f4f6` — `border-gray-100`, the design system's `--border-hairline`. The design
+    system is explicit that internal sections are separated by this rule and never by a
+    second shadow or a nested card, which is what stops a feed row growing edges.
+
+    Locals: `class:` extra utilities (the vertical margin varies by call site).
+%><div class="border-t border-gray-100 <%= local_assigns[:class] %>"></div>
