@@ -1,4 +1,8 @@
 class Debate < ApplicationRecord
+  PHASE_LABELS = {opening: "Opening statement", counter: "Counter-argument",
+                  response: "Response", closing: "Closing statement"}.freeze
+  MAX_ROUNDS = 10
+
   extend FriendlyId
 
   friendly_id :slug_source, use: :slugged
@@ -33,6 +37,42 @@ class Debate < ApplicationRecord
 
   def current_round = (turns.count / 2) + 1
 
+  # Pure derivation — nothing is stored on debate_turns.
+  def phase_for(round)
+    return :opening if round == 1
+    return :closing if round == rounds_limit
+    round.even? ? :counter : :response
+  end
+
+  # The position of the last turn this debate can hold. `>=` (not `==`) is used
+  # against it in post_turn so the cap is a floor, not an exact hit: a debate
+  # whose rounds_limit were ever lowered, or whose positions had somehow skipped,
+  # would step OVER an equality check and run unbounded.
+  def final_position = rounds_limit * 2
+
+  # Only at the closing-round BOUNDARY: the round has been reached but holds no
+  # turn yet. Extending once a closing turn exists would silently relabel it from
+  # CLOSING to COUNTER, because phase is derived at render time.
+  #
+  # `turns.count` and `turns.maximum(:position)` are interchangeable here —
+  # positions are contiguous from 1 (assigned as maximum + 1 under the debate row
+  # lock, unique index on [debate_id, position], no per-turn delete path) — but
+  # count states the intent ("both halves of the previous round are in") directly.
+  def extendable_by?(user)
+    active? && participant?(user) && rounds_limit < MAX_ROUNDS &&
+      turns.count == (rounds_limit - 1) * 2
+  end
+
+  # Unilateral by design: the window belongs to whoever moves first in the closing
+  # round, and the other participant retains conclude! throughout — so no
+  # negotiation state is needed.
+  def extend_rounds!(by:)
+    return false unless extendable_by?(by)
+    update!(rounds_limit: rounds_limit + 1)
+    broadcast_state_change
+    true
+  end
+
   def participant?(user) = user && [challenger_id, opponent_id].include?(user.id)
 
   def other(user) = (user.id == challenger_id) ? opponent : challenger
@@ -58,10 +98,32 @@ class Debate < ApplicationRecord
       return false unless active? && by == current_turn_user
       turn = turns.create!(user: by, body: body, position: (turns.maximum(:position) || 0) + 1)
     end
-    notify(other(by), :debate_your_turn)
+    # The closing turn ends the debate, so there is no next mover to summon.
+    capped = turn.position >= final_position
+    if capped
+      # Conclude BEFORE enqueuing any broadcast, and deliberately OUTSIDE the
+      # with_lock block above.
+      #
+      # Outside the lock because conclude! calls UserBadge.award, which rescues
+      # RecordNotUnique — doing that inside an open Postgres transaction would
+      # poison it and lose the turn we just wrote (see UserBadge.award's note).
+      # The lock has already committed here, so conclude!'s own update! takes a
+      # fresh transaction and cannot self-deadlock.
+      #
+      # Before the broadcasts because every *_later_to renders in a job, from a
+      # GlobalID-reloaded record, at execution time — not from the state at
+      # enqueue time. If the composer job ran while the debate were still
+      # `active`, it would paint the turn form for the opponent, and
+      # conclude!'s broadcast_state_change (status + actions only) would never
+      # correct it. Concluding first makes every render observe the final state.
+      conclude!(by: nil)
+    else
+      notify(other(by), :debate_your_turn)
+    end
     # Real-time: append the new turn to everyone on the debate stream, then refresh
     # each participant's own composer (the mover flips to "waiting", the other to
-    # the turn form) on their user-signed stream.
+    # the turn form — or both to "concluded" on the capping turn) on their
+    # user-signed stream.
     broadcast_append_later_to self, target: dom_id(self, :transcript),
       partial: "debates/debate_turn", locals: {debate_turn: turn}
     broadcast_to_each_participant(target: :composer, partial: "debates/turn_composer")
