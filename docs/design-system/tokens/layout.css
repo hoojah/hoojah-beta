@@ -1,0 +1,23 @@
+:root{
+/* 4px Tailwind scale — the views use 1,2,3,4,5,6 steps */
+--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;
+/* Radii: feed cards are SQUARE; small chrome rounded; dialogs rounded-lg; pills/avatars full */
+--radius-none:0;
+--radius:4px;
+--radius-lg:8px;
+--radius-full:9999px;
+/* Shadows (Tailwind defaults — cards use `shadow`, menus `shadow`, dialogs `shadow-lg`) */
+--shadow-sm:0 1px 2px 0 rgb(0 0 0/0.05);
+--shadow:0 1px 3px 0 rgb(0 0 0/0.1),0 1px 2px -1px rgb(0 0 0/0.1);
+--shadow-lg:0 10px 15px -3px rgb(0 0 0/0.1),0 4px 6px -4px rgb(0 0 0/0.1);
+/* Borders */
+--border-stance:8px;   /* stance-colored left border on child/profile cards */
+--border-pill:2px;     /* pill buttons + circular vote buttons */
+/* Fixed sizes */
+--nav-h:56px;          /* fixed top navbar (h-14) */
+--content-max:576px;   /* max-w-xl single column */
+--sidebar-w:256px;     /* lg trending sidebar (w-64) */
+--vote-btn:44px;       /* circular vote button (w-11 h-11) */
+--bar-h:8px;           /* vote/verdict bar track (h-2) */
+--avatar-lg:96px;--avatar-md:44px;--avatar-sm:32px;--avatar-nav:36px;--avatar-row:40px;
+}

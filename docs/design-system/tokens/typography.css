@@ -1,0 +1,14 @@
+/* Hoojah ships NO webfonts: Tailwind v4 default system stack. */
+:root{
+--font-sans:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
+/* Tailwind size steps actually used in the views */
+--text-xs:12px;--text-xs-lh:16px;
+--text-sm:14px;--text-sm-lh:20px;
+--text-base:16px;--text-base-lh:24px;
+--text-lg:18px;--text-lg-lh:1.375; /* hujah body: text-lg leading-snug */
+--text-xl:20px;--text-xl-lh:1.375; /* single-hujah body */
+--text-2xl:24px;--text-2xl-lh:32px; /* auth screen headings */
+--leading-snug:1.375;
+--font-medium:500;--font-semibold:600;--font-bold:700;
+--tracking-wide:0.025em; /* uppercase micro-labels (debate status, verdict heading) */
+}

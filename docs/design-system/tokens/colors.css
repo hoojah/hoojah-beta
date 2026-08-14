@@ -1,0 +1,36 @@
+/* Ported verbatim from hoojah-beta/app/assets/tailwind/application.css @theme */
+:root{
+--color-primary:#415de6;
+--color-agree:#fcaf45;
+--color-neutral:#e1306c; /* stance "neutral" is PINK, not a grey */
+--color-disagree:#833ab4;
+--color-black:#343a40;
+--color-grey:#8e8e8e;
+--color-light-grey:#bac2ca;
+--color-white:#ffffff;
+/* Tailwind default neutrals the views lean on (border-gray-100, bg-gray-200, hover:bg-gray-50…) */
+--color-gray-50:#f9fafb;
+--color-gray-100:#f3f4f6;
+--color-gray-200:#e5e7eb;
+--color-red-50:#fef2f2;
+--color-red-700:#b91c1c;
+/* Semantic aliases */
+--surface-page:#ffffff;
+--surface-card:#ffffff;
+--surface-menu:#ffffff;
+--surface-nav:rgba(255,255,255,0.9);
+--surface-profile:var(--color-primary);
+--text-body:var(--color-black);
+--text-muted:var(--color-grey);
+--text-faint:var(--color-light-grey);
+--text-link:var(--color-primary);
+--text-inverse:var(--color-white);
+--border-hairline:var(--color-gray-100);
+--border-field:var(--color-gray-200);
+--track-bar:var(--color-gray-200);
+/* Notification read state — inferred: `border-read`/`border-unread` classes in the
+   source have no @theme entry; unread dot elsewhere uses --color-neutral */
+--notif-unread:var(--color-neutral);
+--notif-read:var(--color-light-grey);
+--backdrop:rgba(0,0,0,0.4);
+}
