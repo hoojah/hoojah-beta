@@ -19,10 +19,22 @@
     raising: unlike a colour token there is nothing here that can render as a class with
     no rule behind it, and `text-light-grey` vs `text-grey` is a visible difference.
 
-    `p-3` is baked in because four of the five call sites use it. The fifth
-    (`hujahs/_response_filter`) wants `px-4 pt-0`; padding utilities of different
-    specificity do not reliably override by class order, so that one will need a
-    `padding:` local rather than `class:`. Phase 4's call, not this partial's.
+    Two things for Phase 4, which has six call sites to move, not five:
+
+    `p-3` is baked in because three of the six use it (`users/show`,
+    `notifications/index`, `analytics/show`). The other three want something else, and
+    `class:` handles them: Tailwind emits the shorthand before the longhands
+    (`.p-3` … `.px-4` … `.pt-0` in that order), and later wins, so `class: "px-4 pt-0"`
+    DOES override the baked-in `p-3` — only `padding-bottom` survives, which
+    `pb-0` finishes off. `class: "px-4 pt-0 pb-0"` gives full control. (This is the
+    opposite of `ui/_card`'s `padded:`, where the conflict is between two utilities of
+    the SAME family and the caller cannot win.)
+
+    `bg-white` is likewise unconditional, and three call sites
+    (`hujahs/_response_filter`, `trending/_trending`, `hujahs/show`) have no background
+    today — so moving them onto this partial changes how they look. That is a
+    correction, not a regression: EmptyState.jsx sets `background: var(--surface-card)`,
+    so the card surface is the design system's answer. Do not make it conditional.
 %><% message = local_assigns.fetch(:message)
    icon = local_assigns.fetch(:icon, "message-circle")
    tone = (local_assigns[:tone]&.to_sym == :muted) ? "text-grey fill-grey" : "text-light-grey fill-light-grey"

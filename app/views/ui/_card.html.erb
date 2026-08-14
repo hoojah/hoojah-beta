@@ -13,7 +13,24 @@
     pinned in spec/views/ui/card_spec.rb.
 
     Locals: `as:` the tag name (default "div"); `stance:` one of DesignSystemHelper::CARD_STANCES,
-    which adds the 8px coloured left border; `padded:`; `id:`; `class:` extra utilities.
+    which adds the 8px coloured left border; `padded:`; `id:`; `data:` a hash of data
+    attributes; `class:` extra utilities.
+
+    `data:` exists because the two attributes that identify a card are not expressible
+    any other way: `hujahs/_hujah_card` carries `data-testid="hujah-card"` that four
+    specs select on, and `debates/_turn_composer` carries `data-controller` on the card
+    surface itself. `content_tag` skips a nil `data:` exactly as it skips a nil `id:`.
+
+    Pass `padded:` OR padding in `class:` — NEVER both. Tailwind sorts same-family
+    utilities by value, not by call order, so the bundle emits `.py-1 .py-2 .py-3` in
+    that sequence and the LAST one wins whatever the caller wrote: `padded: true` plus
+    `class: "px-5 py-2"` silently keeps `py-3` while honouring `px-5`. A card wanting
+    different padding must omit `padded:` entirely, which emits no padding class at all
+    and so cannot conflict.
+
+    If your card IS a link — `debates/_debate_card` is an `<a>` carrying `href` and a
+    `.debate-card` hook — do not reach for an `href:` local. Call `ds_card_classes`
+    directly on the `link_to` instead; that is the supported escape hatch.
 
     Deliberately NOT a Rails strict-locals signature: one of the locals is `class`,
     which cannot be a Ruby parameter name, so the whole signature is unavailable here
@@ -24,4 +41,5 @@
     shadow. Rounding is not a local: "Never round a feed card."
 %><%= content_tag local_assigns.fetch(:as, "div"),
       id: local_assigns[:id],
+      data: local_assigns[:data],
       class: "#{ds_card_classes(stance: local_assigns[:stance], padded: local_assigns[:padded])} #{local_assigns[:class]}".squish do %><%= yield %><% end %>

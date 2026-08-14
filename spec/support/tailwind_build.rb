@@ -23,6 +23,27 @@ module TailwindBuild
       true
     end
 
+    # Is there a rule for this class in the built bundle?
+    #
+    # Three spec groups ask that question — the button tones, the avatar boxes and the
+    # card stances — and each had rewritten the regex, which is fiddly in two ways
+    # neither obvious nor testable from the call site. `active:scale-95` is escaped as
+    # `.active\:scale-95` in the output, and the trailing lookahead is a token
+    # boundary: without it `.rounded` matches `.rounded-full` and a missing utility
+    # reads as present. Builds first, so callers cannot read a bundle that was never
+    # made.
+    def emitted?(klass)
+      once!
+      bundle.match?(/\.#{Regexp.escape(klass.gsub(":", '\\:'))}(?![\w-])/)
+    end
+
+    # One read per suite run. Safe to memoize because `once!` builds exactly once and
+    # nothing else in the suite writes the bundle.
+    def bundle
+      once!
+      @bundle ||= Rails.root.join("app/assets/builds/tailwind.css").read
+    end
+
     private
 
     # Memoized by `once!` — returns :ok, or the combined output on failure so the

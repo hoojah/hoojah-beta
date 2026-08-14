@@ -76,9 +76,15 @@ RSpec.describe "ui/_card", type: :view do
     # The dangerous typo: `border-aggree` is a class with no rule behind it, so the
     # card renders with no border and looks merely unstanced. Neither review nor CI
     # would catch it. Action View wraps whatever a template raises.
+    #
+    # The permitted list is derived from the constant rather than restated, so
+    # narrowing CARD_STANCES cannot leave this example passing against a set the
+    # helper no longer accepts.
     it "raises on a misspelled stance rather than emitting a class with no rule" do
+      permitted = Regexp.escape(DesignSystemHelper::CARD_STANCES.join(", "))
+
       expect { card(stance: "aggree") }
-        .to raise_error(ActionView::Template::Error, /aggree.*agree, neutral, disagree/m)
+        .to raise_error(ActionView::Template::Error, /aggree.*#{permitted}/m)
     end
   end
 
@@ -98,6 +104,21 @@ RSpec.describe "ui/_card", type: :view do
 
     it "appends caller classes, for the margins that vary by call site" do
       expect(card(class: "mb-2")).to have_css("div.shadow.bg-white.mb-2")
+    end
+
+    # Not decoration. `hujahs/_hujah_card` — the flagship feed card — is selected by
+    # `data-testid="hujah-card"` in four specs, and `debates/_turn_composer` hangs a
+    # `data-controller` off the card surface itself. Neither survives `as:`/`id:`/
+    # `class:`, so without this local the two most-refactored cards in Phase 4 could
+    # not use this partial at all.
+    it "passes `data:` through, for the testid and Stimulus hooks cards carry" do
+      hooked = card(data: {testid: "hujah-card", controller: "debate-composer"})
+
+      expect(hooked).to have_css("div[data-testid='hujah-card'][data-controller='debate-composer']")
+    end
+
+    it "emits no data attribute when none is given" do
+      expect(html).not_to include("data-")
     end
   end
 

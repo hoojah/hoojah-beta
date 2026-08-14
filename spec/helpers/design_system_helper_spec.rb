@@ -303,6 +303,56 @@ RSpec.describe DesignSystemHelper, type: :helper do
         .to raise_error(ArgumentError, /44.*#{permitted}/m)
     end
   end
+
+  # `ui/_card`'s class string. Rendering is spec/views/ui/card_spec.rb's job; what is
+  # here is the part that has no markup to show for it — the closed stance set, and
+  # the production behaviour a view spec cannot reach.
+  describe "#ds_card_classes" do
+    def tokens(**opts)
+      helper.ds_card_classes(**opts).split
+    end
+
+    it "is a white shadowed box and nothing else by default" do
+      expect(tokens).to eq(%w[shadow bg-white])
+    end
+
+    # Card.prompt.md's first line. Asserted on the token list rather than by naming
+    # the rounding classes, so a `rounded-xl` nobody thought of still fails.
+    it "never rounds a card, at any stance" do
+      DesignSystemHelper::CARD_STANCES.each do |stance|
+        expect(tokens(stance: stance, padded: true).grep(/\Arounded/)).to be_empty
+      end
+    end
+
+    it "pairs the 8px width with the stance colour — either alone paints nothing" do
+      expect(tokens(stance: "agree")).to include("border-l-8", "border-agree")
+    end
+
+    it "adds padding only when asked" do
+      expect(tokens.grep(/\Ap[xy]?-/)).to be_empty
+      expect(tokens(padded: true)).to include("px-4", "py-3")
+    end
+
+    # Same convention as the two helpers above: an unpassed local is nil and means
+    # "no left border"; a typo is loud and names the set.
+    it "treats a nil stance as unset, and a misspelled one as a typo" do
+      expect(helper.ds_card_classes(stance: nil)).to eq(helper.ds_card_classes)
+      expect { helper.ds_card_classes(stance: "aggree") }
+        .to raise_error(ArgumentError, /aggree.*#{Regexp.escape(DesignSystemHelper::CARD_STANCES.join(", "))}/m)
+    end
+
+    it "accepts a symbol as readily as a string" do
+      expect(helper.ds_card_classes(stance: :agree)).to eq(helper.ds_card_classes(stance: "agree"))
+    end
+
+    # A card with no left border beats a 500 on a feed that was otherwise fine — the
+    # same trade `ds_button_classes` makes, and the reason `ds_option` takes an env.
+    it "degrades to an unstanced card instead of raising in production" do
+      allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("production"))
+
+      expect(helper.ds_card_classes(stance: "aggree")).to eq(helper.ds_card_classes)
+    end
+  end
 end
 
 # `ds_button_classes` interpolates the tone into `bg-` / `text-` / `border-` / `fill-`,
@@ -313,16 +363,11 @@ end
 # masks a missing entry. Derive the expectation from the helper itself so adding a
 # tone without safelisting it fails here rather than in a silently unstyled view.
 RSpec.describe "Button tone utilities reach the compiled bundle" do
-  # The bundle is gitignored and nothing in the boot path rebuilds it.
+  # The bundle is gitignored and nothing in the boot path rebuilds it, so
+  # `TailwindBuild.emitted?` builds before its first read. It also owns the regex —
+  # the `:` escaping and the token boundary that stops `.rounded` matching
+  # `.rounded-full` — which all three groups below need and none should restate.
   before(:all) { TailwindBuild.once! }
-
-  let(:bundle) { Rails.root.join("app/assets/builds/tailwind.css").read }
-
-  def emitted?(klass)
-    # `active:scale-95` is escaped as `.active\:scale-95` in the output. The trailing
-    # lookahead is the boundary: without it `.rounded` would match `.rounded-full`.
-    bundle.match?(/\.#{Regexp.escape(klass.gsub(":", '\\:'))}(?![\w-])/)
-  end
 
   # Not `ActionController::Base.helpers` — that proxy carries only Action View's own
   # modules, so it would raise NoMethodError here. Going through ApplicationController
@@ -334,7 +379,7 @@ RSpec.describe "Button tone utilities reach the compiled bundle" do
       %i[md sm].flat_map { |size| view.ds_button_classes(variant: variant, tone: tone, size: size).split }
     }.uniq
 
-    missing = wanted.reject { |klass| emitted?(klass) }
+    missing = wanted.reject { |klass| TailwindBuild.emitted?(klass) }
 
     expect(missing).to be_empty,
       "these button utilities are absent from app/assets/builds/tailwind.css — " \
@@ -351,14 +396,13 @@ end
 RSpec.describe "Avatar utilities reach the compiled bundle" do
   before(:all) { TailwindBuild.once! }
 
-  let(:bundle) { Rails.root.join("app/assets/builds/tailwind.css").read }
   let(:view) { ApplicationController.helpers }
 
   it "generates the box and type utilities for every avatar size" do
     wanted = DesignSystemHelper::AVATAR_SIZES.keys
       .flat_map { |size| view.ds_avatar_classes(size: size).split }.uniq
 
-    missing = wanted.reject { |klass| bundle.match?(/\.#{Regexp.escape(klass)}(?![\w-])/) }
+    missing = wanted.reject { |klass| TailwindBuild.emitted?(klass) }
 
     expect(missing).to be_empty,
       "these avatar utilities are absent from app/assets/builds/tailwind.css: #{missing.join(", ")}"
@@ -377,14 +421,13 @@ end
 RSpec.describe "Card stance utilities reach the compiled bundle" do
   before(:all) { TailwindBuild.once! }
 
-  let(:bundle) { Rails.root.join("app/assets/builds/tailwind.css").read }
   let(:view) { ApplicationController.helpers }
 
   it "generates the left border and every stance colour a card can take" do
     wanted = DesignSystemHelper::CARD_STANCES
       .flat_map { |stance| view.ds_card_classes(stance: stance, padded: true).split }.uniq
 
-    missing = wanted.reject { |klass| bundle.match?(/\.#{Regexp.escape(klass)}(?![\w-])/) }
+    missing = wanted.reject { |klass| TailwindBuild.emitted?(klass) }
 
     expect(missing).to be_empty,
       "these card utilities are absent from app/assets/builds/tailwind.css — " \
