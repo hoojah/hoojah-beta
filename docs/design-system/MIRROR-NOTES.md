@@ -39,10 +39,21 @@ this directory instead.
    `class="st0"`…`class="st6"` but the file has no `<style>` block and no `fill` attribute,
    so the seven `radialGradient` definitions are never referenced. `readme.md` claims the
    fills were "restored here by mapping each class to its sibling gradient id" — that
-   restoration is **not present in the file**. Before vendoring into `app/assets/images/`,
-   add `fill="url(#…)"` to each path using the sibling mapping:
+   restoration is **not present in the file**. Rendering the mirror copy gives pure greyscale
+   (`#000000`…`#E8E8E8`).
+
+   **The app's own `app/assets/images/logo.svg` is authoritative — do NOT overwrite it with this
+   one.** It predates the mirror (committed in `e9fcf3a`, the React-SPA era) and is the pristine
+   Illustrator export: it still carries the `<style>` block, so `.st0`…`.st6` always resolved and
+   it always rendered the green→blue radial. The mirror copy additionally has its path data
+   mangled into `&#xA;` entities and has lost the encoding declaration.
+
+   Slice 9 Task 1.2 hardened the app copy by adding explicit `fill="url(#…)"` / `stroke="url(#…)"`
+   attributes so the gradients no longer depend on the `<style>` block surviving a future export.
+   Those attributes match what the `<style>` block already declared:
    `st0→XMLID_18_`, `st1→XMLID_148_`, `st2→XMLID_149_`, `st3→XMLID_150_`,
-   `st4→XMLID_151_`, `st5→XMLID_152_`, `st6→XMLID_153_`.
+   `st4→XMLID_151_` (a `<line>`, so `stroke=`), `st5→XMLID_152_`, `st6→XMLID_153_`.
+   Change was render-neutral: 6 differing pixels out of ~121,000, palette unchanged.
 2. **`assets/pinned-tab.svg` is a filled black square**, not a monochrome Hoojah mark —
    the potrace output degenerated to the full viewBox rectangle. Do not wire it as a
    Safari `mask-icon`; it would render as a black square in the tab strip.

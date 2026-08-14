@@ -94,13 +94,21 @@ gitignored and built by the `assets:precompile` hook.
 
 Vendor into `app/assets/images/` and wire into `app/views/layouts/application.html.erb`.
 
-- **`logo.svg`** — replaces the navbar's plain text "Hoojah" wordmark. **Must be repaired first:**
-  the mirrored file's paths carry `class="st0"`…`class="st6"` but the file has no `<style>` block
-  and no `fill` attribute, so its seven `radialGradient` definitions are never referenced and the
-  logo renders **solid black**. The DS `readme.md` claims these fills were restored; they were not.
-  Repair by adding `fill="url(#…)"` per path on the sibling mapping: `st0→XMLID_18_`,
-  `st1→XMLID_148_`, `st2→XMLID_149_`, `st3→XMLID_150_`, `st4→XMLID_151_`, `st5→XMLID_152_`,
-  `st6→XMLID_153_`.
+- **`logo.svg`** — replaces the navbar's plain text "Hoojah" wordmark.
+
+  **Corrected during implementation (Task 1.2):** this section originally said to vendor the
+  mirror's copy after repairing it. That would have been a regression. `app/assets/images/logo.svg`
+  **already existed** — committed in `e9fcf3a` during the React-SPA era, unused since the navbar
+  rendered a text brand — and it is the pristine Illustrator export with its `<style>` block
+  intact, so its gradients always resolved. It is the *mirror* copy that is degraded (no `<style>`,
+  path data mangled into `&#xA;` entities, encoding declaration lost), rendering pure greyscale.
+
+  What actually shipped: the app's copy was kept and hardened with explicit `fill="url(#…)"` /
+  `stroke="url(#…)"` attributes, so the gradients no longer depend on the `<style>` block surviving
+  a future export. Those attributes match what that block already declared — `st0→XMLID_18_`,
+  `st1→XMLID_148_`, `st2→XMLID_149_`, `st3→XMLID_150_`, `st4→XMLID_151_` (a `<line>`, so `stroke=`),
+  `st5→XMLID_152_`, `st6→XMLID_153_` — which independently confirms the sibling mapping derived
+  here. Render-neutral: 6 differing pixels of ~121,000.
 - **`loading.svg`** — vendor as-is, but note it is **static**: the `<animate>` children were
   stripped upstream, so it is three coloured bars, not a spinner. Do not present it as a loading
   indicator until animation is restored. Nothing currently depends on it.
