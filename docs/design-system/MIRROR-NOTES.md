@@ -53,3 +53,18 @@ Note also `readme.md`'s own flagged inference: the `border-read` / `border-unrea
 used by `app/views/notifications/_notification_card.html.erb` have **no colour definition**
 anywhere in the app, so those 8px borders currently render as nothing. The tokens supply
 `--notif-unread` (neutral pink) and `--notif-read` (light-grey) to close that gap.
+
+## Deviations in the app
+
+Where `app/assets/tailwind/application.css` intentionally departs from
+`tokens/*.css`. The app file is authoritative; this table exists so the mirror and
+the app do not silently disagree.
+
+| DS token | In the app | Why |
+| --- | --- | --- |
+| `--text-body`, `--text-muted`, `--text-faint`, `--text-link`, `--text-inverse` | renamed to `--fg-body`, `--fg-muted`, `--fg-faint`, `--fg-link`, `--fg-inverse` | `--text-*` **is** Tailwind v4's font-size namespace — the same one `--text-xs`…`--text-2xl` use. Colours under those names are a trap: promote one into `@theme` and you emit `.text-muted{font-size:#8e8e8e}`. `fg-` is not a v4 namespace, so the collision cannot happen. |
+| `--notif-unread`, `--notif-read` | `--color-unread`, `--color-read` (in `@theme`) | They must generate the `border-unread` / `border-read` utilities the notification card interpolates, so they have to sit in the `--color-*` namespace. |
+| `--shadow-sm` | **omitted** | Its value is the Tailwind *v3* number while the DS prose says "Tailwind defaults". Under v4 that value is `shadow-xs`, so declaring it silently lightens every `shadow-sm`. Nothing reads it via `var()`. |
+| `--radius-none` | **omitted** | v4's `rounded-none` is a static utility that ignores the token. |
+| `--space-1`…`--space-6` | **omitted** | They are the 4px steps Tailwind's default `--spacing` already ships. |
+| `--font-sans` | **omitted** | Tailwind v4's default system stack, which is what the DS specifies anyway. |
