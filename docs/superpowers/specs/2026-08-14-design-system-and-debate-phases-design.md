@@ -103,12 +103,18 @@ Vendor into `app/assets/images/` and wire into `app/views/layouts/application.ht
   intact, so its gradients always resolved. It is the *mirror* copy that is degraded (no `<style>`,
   path data mangled into `&#xA;` entities, encoding declaration lost), rendering pure greyscale.
 
-  What actually shipped: the app's copy was kept and hardened with explicit `fill="url(#…)"` /
-  `stroke="url(#…)"` attributes, so the gradients no longer depend on the `<style>` block surviving
-  a future export. Those attributes match what that block already declared — `st0→XMLID_18_`,
-  `st1→XMLID_148_`, `st2→XMLID_149_`, `st3→XMLID_150_`, `st4→XMLID_151_` (a `<line>`, so `stroke=`),
-  `st5→XMLID_152_`, `st6→XMLID_153_` — which independently confirms the sibling mapping derived
-  here. Render-neutral: 6 differing pixels of ~121,000.
+  What actually shipped: the app's copy was kept and hardened with seven explicit `fill="url(#…)"`
+  attributes, so the gradients no longer depend on the `<style>` block surviving a future export.
+  They mirror that block exactly — `st0→XMLID_18_`, `st1→XMLID_148_`, `st2→XMLID_149_`,
+  `st3→XMLID_150_`, `st4→XMLID_151_`, `st5→XMLID_152_`, `st6→XMLID_153_` — which independently
+  confirms the sibling mapping derived here. Render is byte-identical to the pre-slice file
+  (`compare -metric AE` = 0).
+
+  One correction worth recording: this section first said to give `st4` (`XMLID_8_`) a `stroke=`,
+  since a `fill` does nothing on a `<line>`. That reasoning was backwards. The element is a
+  vestigial 0.3-unit artifact the original export deliberately left invisible via `stroke:none`;
+  adding a stroke switched it on and produced a 6-pixel visual change. In a slice that is a
+  codification pass rather than a redesign, that is precisely the defect class to avoid.
 - **`loading.svg`** — vendor as-is, but note it is **static**: the `<animate>` children were
   stripped upstream, so it is three coloured bars, not a spinner. Do not present it as a loading
   indicator until animation is restored. Nothing currently depends on it.
