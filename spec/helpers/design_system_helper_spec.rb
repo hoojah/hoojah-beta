@@ -36,8 +36,8 @@ RSpec.describe DesignSystemHelper, type: :helper do
         )
       end
 
-      it "is the default when the variant is unrecognised" do
-        expect(classes(variant: :spaceship)).to eq(classes(variant: :outline))
+      it "is what a bare call renders" do
+        expect(classes).to eq(classes(variant: :outline, tone: "primary", size: :md))
       end
     end
 
@@ -53,12 +53,18 @@ RSpec.describe DesignSystemHelper, type: :helper do
         expect(tokens(variant: :solid, tone: "disagree")).to include("bg-disagree")
       end
 
-      it "accepts a symbol as readily as a string" do
-        expect(classes(tone: :agree)).to eq(classes(tone: "agree"))
+      # A misspelled tone is the worst defect this helper can produce: silently
+      # degrading `"aggree"` renders a perfectly ordinary primary button, so it passes
+      # review, passes CI, and ships the wrong colour. Unlike a variant typo it has no
+      # visible shape to give it away.
+      it "raises on a misspelled tone rather than quietly rendering primary" do
+        expect { classes(tone: "aggree") }
+          .to raise_error(ArgumentError, /aggree/)
       end
 
-      it "degrades to primary rather than emitting an undefined colour" do
-        expect(classes(tone: "chartreuse")).to eq(classes(tone: "primary"))
+      it "names the permitted tones in the error, so the fix needs no source dive" do
+        expect { classes(tone: "aggree") }
+          .to raise_error(ArgumentError, /primary, agree, neutral, disagree, grey, light-grey/)
       end
 
       it "supports the greys, which no stance uses but disabled/secondary chrome does" do
@@ -112,13 +118,16 @@ RSpec.describe DesignSystemHelper, type: :helper do
     end
 
     describe "size" do
-      it "defaults to the medium pill" do
-        expect(tokens).to include("px-5", "py-2")
+      # `size:` sets type as well as padding — Button.jsx pins a font size per size, so
+      # an `md` button dropped into a `text-sm` block must not silently shrink.
+      it "defaults to the medium pill at base type" do
+        expect(tokens).to include("px-5", "py-2", "text-base")
         expect(tokens).not_to include("text-sm")
       end
 
       it "tightens padding and type at :sm" do
         expect(tokens(size: :sm)).to include("px-4", "py-1", "text-sm")
+        expect(tokens(size: :sm)).not_to include("text-base")
       end
 
       it "ignores size on the on_primary variants, which are always small" do
@@ -135,21 +144,63 @@ RSpec.describe DesignSystemHelper, type: :helper do
       expect(classes(variant: nil, tone: nil, size: nil)).to eq(classes)
     end
 
+    # Callers should not have to coerce at the call site. `render "button", variant:
+    # "solid"` hands over strings, while an enum or `stance&.to_sym` hands over symbols;
+    # all three arguments accept either.
+    it "accepts symbols and strings interchangeably" do
+      expect(classes(variant: "solid", tone: :agree, size: "sm"))
+        .to eq(classes(variant: :solid, tone: "agree", size: :sm))
+    end
+
+    it "raises on an unrecognised variant or size too, naming the permitted set" do
+      expect { classes(variant: :spaceship) }
+        .to raise_error(ArgumentError, /spaceship.*on_primary_outline/m)
+      expect { classes(size: :massive) }
+        .to raise_error(ArgumentError, /massive.*md, sm/m)
+    end
+
+    # The loud failure is for humans and CI. In production a button in the wrong colour
+    # is a far smaller problem than a 500 on a page that was otherwise fine, so the same
+    # typo degrades there instead of raising.
+    it "degrades instead of raising in production" do
+      allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("production"))
+
+      expect(classes(tone: "aggree", variant: :spaceship, size: :massive)).to eq(classes)
+    end
+
     describe "invariants across every variant" do
-      # The design system is explicit that press feedback is `active:scale-95` and
-      # nothing else — no ripple, spinner or fade. Assert it survives on all six.
-      it "is always an inline flex row that scales down on press" do
+      # Two halves, and both are needed. Deriving the expectation from BASE stops this
+      # example drifting out of sync with the constant, but on its own it would move
+      # with any deletion from BASE and stay green — so the tokens the design system
+      # actually promises are named too: a centred inline flex row with a gap, no
+      # underline when rendered as a link, `active:scale-95` as the ONLY press feedback
+      # (no ripple, spinner or fade), and the half-opacity disabled state that has to
+      # cancel `cursor-pointer`.
+      it "carries the whole shared base on every variant" do
+        base = DesignSystemHelper::BASE.split
+
+        expect(base).to include(
+          "inline-flex", "items-center", "justify-center", "gap-1",
+          "no-underline", "cursor-pointer", "transition", "active:scale-95",
+          "disabled:opacity-50", "disabled:cursor-default"
+        )
+
         DesignSystemHelper::VARIANTS.each do |variant|
-          expect(tokens(variant: variant))
-            .to include("inline-flex", "items-center", "cursor-pointer", "active:scale-95"),
-              "expected #{variant} to carry the shared button base"
+          expect(tokens(variant: variant)).to include(*base),
+            "#{variant} is missing part of the shared button base"
         end
       end
 
+      # `text-sm` / `text-base` are font sizes and `border-0` / `border-2` are widths:
+      # they share a prefix with the colour utilities but not the namespace. Subtract
+      # them by name rather than allowing their suffixes as colours, or the guard would
+      # wave through `bg-sm` and `fill-2` — the very typos it exists to catch.
       it "never emits a colour utility with a blank or unknown token" do
+        non_colour = %w[text-sm text-base border-0 border-2]
+        known = DesignSystemHelper::TONES + %w[white transparent]
+
         DesignSystemHelper::VARIANTS.product(DesignSystemHelper::TONES).each do |variant, tone|
-          colours = tokens(variant: variant, tone: tone).grep(/\A(bg|text|border|fill)-/)
-          known = DesignSystemHelper::TONES + %w[white transparent sm 0 2]
+          colours = tokens(variant: variant, tone: tone).grep(/\A(bg|text|border|fill)-/) - non_colour
 
           colours.each do |token|
             value = token.split("-", 2).last
