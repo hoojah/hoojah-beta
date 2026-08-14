@@ -1,4 +1,5 @@
-# The single source of truth for Hoojah's button idiom.
+# The single source of truth for Hoojah's button idiom, and for the avatar box
+# behind `app/views/ui/_avatar.html.erb`.
 #
 # The house style is a PILL with a 2px coloured border, white fill and coloured text,
 # pressed with `active:scale-95` — see docs/design-system/components/core/Button.jsx
@@ -29,7 +30,7 @@ module DesignSystemHelper
   # `nil` means "unset" and takes the default: views reach for
   # `ds_button_classes(variant: local_assigns[:variant])`, and a `local_assigns` miss is
   # nil — a plain button beats a 500 over an unpassed local. A non-nil value outside the
-  # permitted set is a typo, and raises; see `ds_button_option`.
+  # permitted set is a typo, and raises; see `ds_option`.
   #
   # Note that `size:` sets TYPE as well as padding — `:sm` is `text-sm`, `:md` is
   # `text-base` — because Button.jsx pins the font size per size. That is the design
@@ -45,11 +46,45 @@ module DesignSystemHelper
   # React component that owns its own box, whereas this helper returns a class string
   # onto someone else's element, so inheriting is the better behaviour here.
   def ds_button_classes(variant: :outline, tone: "primary", size: :md)
-    variant = ds_button_option(variant&.to_sym, :outline, VARIANTS, "variant")
-    size = ds_button_option(size&.to_sym, :md, SIZES, "size")
-    tone = ds_button_option(tone&.to_s, "primary", TONES, "tone")
+    variant = ds_option(variant&.to_sym, :outline, VARIANTS, "variant")
+    size = ds_option(size&.to_sym, :md, SIZES, "size")
+    tone = ds_option(tone&.to_s, "primary", TONES, "tone")
     sizing = (size == :sm) ? "px-4 py-1 text-sm" : "px-5 py-2 text-base"
     [BASE, ds_button_variant(variant, tone, sizing)].join(" ")
+  end
+
+  # Box + type for `ui/_avatar`, keyed by the five sizes the product uses
+  # (Avatar.prompt.md): 96 profile header, 44 hujah header + composer, 40 follower
+  # row, 36 navbar, 32 compact card / debate turn / parent stub.
+  #
+  # The font size is here rather than as one shared class on the partial because
+  # Avatar.jsx sets it to `Math.round(size * 0.38)` — the initials scale with the
+  # circle, and 16px letters in a 32px circle overflow it. Tailwind's scale cannot hit
+  # 17/15/14/12 exactly, so each size takes the nearest step (worst case 1.2px off, on
+  # `row`); off-scale `text-[17px]` values would buy that pixel at the cost of putting
+  # type outside the `@theme` scale, which is not a trade this design system makes.
+  AVATAR_SIZES = {
+    lg: "w-24 h-24 text-4xl",   # 96px — DS 36px
+    md: "w-11 h-11 text-base",  # 44px — DS 17px
+    row: "w-10 h-10 text-sm",   # 40px — DS 15px
+    nav: "w-9 h-9 text-sm",     # 36px — DS 14px
+    sm: "w-8 h-8 text-xs"       # 32px — DS 12px
+  }.freeze
+
+  # Same contract as `ds_button_classes`: nil is an unpassed local and takes the
+  # default; anything else outside the set is a typo and says so.
+  def ds_avatar_classes(size: :md)
+    AVATAR_SIZES.fetch(ds_option(size&.to_sym, :md, AVATAR_SIZES.keys, "size"))
+  end
+
+  # The avatar's fallback when a user has no photo. Two letters, because three do not
+  # fit a 32px circle and Malaysian names run long ("Nurul Izzah binti Anwar"). A name
+  # that yields nothing — blank, whitespace, nil — gets `?` rather than an empty
+  # circle, which would just look like a rendering bug.
+  def ds_initials(name)
+    parts = name.to_s.strip.split(/\s+/).first(2)
+    return "?" if parts.empty?
+    parts.filter_map { |word| word[0] }.join.upcase
   end
 
   private
@@ -59,7 +94,7 @@ module DesignSystemHelper
   # review nor CI ever catches it and the wrong colour ships. A variant typo at least
   # comes out a visibly wrong shape. Raise where a human or a test will see it; in
   # production a wrong colour still beats a 500 on a page that was otherwise fine.
-  def ds_button_option(value, default, permitted, name)
+  def ds_option(value, default, permitted, name)
     return default if value.nil?
     return value if permitted.include?(value)
     unless Rails.env.production?

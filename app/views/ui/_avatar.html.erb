@@ -1,0 +1,20 @@
+<%# Locals: `user`; `size:` one of lg md row nav sm (default md); `class:` extra utilities.
+     Deliberately NOT a Rails strict-locals signature: one of the locals is `class`, which
+     cannot be a Ruby parameter name, so the whole signature is unavailable to this partial.
+
+     A user's round photo, or their initials on primary when there isn't one.
+
+     The fallback is not decoration. `photo` is nullable and `image_tag nil` raises,
+     so every `image_tag user.photo` in the app is a 500 waiting for a user without a
+     photo — see docs/design-system/components/core/Avatar.jsx, which this mirrors.
+
+     `alt` is the handle and `aria-label` the full name because that is what each
+     branch has room for: the photo sits beside the handle in every call site, while
+     the fallback shows two letters that a screen reader must not read out as a word.
+%><% box = "rounded-full shrink-0 #{ds_avatar_classes(size: local_assigns[:size])} #{local_assigns[:class]}".squish %>
+<% if user.photo.present? %>
+  <%= image_tag user.photo, alt: user.username, class: "#{box} block object-cover" %>
+<% else %>
+  <span aria-label="<%= user.full_name %>"
+        class="<%= box %> inline-flex items-center justify-center bg-primary text-white font-medium tracking-wide"><%= ds_initials(user.full_name) %></span>
+<% end %>

@@ -219,6 +219,77 @@ RSpec.describe DesignSystemHelper, type: :helper do
       expect(helper.respond_to?(:ds_button_variant, true)).to be(true)
     end
   end
+
+  # The initials the avatar falls back to when a user has no photo. Rendering is
+  # `spec/views/ui/avatar_spec.rb`'s job; this is the string function on its own,
+  # because the interesting cases are the degenerate names, not the happy path.
+  describe "#ds_initials" do
+    it "takes the first letter of the first two words" do
+      expect(helper.ds_initials("Maya Zaharudin")).to eq("MZ")
+    end
+
+    it "gives a one-word name a single letter rather than padding it" do
+      expect(helper.ds_initials("Maya")).to eq("M")
+    end
+
+    # Malaysian names routinely run to four or five words ("Nurul Izzah binti
+    # Anwar"), and three letters do not fit a 32px circle.
+    it "stops at two letters however many words the name has" do
+      expect(helper.ds_initials("Nurul Izzah binti Anwar Ibrahim")).to eq("NI")
+    end
+
+    it "upcases, so a lowercased handle-style name still reads as initials" do
+      expect(helper.ds_initials("maya zaharudin")).to eq("MZ")
+    end
+
+    # `full_name` is validated present, but a name of pure whitespace passes that
+    # validation, and a nil arrives from any caller that reaches through an
+    # association. Both must produce a glyph — an empty circle looks broken.
+    it "renders ? for a blank, whitespace-only or nil name" do
+      expect(helper.ds_initials("")).to eq("?")
+      expect(helper.ds_initials("   ")).to eq("?")
+      expect(helper.ds_initials(nil)).to eq("?")
+    end
+
+    it "ignores the extra whitespace a copy-pasted name carries" do
+      expect(helper.ds_initials("  Maya   Zaharudin  ")).to eq("MZ")
+    end
+
+    it "keeps a non-ASCII initial intact rather than dropping the letter" do
+      expect(helper.ds_initials("Åsa Ibrahim")).to eq("ÅI")
+    end
+  end
+
+  describe "#ds_avatar_classes" do
+    # Avatar.jsx sizes the fallback type as `Math.round(size * 0.38)`, so a size
+    # entry without a font size would render 96px and 32px initials identically.
+    it "pairs a box with a type size for every permitted size" do
+      DesignSystemHelper::AVATAR_SIZES.each do |size, classes|
+        tokens = helper.ds_avatar_classes(size: size).split
+
+        expect(tokens).to eq(classes.split)
+        expect(tokens.grep(/\Aw-/).size).to eq(1), "#{size} has no single width"
+        expect(tokens.grep(/\Ah-/).size).to eq(1), "#{size} has no single height"
+        expect(tokens.grep(/\Atext-/).size).to eq(1), "#{size} has no font size"
+      end
+    end
+
+    it "renders square circles — width and height always agree" do
+      DesignSystemHelper::AVATAR_SIZES.each_key do |size|
+        w, h = helper.ds_avatar_classes(size: size).split.grep(/\A[wh]-/).map { |t| t.split("-").last }
+
+        expect(w).to eq(h), "#{size} is an ellipse: w-#{w} h-#{h}"
+      end
+    end
+
+    # Same convention as `ds_button_classes`: an unpassed local is nil and must take
+    # the default, a typo must be loud.
+    it "treats a nil size as unset, and a misspelled one as a typo" do
+      expect(helper.ds_avatar_classes(size: nil)).to eq(helper.ds_avatar_classes)
+      expect { helper.ds_avatar_classes(size: :massive) }
+        .to raise_error(ArgumentError, /massive.*lg, md, row, nav, sm/m)
+    end
+  end
 end
 
 # `ds_button_classes` interpolates the tone into `bg-` / `text-` / `border-` / `fill-`,
@@ -255,5 +326,28 @@ RSpec.describe "Button tone utilities reach the compiled bundle" do
     expect(missing).to be_empty,
       "these button utilities are absent from app/assets/builds/tailwind.css — " \
       "add them to the `@source inline(...)` safelist: #{missing.join(", ")}"
+  end
+end
+
+# The avatar's classes are literal strings in `AVATAR_SIZES`, so Tailwind's source
+# scanner does see them and no `@source inline` entry is needed — but "the scanner
+# reads .rb files under app/" is an assumption about the scanner's globs, not a
+# guarantee, and the failure mode is a silent one: an unstyled 0×0 avatar. `w-11`
+# and `text-4xl` are also the two utilities in the set that nothing else in the app
+# spells out today, so they are exactly what a narrowed content glob would drop.
+RSpec.describe "Avatar utilities reach the compiled bundle" do
+  before(:all) { TailwindBuild.once! }
+
+  let(:bundle) { Rails.root.join("app/assets/builds/tailwind.css").read }
+  let(:view) { ApplicationController.helpers }
+
+  it "generates the box and type utilities for every avatar size" do
+    wanted = DesignSystemHelper::AVATAR_SIZES.keys
+      .flat_map { |size| view.ds_avatar_classes(size: size).split }.uniq
+
+    missing = wanted.reject { |klass| bundle.match?(/\.#{Regexp.escape(klass)}(?![\w-])/) }
+
+    expect(missing).to be_empty,
+      "these avatar utilities are absent from app/assets/builds/tailwind.css: #{missing.join(", ")}"
   end
 end
