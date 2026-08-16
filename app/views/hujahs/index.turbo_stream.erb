@@ -1,3 +1,16 @@
+<%# The "Load more" response: append the next page of cards, then swap the control for
+    the next page's (or for nothing, on the last page). Reached only via
+    `_load_more`'s `data-turbo-stream`; the HTML branch is `index.html.erb`.
+
+    DESIGN SYSTEM (Slice 9, Task 4.3) — nothing to do here, deliberately. This template
+    carries no markup of its own beyond the two Turbo-Stream wrappers and the `load-more`
+    container id, so every class a reader might look for lives in `_hujah_card` and
+    `_load_more`. That is the point: the appended cards MUST be the same partial the
+    first paint used, or page 2 would drift away from page 1 one refactor at a time.
+
+    The `id="load-more"` on the replaced div is a Turbo target, not styling — it is
+    restated inside the block because `turbo_stream.replace` swaps the element itself,
+    so an element without it could not be replaced again. %>
 <%= turbo_stream.append "hujah-feed" do %>
   <%= render partial: "hujah_card", collection: @hujahs, as: :hujah %>
 <% end %>

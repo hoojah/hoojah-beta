@@ -385,6 +385,24 @@ RSpec.describe DesignSystemHelper, type: :helper do
       expect(tokens(tone: "grey")).to include("text-grey")
     end
 
+    # The disabled row must NOT light up under the cursor. DropdownMenu.prompt.md gives
+    # the hover fill to rows, not to disabled ones, and `grey`'s only call site is the
+    # inert `<span>` behind `hujahs/show`'s "Delete hoojah (Slice 2)" — a non-interactive
+    # element that highlights on hover claims to be clickable and isn't. The rule lives
+    # in the tone rather than in a `hover:` argument, so this is what pins it.
+    it "drops the hover fill on the disabled tone, and only on that tone" do
+      expect(tokens(tone: "grey")).not_to include("hover:bg-gray-100")
+      expect(tokens(tone: "black")).to include("hover:bg-gray-100")
+      expect(tokens(tone: "neutral")).to include("hover:bg-gray-100")
+    end
+
+    # Splitting the hover out of MENU_ITEM_BASE must not have reordered anything for the
+    # two tones that keep it — same utilities, same order, same string.
+    it "is unchanged for the two interactive tones" do
+      expect(helper.ds_menu_item_classes(tone: "black"))
+        .to eq("#{DesignSystemHelper::MENU_ITEM_BASE} #{DesignSystemHelper::MENU_ITEM_HOVER} text-black")
+    end
+
     it "never carries two colours at once" do
       DesignSystemHelper::MENU_ITEM_TONES.each do |tone|
         expect(tokens(tone: tone).grep(/\Atext-(?!sm\z|left\z)/).size).to eq(1)

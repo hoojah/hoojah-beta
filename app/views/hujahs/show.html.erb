@@ -31,7 +31,10 @@
       <%= render layout: "ui/menu", locals: {width: "w-56"} do %>
         <% if user_signed_in? && @hujah.user_id == current_user.id %>
           <%# `tone: "grey"` IS the disabled row — DropdownMenu's greyed-out state, and
-              the exact case `ds_menu_item_classes`' MENU_ITEM_TONES documents. %>
+              the exact case `ds_menu_item_classes`' MENU_ITEM_TONES documents. The tone
+              also drops the hover fill, which matters here and only here: this is an
+              inert `<span>`, and a row that lights up under the cursor claims to be
+              clickable. Do not re-add `hover:bg-gray-100` at this call site. %>
           <span class="<%= ds_menu_item_classes(tone: "grey") %>">Delete hoojah (Slice 2)</span>
         <% end %>
         <% if user_signed_in? %>

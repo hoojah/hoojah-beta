@@ -135,11 +135,21 @@ module DesignSystemHelper
   # that a single edit rather than eleven.
   #
   # `block` is likewise baked in, and `hujahs/show`'s report row wants `flex items-center
-  # gap-1` instead. That override DOES work — the bundle emits `.block` ahead of `.flex`,
-  # so the caller's `flex` wins — but it works by bundle order rather than by call order,
-  # which is the `ui/_card` `padded:` trap wearing a different hat. Pass a different
-  # display only knowing that; do not pass a second *padding* or *width*.
-  MENU_ITEM_BASE = "block w-full text-left px-3 py-1 text-sm rounded no-underline hover:bg-gray-100".freeze
+  # gap-1` instead. That override DOES work — the bundle emits `.block` (8699) ahead of
+  # `.flex` (8720), so the caller's `flex` wins — but it works by bundle order rather
+  # than by call order, which is the `ui/_card` `padded:` trap wearing a different hat.
+  # Pass a different display only knowing that; do not pass a second *padding* or *width*.
+  #
+  # The one row that legitimately ignores `block` without saying so is `_share_menu`'s
+  # native-share `<button hidden>`. It stays invisible because Tailwind v4's preflight
+  # declares `[hidden]:where(:not([hidden="until-found"])){display:none !important}`, and
+  # `!important` outranks the utility. That is load-bearing: the share controller toggles
+  # the ATTRIBUTE, not a class, so without preflight's `!important` this row would render
+  # `display:block` on every device the Web Share API is missing from.
+  MENU_ITEM_BASE = "block w-full text-left px-3 py-1 text-sm rounded no-underline".freeze
+
+  # Split out of the base so `tone: "grey"` can drop it. See `ds_menu_item_classes`.
+  MENU_ITEM_HOVER = "hover:bg-gray-100".freeze
 
   # Narrower than TONES on purpose, and not a subset of it either. A menu row is ink by
   # default; `grey` is the disabled row (`hujahs/show`'s "Delete hoojah (Slice 2)"); and
@@ -155,9 +165,20 @@ module DesignSystemHelper
   # spells `fill-neutral` itself, and adding a fill here would put `fill-black` — a
   # class no view spells and no `@source inline` line covers — into ten rows that have
   # no icon at all.
+  #
+  # `grey` DROPS the hover fill, and does so from the tone rather than from a `hover:`
+  # keyword. DropdownMenu.prompt.md says "rows hover to `--color-gray-100`"; it does not
+  # say disabled rows do, and grey is not a colour choice here — MENU_ITEM_TONES defines
+  # it as the disabled state, whose only call site is the inert `<span>` behind
+  # `hujahs/show`'s "Delete hoojah (Slice 2)". A non-interactive row that lights up under
+  # the cursor claims to be clickable and isn't. Encoding that in the tone keeps the
+  # helper one-argument and makes the rule impossible to get wrong at a call site; a
+  # `hover:` boolean would be a second thing every one of the eleven callers has to
+  # decide, to express something the tone already means. The emitted string for the other
+  # two tones is byte-identical to before the split.
   def ds_menu_item_classes(tone: "black")
     tone = ds_option(tone&.to_s, "black", MENU_ITEM_TONES, "tone")
-    "#{MENU_ITEM_BASE} text-#{tone}"
+    [MENU_ITEM_BASE, (MENU_ITEM_HOVER unless tone == "grey"), "text-#{tone}"].compact.join(" ")
   end
 
   # The avatar's fallback when a user has no photo. Two letters, because three do not
