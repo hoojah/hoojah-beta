@@ -2,6 +2,15 @@
     appended in place by debate_turns/create.turbo_stream.erb (local-time re-processes
     stream-inserted <time> nodes automatically). %>
 <div id="<%= dom_id(debate_turn) %>" class="debate-turn shadow bg-white px-4 py-3">
+  <%# DS micro-label (12px, uppercase, tracking-wide) — same treatment as the debate
+      state label and the verdict heading. On EVERY turn, not only where the phase
+      changes: this partial is rendered in isolation both by the create Turbo Stream
+      and by broadcast_append_later_to, with `debate_turn` as its only local, so it
+      has no access to the preceding row and cannot know whether the phase changed.
+      A label that renders only "where it changes" would therefore be wrong for every
+      appended turn. It is also a per-utterance fact, not a per-round heading — the
+      second turn of round 1 really is an opening statement, from the other side. %>
+  <div class="debate-turn-phase text-xs uppercase tracking-wide text-grey mb-1"><%= debate_turn.phase_label %></div>
   <div class="flex items-center min-w-0 mb-1">
     <%= image_tag debate_turn.user.photo, class: "rounded-full w-8 h-8 mr-2 shrink-0", alt: debate_turn.user.username %>
     <div class="flex flex-col min-w-0">

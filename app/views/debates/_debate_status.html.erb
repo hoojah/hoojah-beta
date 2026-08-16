@@ -6,6 +6,17 @@
 <% state_color = {"pending" => "agree", "active" => "primary", "concluded" => "grey", "declined" => "light-grey"}[debate.status] || "grey" %>
 <span id="<%= dom_id(debate, :status) %>" class="debate-status flex flex-col min-w-0">
   <span class="debate-state text-xs uppercase tracking-wide text-<%= state_color %>"><%= debate.status.titleize %></span>
+  <%# ACTIVE ONLY. A round counter is an in-progress affordance: on a concluded debate
+      Debate#current_round has already run one past rounds_limit (turns.count / 2 + 1),
+      and current_phase is nil by design — while a debate concluded EARLY would read
+      "Round 2 of 4" under a "Concluded" label, which describes a debate still waiting
+      for two more rounds that will never come. The state label alone is the truth
+      there. Clamped with #min because current_round overshoots on the capping turn. %>
+  <% if debate.active? %>
+    <span class="debate-round text-xs uppercase tracking-wide text-grey">
+      Round <%= [debate.current_round, debate.rounds_limit].min %> of <%= debate.rounds_limit %>
+    </span>
+  <% end %>
   <% if debate.declined? %>
     <span class="text-sm text-grey">@<%= debate.opponent.username %> declined the challenge.</span>
   <% end %>
