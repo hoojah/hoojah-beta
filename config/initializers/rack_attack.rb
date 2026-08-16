@@ -66,4 +66,13 @@ class Rack::Attack
       req.env["warden"]&.user&.id
     end
   end
+  # Cap round-extension bursts per user (Slice 9). extendable_by? already makes
+  # every extend past the first at a given boundary a no-op 422, so this bounds
+  # the cost of hammering the endpoint (each attempt takes a row lock), not the
+  # rounds_limit itself.
+  throttle("debate_extend/user", limit: 10, period: 1.minute) do |req|
+    if req.post? && req.path.match?(%r{\A/debates/[^/]+/extend\z})
+      req.env["warden"]&.user&.id
+    end
+  end
 end
