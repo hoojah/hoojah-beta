@@ -17,6 +17,15 @@
     Unblock. Outlined (`on_primary_outline`) means "act": Follow, Block. The four
     branches below are the prompt's own rules, unchanged.
 
+    "Requested" is FULLY opaque, where it used to be a translucent white. That is a
+    design decision, not something the variant forced: `on_primary` plus an opacity
+    utility in `class:` was available and is exactly what the Block chip does three
+    branches down, so "the variant is locked" would be a false excuse. The reason is
+    that FollowButton.prompt.md names the clock glyph and the word "Requested" as the
+    signal for a pending request — a state the viewer must be able to read and cancel,
+    not a faded version of a button. Translucency was carrying meaning that the icon
+    and the label already carry, at the cost of legibility on a saturated field.
+
     The secondary Block that rides alongside Follow/Following carries `opacity-80` to
     keep it quieter than the control it sits next to — it used to say that with a
     `border-white/<pct>` plus a narrower `px-<n>`, which is why it looks different now.

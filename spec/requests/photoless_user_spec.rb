@@ -2,10 +2,16 @@ require "rails_helper"
 
 # `ui/_avatar` exists because `image_tag user.photo` RAISES on a blank photo, and
 # spec/views/ui/avatar_spec.rb pins that behaviour thoroughly — for the PARTIAL.
-# Nothing pinned the CALL SITES, so reverting any one of the hujah family's four
-# avatars to `image_tag user.photo` would leave the whole suite green while putting
-# the 500 straight back. These are the three screens where that 500 is worst: the
-# feed (every signed-in and signed-out visitor), the single-hujah page, and compose.
+# Nothing pinned the CALL SITES, so reverting any one of them to `image_tag
+# user.photo` would leave the whole suite green while putting the 500 straight back.
+#
+# Slice 9 Task 4.3 covered the hujah family (feed, single hujah, both composers).
+# Task 4.4 moved five more call sites in the SOCIAL family — `users/_profile_header`,
+# `_gated_header`, `_profile_edit`, `_user_hujah` and `_user_row` — so the second
+# describe block below covers those. Two of them are worse than a normal 500: the
+# followers list breaks for every visitor because of ONE photoless follower, and the
+# edit dialog breaks only for the person who cleared their photo, i.e. exactly the
+# user who needs it to set a new one.
 #
 # Reaching a photoless user needs `update_column`: `assign_random_photo` is an
 # `after_create` callback, so the factory always backfills one. Production reaches
@@ -63,5 +69,70 @@ RSpec.describe "A user with no photo", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Lim Guan Eng")
+  end
+
+  # Slice 9 Task 4.4 — the five social call sites. Each example hits a DIFFERENT
+  # partial; they are not variations on one screen. Deleting any single
+  # `render "ui/avatar"` below should turn exactly one of them red.
+  describe "on the social screens" do
+    # `_profile_header` (96px) — and `_user_hujah` (32px) for every hoojah listed
+    # underneath it, which is why this example posts one.
+    it "renders their own public profile and the hoojah list on it" do
+      create(:hujah, user: author, parent_id: nil, body: "a photoless take")
+
+      get "/u/photoless"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("a photoless take")
+    end
+
+    # `_user_row` (40px), twice over: one photoless follower is enough to take the
+    # list down for everyone who opens it, including the profile owner.
+    it "renders the followers and following lists that contain them" do
+      responder.active_follows.create!(followed_id: author.id, status: :accepted)
+
+      get "/u/photoless/followers"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lim Guan Eng")
+
+      get "/u/alsophotoless/following"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Siti Nurhaliza")
+    end
+
+    # `_gated_header` is a SEPARATE partial from `_profile_header` with its own
+    # avatar line, reachable only when the target is private and the viewer is not an
+    # accepted follower — so the un-gated example above cannot cover it.
+    it "renders the gated header of a private photoless account" do
+      author.update!(private: true)
+      sign_in responder
+
+      get "/u/photoless"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("This account is private")
+    end
+
+    # `_profile_edit`. The dialog is in the DOM on the owner's own profile page, so
+    # this 500s the owner out of the one screen that could fix their photo.
+    it "renders the edit dialog for the owner who cleared their own photo" do
+      sign_in author
+
+      get "/u/photoless"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Edit your profile")
+    end
+
+    # The no-JS fallback page renders the same header + dialog outside the profile
+    # screen, and reaches `_profile_edit` by a second route.
+    it "renders the no-JS profile edit page" do
+      sign_in author
+
+      get "/u/photoless/edit"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Edit your profile")
+    end
   end
 end
