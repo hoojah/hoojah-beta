@@ -1,42 +1,83 @@
-<h2>Edit <%= resource_name.to_s.humanize %></h2>
+<%# The account screen (GET /edit): change your email or password, or delete the
+    account. Distinct from the profile editor in `users/_profile_edit`, which owns the
+    public fields; email and password live here and nowhere else.
 
-<%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { method: :put }) do |f| %>
-  <%= render "devise/shared/error_messages", resource: resource %>
+    FROZEN: the PUT to Devise's registration path, the DELETE behind "Cancel my
+    account" with both of its confirm attributes, and every field name — `user[email]`,
+    `user[password]`, `user[password_confirmation]` and above all
+    `user[current_password]`, which is what proves the change came from the account
+    holder. The parenthetical hints are Devise's own copy and are unchanged.
 
-  <div class="field">
-    <p><%= f.label :email %></p>
-    <p><%= f.email_field :email, autofocus: true, autocomplete: "email" %></p>
-  </div>
+    DESIGN SYSTEM (Slice 9, Task 4.6) — this screen had no styling whatsoever: a bare
+    heading, paragraph-wrapped fields, and two Bootstrap-era wrapper classes that match
+    no rule in the bundle, so it rendered as unstyled browser defaults on a white page
+    while every other auth screen was a card. It now takes the shared auth treatment —
+    `ui/_card` for the white SQUARE panel, the 24px heading, labelled fields on the
+    field-border token with the indigo focus border, hints on the muted token, and the
+    `rect` solid submit.
 
-  <% if devise_mapping.confirmable? && resource.pending_reconfirmation? %>
-    <div>Currently waiting confirmation for: <%= resource.unconfirmed_email %></div>
+    The account-deletion block is separated from the form by `ui/_divider` rather than
+    by a second card, which is the design system's rule for sections inside one
+    surface. Its button is the destructive tone the design system already assigns to
+    the report and flag controls — the pink of the neutral stance, the only warning
+    colour in the palette that is not the error red reserved for validation summaries.
+%>
+<%= render layout: "ui/card", locals: {class: "max-w-md mx-auto mt-16 p-6"} do %>
+  <h2 class="text-2xl font-semibold mb-6">Edit <%= resource_name.to_s.humanize %></h2>
+
+  <%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { method: :put }) do |f| %>
+    <%= render "devise/shared/error_messages", resource: resource %>
+
+    <div class="mb-3">
+      <%= f.label :email, class: "block text-sm text-grey mb-1" %>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
+    </div>
+
+    <% if devise_mapping.confirmable? && resource.pending_reconfirmation? %>
+      <div class="mb-3 text-sm text-grey">Currently waiting confirmation for: <%= resource.unconfirmed_email %></div>
+    <% end %>
+
+    <div class="mb-3">
+      <%= f.label :password, class: "block text-sm text-grey mb-1" %>
+      <em class="text-xs text-grey">(leave blank if you don't want to change it)</em>
+      <%= f.password_field :password, autocomplete: "new-password",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
+      <% if @minimum_password_length %>
+        <em class="text-xs text-grey"><%= @minimum_password_length %> characters minimum</em>
+      <% end %>
+    </div>
+
+    <div class="mb-3">
+      <%= f.label :password_confirmation, class: "block text-sm text-grey mb-1" %>
+      <%= f.password_field :password_confirmation, autocomplete: "new-password",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
+    </div>
+
+    <div class="mb-3">
+      <%= f.label :current_password, class: "block text-sm text-grey mb-1" %>
+      <em class="text-xs text-grey">(we need your current password to confirm your changes)</em>
+      <%= f.password_field :current_password, autocomplete: "current-password",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
+    </div>
+
+    <div class="mt-4">
+      <%= f.submit "Update", class: ds_button_classes(variant: :rect) %>
+    </div>
   <% end %>
 
-  <div class="field">
-    <p><%= f.label :password %> <i>(leave blank if you don't want to change it)</i></p>
-    <p><%= f.password_field :password, autocomplete: "new-password" %></p>
-    <% if @minimum_password_length %>
-      <p><em><%= @minimum_password_length %> characters minimum</em></p>
-    <% end %>
-  </div>
+  <%= render "ui/divider", class: "my-6" %>
 
-  <div class="field">
-    <p><%= f.label :password_confirmation %></p>
-    <p><%= f.password_field :password_confirmation, autocomplete: "new-password" %></p>
-  </div>
+  <h3 class="text-lg font-semibold mb-2">Cancel my account</h3>
 
-  <div class="field">
-    <p><%= f.label :current_password %> <i>(we need your current password to confirm your changes)</i></p>
-    <p><%= f.password_field :current_password, autocomplete: "current-password" %></p>
-  </div>
-
-  <div class="actions">
-    <%= f.submit "Update" %>
+  <div class="flex items-center gap-2 text-sm text-grey">
+    Unhappy?
+    <%= button_to "Cancel my account", registration_path(resource_name),
+          data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?" }, method: :delete,
+          class: ds_button_classes(tone: "neutral", size: :sm) %>
   </div>
 <% end %>
 
-<h3>Cancel my account</h3>
-
-<div>Unhappy? <%= button_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?" }, method: :delete %></div>
-
-<%= link_to "Back", :back %>
+<div class="max-w-md mx-auto mt-6 text-sm">
+  <%= link_to "Back", :back %>
+</div>

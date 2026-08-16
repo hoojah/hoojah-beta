@@ -1,25 +1,43 @@
-<%- if controller_name != 'sessions' %>
-  <p><%= link_to "Log in", new_session_path(resource_name) %></p>
-<% end %>
+<%# The cross-links under every auth card ("Log in", "Sign up", "Forgot your
+    password?"). Each branch is Devise's own guard on the mapping and the current
+    controller, and the link text is frozen product copy.
 
-<%- if devise_mapping.registerable? && controller_name != 'registrations' %>
-  <p><%= link_to "Sign up", new_registration_path(resource_name) %></p>
-<% end %>
+    DESIGN SYSTEM (Slice 9, Task 4.6) — the stack owns its own box now instead of
+    relying on the caller. Four of the six auth views wrapped this render in an
+    identical spacing-plus-14px-type div and two did not, so the two that did not got
+    16px links hard against the form. Preflight zeroes the paragraph margins, so the
+    rows also needed an explicit gap or they sat flush against each other.
 
-<%- if devise_mapping.recoverable? && controller_name != 'passwords' && controller_name != 'registrations' %>
-  <p><%= link_to "Forgot your password?", new_password_path(resource_name) %></p>
-<% end %>
+    No colour class: the base layer already paints every anchor with the link token.
 
-<%- if devise_mapping.confirmable? && controller_name != 'confirmations' %>
-  <p><%= link_to "Didn't receive confirmation instructions?", new_confirmation_path(resource_name) %></p>
-<% end %>
-
-<%- if devise_mapping.lockable? && resource_class.unlock_strategy_enabled?(:email) && controller_name != 'unlocks' %>
-  <p><%= link_to "Didn't receive unlock instructions?", new_unlock_path(resource_name) %></p>
-<% end %>
-
-<%- if devise_mapping.omniauthable? %>
-  <%- resource_class.omniauth_providers.each do |provider| %>
-    <p><%= button_to "Sign in with #{OmniAuth::Utils.camelize(provider)}", omniauth_authorize_path(resource_name, provider), data: { turbo: false } %></p>
+    This app is neither confirmable nor lockable and has no omniauth providers, so the
+    last three branches never render today. They are Devise's, they cost nothing, and
+    deleting them would silently drop the links if a module is ever switched on.
+%>
+<div class="mt-6 flex flex-col gap-1 text-sm">
+  <%- if controller_name != 'sessions' %>
+    <p><%= link_to "Log in", new_session_path(resource_name) %></p>
   <% end %>
-<% end %>
+
+  <%- if devise_mapping.registerable? && controller_name != 'registrations' %>
+    <p><%= link_to "Sign up", new_registration_path(resource_name) %></p>
+  <% end %>
+
+  <%- if devise_mapping.recoverable? && controller_name != 'passwords' && controller_name != 'registrations' %>
+    <p><%= link_to "Forgot your password?", new_password_path(resource_name) %></p>
+  <% end %>
+
+  <%- if devise_mapping.confirmable? && controller_name != 'confirmations' %>
+    <p><%= link_to "Didn't receive confirmation instructions?", new_confirmation_path(resource_name) %></p>
+  <% end %>
+
+  <%- if devise_mapping.lockable? && resource_class.unlock_strategy_enabled?(:email) && controller_name != 'unlocks' %>
+    <p><%= link_to "Didn't receive unlock instructions?", new_unlock_path(resource_name) %></p>
+  <% end %>
+
+  <%- if devise_mapping.omniauthable? %>
+    <%- resource_class.omniauth_providers.each do |provider| %>
+      <p><%= button_to "Sign in with #{OmniAuth::Utils.camelize(provider)}", omniauth_authorize_path(resource_name, provider), data: { turbo: false } %></p>
+    <% end %>
+  <% end %>
+</div>

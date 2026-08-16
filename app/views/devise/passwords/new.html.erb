@@ -1,20 +1,29 @@
-<div class="max-w-md mx-auto mt-16 p-6 bg-white rounded shadow">
+<%# "Forgot your password?" — POSTs `user[email]` to Devise's password path, which
+    mails the reset instructions. Devise is configured paranoid, so the response never
+    reveals whether the address exists; the error summary below is therefore reachable
+    only for a malformed submit.
+
+    DESIGN SYSTEM (Slice 9, Task 4.6) — the shared auth treatment: `ui/_card` for the
+    white SQUARE panel, the field-border token plus the indigo focus border in place of
+    a bare uncoloured border resolving to body ink, the 14px muted label, and the
+    `rect` solid submit the design system assigns to auth screens.
+%>
+<%= render layout: "ui/card", locals: {class: "max-w-md mx-auto mt-16 p-6"} do %>
   <h2 class="text-2xl font-semibold mb-6">Forgot your password?</h2>
 
   <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :post }) do |f| %>
     <%= render "devise/shared/error_messages", resource: resource %>
 
     <div class="mb-3">
-      <%= f.label :email, class: "block text-sm" %>
-      <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "w-full border rounded px-3 py-2" %>
+      <%= f.label :email, class: "block text-sm text-grey mb-1" %>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
     </div>
 
     <div class="mt-4">
-      <%= f.submit "Send me password reset instructions", class: "bg-primary text-white rounded px-4 py-2" %>
+      <%= f.submit "Send me password reset instructions", class: ds_button_classes(variant: :rect) %>
     </div>
   <% end %>
 
-  <div class="mt-4 text-sm">
-    <%= render "devise/shared/links" %>
-  </div>
-</div>
+  <%= render "devise/shared/links" %>
+<% end %>

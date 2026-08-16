@@ -8,11 +8,36 @@
     refreshes the header and fires `close_dialog`.
 
     Locals: user. Optional: open (true renders the dialog inline for the no-JS
-    /u/:username/edit fallback page). %>
+    /u/:username/edit fallback page).
+
+    DESIGN SYSTEM (Slice 9, Task 4.6) — this dialog is the forms family's reference
+    screen, and most of it was already conformant. What changed:
+
+    - The pencil trigger carried two Bootstrap-era class names left over from the
+      retired SPA. Neither has a rule anywhere in the bundle, so both were dead; the
+      button was being drawn entirely by the utilities beside them. They are replaced
+      by what they were pretending to do — a bare, borderless, transparent control.
+      A pointer cursor has to be asked for: Tailwind v4 no longer gives buttons one.
+    - Every field gains the indigo focus border of TextField/TextAreaField. The boxed
+      textarea (Headline) and the single-line inputs already carried the design
+      system's field-border colour, which is the one thing the auth screens got wrong.
+    - "Update photo" and "Save changes" go through `ds_button_classes` instead of two
+      hand-typed strings: the outline pill at the small size, and the solid pill the
+      design system names for exactly this control ("Save changes" is its own example).
+    - "Private account" is Checkbox.prompt.md as it stood: a 16px NATIVE checkbox with
+      a 14px grey label. There is no switch component in Hoojah and none is wanted.
+    - The error panel is the FormError idiom — summarised at the top of the form, never
+      annotated per field, and the only red in the product. It stays inline rather than
+      rendering `devise/shared/_error_messages`, because that partial leads with a
+      count heading this dialog has never shown, and the copy here is frozen.
+
+    FROZEN: the PATCH to /u/:username, `dom_id(user, :edit_dialog)` (which
+    `users/update.turbo_stream.erb` closes remotely), every `data-*` on the dialog, the
+    upload button and the hidden photo field, and every placeholder. %>
 <% open = local_assigns.fetch(:open, false) %>
 <div data-controller="dialog cloudinary-upload" class="absolute top-4 right-4">
   <button type="button" data-action="dialog#open"
-          class="btn btn-link fill-white text-white p-0" aria-label="Edit your profile">
+          class="border-0 bg-transparent p-0 text-white cursor-pointer" aria-label="Edit your profile">
     <%= lucide_icon("edit", class: "w-5 h-5") %>
   </button>
 
@@ -41,15 +66,14 @@
 
       <div class="flex flex-col items-center mb-4">
         <%# Slice 9, Task 4.4: the same 96px `lg` avatar as the header it edits, via
-            `ui/_avatar`. Only the avatar line is this task's business — the fields and
-            the two buttons below belong to the forms family (Task 4.6). It moves now
-            anyway because `image_tag user.photo` raises on a blank photo, and this
-            dialog renders on every owner's own profile: a user who cleared their photo
-            could not reach the editor that would let them set a new one. %>
+            `ui/_avatar`. It went through the partial because `image_tag user.photo`
+            raises on a blank photo, and this dialog renders on every owner's own
+            profile: a user who cleared their photo could not otherwise reach the
+            editor that would let them set a new one. %>
         <%= render "ui/avatar", user: user, size: :lg, class: "mb-3" %>
         <button type="button" data-action="cloudinary-upload#open"
                 data-cloudinary-upload-target="button"
-                class="shadow rounded-full px-4 py-1 border-2 border-primary text-primary fill-primary cursor-pointer">
+                class="<%= ds_button_classes(size: :sm) %>">
           Update photo
         </button>
         <%= f.hidden_field :photo, data: {"cloudinary-upload-target": "hidden"} %>
@@ -58,7 +82,7 @@
       <div class="mb-3">
         <%= f.label :full_name, "Full name", class: "block text-sm text-grey mb-1" %>
         <%= f.text_field :full_name, placeholder: "Your name",
-              class: "w-full border border-gray-200 rounded px-3 py-2" %>
+              class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
       </div>
 
       <div class="mb-3">
@@ -66,26 +90,26 @@
         <div class="flex">
           <span class="inline-flex items-center px-3 border border-r-0 border-gray-200 rounded-l bg-gray-50 text-grey">@</span>
           <%= f.text_field :username, placeholder: "Your @username",
-                class: "w-full border border-gray-200 rounded-r px-3 py-2" %>
+                class: "w-full rounded-r border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
         </div>
       </div>
 
       <div class="mb-3">
         <%= f.label :location, "Location", class: "block text-sm text-grey mb-1" %>
         <%= f.text_field :location, placeholder: "Where you're from",
-              class: "w-full border border-gray-200 rounded px-3 py-2" %>
+              class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
       </div>
 
       <div class="mb-3">
         <%= f.label :link, "Link", class: "block text-sm text-grey mb-1" %>
         <%= f.text_field :link, placeholder: "Your website",
-              class: "w-full border border-gray-200 rounded px-3 py-2" %>
+              class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
       </div>
 
       <div class="mb-4">
         <%= f.label :headline, "Headline", class: "block text-sm text-grey mb-1" %>
         <%= f.text_area :headline, rows: 3, placeholder: "Add some jazz to your profile!",
-              class: "w-full border border-gray-200 rounded px-3 py-2 resize-none" %>
+              class: "w-full resize-none rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
       </div>
 
       <%# Slice 7b: private-account toggle. When ON, new follows become requests you
@@ -98,8 +122,7 @@
       </div>
 
       <div class="text-right">
-        <%= f.submit "Save changes",
-              class: "shadow rounded-full px-4 py-2 bg-primary text-white cursor-pointer border-0" %>
+        <%= f.submit "Save changes", class: ds_button_classes(variant: :solid) %>
       </div>
     <% end %>
   </dialog>
