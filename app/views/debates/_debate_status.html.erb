@@ -2,8 +2,15 @@
     identically in request and broadcast contexts. accept!/conclude! broadcast this
     to the whole debate stream. The per-viewer accept/decline/conclude affordances
     live in the sibling `_debate_actions` partial. Local: debate. Pinned dom_id so
-    the status Turbo-Stream replaces land here. %>
-<% state_color = {"pending" => "agree", "active" => "primary", "concluded" => "grey", "declined" => "light-grey"}[debate.status] || "grey" %>
+    the status Turbo-Stream replaces land here.
+
+    The state colour comes from `ds_debate_state_color` (Slice 9 Task 4.5 review) —
+    the design system's exported `DEBATE_STATE_COLOR`, shared with the sibling
+    `_debate_card`, which used to hold a second inline copy of the same hash. A HELPER
+    and not a shared partial precisely because of this file's broadcast path: helpers
+    are available to `ApplicationController.render`, and a nested partial rendered
+    inside a job is one more thing that can raise where nobody sees it. %>
+<% state_color = ds_debate_state_color(debate.status) %>
 <span id="<%= dom_id(debate, :status) %>" class="debate-status flex flex-col min-w-0">
   <span class="debate-state text-xs uppercase tracking-wide text-<%= state_color %>"><%= debate.status.titleize %></span>
   <%# ACTIVE ONLY. A round counter is an in-progress affordance: on a concluded debate

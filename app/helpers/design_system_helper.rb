@@ -115,6 +115,47 @@ module DesignSystemHelper
       ("px-4 py-3" if padded)].compact.join(" ")
   end
 
+  # The debate state label's colour — `DEBATE_STATE_COLOR` in
+  # docs/design-system/components/debate/DebateCard.jsx, which exports it precisely
+  # because two components consume it: `DebateCard` (the row in a hoojah's Debates
+  # lens) and `DebateStatus` (the label on the transcript screen). DebateCard.prompt.md
+  # calls the mapping FIXED — "pending → agree orange, active → indigo, concluded →
+  # grey, declined → light-grey".
+  #
+  # Before Slice 9 Task 4.5's review, `debates/_debate_card` and `debates/_debate_status`
+  # each carried their own copy of this hash inline, and nothing anywhere asserted
+  # either one. A one-sided edit — recolouring `declined` on the card and not on the
+  # transcript, or vice versa — was therefore invisible: both files still rendered a
+  # valid class, the suite stayed green, and the same debate read as two different
+  # states depending on which screen you were looking at.
+  #
+  # A HELPER rather than a shared partial, deliberately. `_debate_status` is rendered
+  # from `broadcast_replace_later_to`, i.e. inside an ActiveJob with no request and no
+  # `current_user`; a partial pulled into that path is one more thing that can raise
+  # where nobody sees it. Helpers are broadcast-safe — `ApplicationController.render`
+  # carries the full helper module — and `IconsHelper#stance_color` is the existing
+  # precedent for exactly this shape, already called from broadcast-rendered partials.
+  DEBATE_STATE_COLOR = {
+    "pending" => "agree",
+    "active" => "primary",
+    "concluded" => "grey",
+    "declined" => "light-grey"
+  }.freeze
+
+  # Unlike the `ds_option`-backed helpers above, an unknown status DEGRADES to grey
+  # rather than raising, and does so in every environment. That is not a lapse in the
+  # convention — the argument here is not a designer's typo in a view but
+  # `debates.status`, whose value comes from the model's enum. A status this map has
+  # not been taught about is a schema change, and the honest render of "a state the
+  # design system has no colour for" is the neutral one. Both call sites behaved this
+  # way before the extraction (`MAP[debate.status] || "grey"`); it is preserved.
+  #
+  # `text-#{...}` is interpolated at both call sites, so all four values must stay
+  # covered by the `@source inline(...)` safelist in app/assets/tailwind/application.css.
+  # The stance line covers agree and primary, the grey line covers the other two, and
+  # spec/helpers/design_system_helper_spec.rb checks the compiled bundle for all four.
+  def ds_debate_state_color(status) = DEBATE_STATE_COLOR.fetch(status.to_s, "grey")
+
   # The hover row inside a `ui/_menu` panel — DropdownMenu.prompt.md's `MenuItem`.
   # Eleven rows across three files spell this string by hand today.
   #

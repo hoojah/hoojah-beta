@@ -354,6 +354,48 @@ RSpec.describe DesignSystemHelper, type: :helper do
     end
   end
 
+  # DebateCard.prompt.md calls this mapping FIXED, and DebateCard.jsx exports it as
+  # `DEBATE_STATE_COLOR` because two components read it — the row in a hoojah's Debates
+  # lens and the label on the transcript screen.
+  #
+  # Until Slice 9 Task 4.5's review those two Rails partials each held their own inline
+  # copy of the hash and NOTHING asserted either. That is the dangerous shape: editing
+  # one and not the other leaves both rendering a real Tailwind class, keeps the suite
+  # green, and makes the same debate read as two different states depending on the
+  # screen. These examples name all four pairs literally, so a one-sided edit is red.
+  describe "#ds_debate_state_color" do
+    it "maps each of the four debate states to its fixed tone" do
+      expect(helper.ds_debate_state_color("pending")).to eq("agree")
+      expect(helper.ds_debate_state_color("active")).to eq("primary")
+      expect(helper.ds_debate_state_color("concluded")).to eq("grey")
+      expect(helper.ds_debate_state_color("declined")).to eq("light-grey")
+    end
+
+    it "covers every status the model can actually be in" do
+      expect(DesignSystemHelper::DEBATE_STATE_COLOR.keys).to match_array(Debate.statuses.keys)
+    end
+
+    # `status` reaches this helper from an enum column, not from a view author's
+    # keyboard, so an unknown value is a schema change rather than a typo — and it
+    # degrades to grey in EVERY environment, unlike the `ds_option`-backed helpers.
+    # Both call sites did exactly this before the extraction.
+    it "degrades an unknown status to grey instead of raising" do
+      expect(helper.ds_debate_state_color("abandoned")).to eq("grey")
+      expect(helper.ds_debate_state_color(nil)).to eq("grey")
+    end
+
+    it "accepts a symbol as readily as a string" do
+      expect(helper.ds_debate_state_color(:declined)).to eq("light-grey")
+    end
+
+    # Every tone it can return must be a tone the rest of the system knows about;
+    # a colour that exists only here would have no `@source inline` line behind it.
+    it "returns only tones the design system already defines" do
+      expect(DesignSystemHelper::DEBATE_STATE_COLOR.values.uniq - DesignSystemHelper::TONES)
+        .to be_empty
+    end
+  end
+
   # The hover row inside a `ui/_menu` panel (DropdownMenu.prompt.md's `MenuItem`).
   # A helper rather than a partial because two of its eleven call sites are a
   # `button_to` and a `<button>` with frozen `data-*` attributes, neither of which a
@@ -545,6 +587,28 @@ RSpec.describe "Menu item tone utilities reach the compiled bundle" do
 
     expect(missing).to be_empty,
       "these menu utilities are absent from app/assets/builds/tailwind.css — " \
+      "add them to the `@source inline(...)` safelist: #{missing.join(", ")}"
+  end
+end
+
+# `ds_debate_state_color` is not itself a class — both call sites interpolate its
+# return into `text-#{...}`, which is the same blind spot as the button tones and the
+# card stances, and the same quiet failure: `text-light-grey` with no rule behind it
+# leaves a declined debate labelled in the browser's default ink, which reads as a
+# perfectly ordinary label rather than the faintest state in the set.
+#
+# Derived from the constant rather than restated, so a fifth debate state added to the
+# map is covered here the moment it exists.
+RSpec.describe "Debate state colour utilities reach the compiled bundle" do
+  before(:all) { TailwindBuild.once! }
+
+  it "generates the text colour of every state a debate can be in" do
+    wanted = DesignSystemHelper::DEBATE_STATE_COLOR.values.uniq.map { |tone| "text-#{tone}" }
+
+    missing = wanted.reject { |klass| TailwindBuild.emitted?(klass) }
+
+    expect(missing).to be_empty,
+      "these debate state utilities are absent from app/assets/builds/tailwind.css — " \
       "add them to the `@source inline(...)` safelist: #{missing.join(", ")}"
   end
 end

@@ -135,4 +135,28 @@ RSpec.describe "A user with no photo", type: :request do
       expect(response.body).to include("Edit your profile")
     end
   end
+
+  # Slice 9 Task 4.5 moved the debate family's ONE avatar call site,
+  # `debates/_debate_turn` — the last live `image_tag user.photo` anywhere in the app.
+  #
+  # This example covers the REQUEST path only, and that is the lesser half. The same
+  # partial is also rendered from `Debate#post_turn`'s `broadcast_append_later_to`,
+  # where the identical raise happens inside an ActiveJob: no 500 reaches anybody, the
+  # transcript simply stops updating live, and the failure is visible only in the job
+  # log. Nothing a request spec does can enter that path, so
+  # spec/models/debate_broadcast_spec.rb carries the matching example. Both are needed;
+  # neither substitutes for the other.
+  describe "in a debate transcript" do
+    it "renders a transcript containing a photoless participant's turn" do
+      debate = create(:debate, challenger: author, opponent: responder, status: :active)
+      debate.post_turn(by: author, body: "Tabs are one keystroke.")
+      sign_in responder
+
+      get "/debates/#{debate.slug}"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Tabs are one keystroke.")
+      expect(response.body).to include("Siti Nurhaliza")
+    end
+  end
 end

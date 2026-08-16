@@ -29,8 +29,8 @@
     and so cannot conflict.
 
     If your card IS a link — `debates/_debate_card` is an `<a>` carrying `href` and a
-    `.debate-card` hook — do not reach for an `href:` local. Call `ds_card_classes`
-    directly on the `link_to` instead; that is the supported escape hatch.
+    `dom_id` — do not reach for an `href:` local. Call `ds_card_classes` directly on
+    the `link_to` instead; that is the supported escape hatch.
 
     Deliberately NOT a Rails strict-locals signature: one of the locals is `class`,
     which cannot be a Ruby parameter name, so the whole signature is unavailable here

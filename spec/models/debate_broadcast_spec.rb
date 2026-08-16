@@ -111,6 +111,34 @@ RSpec.describe "Debate broadcasts", type: :model do
       expect(status.first).not_to include("Round") # no counter on a finished debate
     end
 
+    # Slice 9 Task 4.5. `debates/_debate_turn` renders the mover's avatar, and until
+    # that call site moved onto `ui/_avatar` it was a bare `image_tag user.photo` —
+    # which RAISES "Nil location provided" when `photo` is blank, a state any user can
+    # reach by clearing it on their profile (`:photo` is permitted in `user_params`).
+    #
+    # This is the dangerous half of that defect, and the reason it gets an example here
+    # as well as in spec/requests/photoless_user_spec.rb. On the request path a raise is
+    # a 500 somebody sees. HERE the render happens inside the job `_later_to` enqueued,
+    # so the exception never reaches a browser: the poster's own synchronous response
+    # still lands, and the OTHER participant's transcript simply stops receiving turns,
+    # with nothing on either screen to say why. `perform_enqueued_jobs` is what puts the
+    # render in scope — without it the payload is never built and this example passes
+    # against the broken partial.
+    it "broadcasts a turn posted by a participant who has no photo" do
+      d = build_active_debate
+      challenger.update_columns(photo: nil, full_name: "Siti Nurhaliza")
+
+      payloads = broadcasts_on(stream(d)) { d.post_turn(by: challenger, body: "photoless opening") }
+
+      appended = targeting(payloads, dom_id(d, :transcript))
+      expect(appended.size).to eq(1)
+      expect(appended.first).to include("photoless opening")
+      # `ui/_avatar`'s fallback: initials on primary, labelled with the full name on
+      # BOTH branches. Asserting the label rather than the letters proves the fallback
+      # actually rendered, not merely that the byline printed the name.
+      expect(appended.first).to include('aria-label="Siti Nurhaliza"')
+    end
+
     it "does not broadcast when it is not the poster's turn" do
       d = build_active_debate # challenger moves first
       expect {
