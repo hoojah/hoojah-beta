@@ -35,12 +35,17 @@ RSpec.describe "Debate phases", type: :system, js: true do
     within("##{dom_id(debate, :transcript)}") { expect(page).to have_content(body) }
   end
 
-  # The label lives in the turn's own pinned dom_id, so it can be asserted per row.
-  # Case-insensitive because the micro-label is CSS-uppercased (`uppercase`), exactly
-  # as debate_spec.rb asserts /active/i against the state label.
+  # Scoped to `.debate-turn-phase`, NOT to the turn row: a row-wide matcher passes on
+  # the turn BODY, so "Turn 9, the real closing statement." would satisfy a check for
+  # "Closing statement" even if the micro-label rendered "Counter-argument" — and that
+  # is the one assertion proving the closing round moved. Anchored for the same reason.
+  # Case-insensitive because the label is CSS-uppercased (`uppercase`), exactly as
+  # debate_spec.rb asserts /active/i against the state label.
   def expect_phase_label(debate, position, label)
     turn = debate.turns.find_by!(position: position)
-    within("##{dom_id(turn)}") { expect(page).to have_content(/#{Regexp.escape(label)}/i) }
+    within("##{dom_id(turn)} .debate-turn-phase") do
+      expect(page).to have_content(/\A#{Regexp.escape(label)}\z/i)
+    end
   end
 
   it "labels each turn with its phase, counts rounds, and caps at the rounds limit" do
@@ -96,19 +101,30 @@ RSpec.describe "Debate phases", type: :system, js: true do
     expect(page).to have_content(/spectator verdict/i) # CSS-uppercased
   end
 
-  it "lets a participant extend by one round at the closing-round boundary, re-deriving the labels" do
+  it "advances the counter and reveals Extend live, then re-derives the labels" do
     debate = create(:debate, hujah: root, challenger: challenger, opponent: opponent, status: :active)
-    # Six turns = the closing-round boundary for rounds_limit 4: round 4 has been
-    # reached but holds no turn yet, which is the only moment extend is allowed.
-    6.times { |i| debate.post_turn(by: i.even? ? challenger : opponent, body: "Turn #{i + 1}.") }
-    expect(debate.reload).to be_extendable_by(challenger)
+    # Five turns leaves the debate mid-round-3. Turn 6 — posted below, through the
+    # browser — is what closes round 3 and puts it ON the closing-round boundary.
+    5.times { |i| debate.post_turn(by: i.even? ? challenger : opponent, body: "Turn #{i + 1}.") }
 
-    login_as_system(challenger)
+    login_as_system(opponent) # position 6 is even → the opponent moves
     visit "/debates/#{debate.slug}"
 
+    within("##{dom_id(debate, :status)}") { expect(page).to have_content(/round 3 of 4/i) }
+    within("##{dom_id(debate, :actions)}") { expect(page).to have_no_button("Extend by one round") }
+
+    fill_in "Your turn", with: "Turn 6."
+    click_button "Post turn"
+    within("##{dom_id(debate, :transcript)}") { expect(page).to have_content("Turn 6.") }
+
+    # NO intervening `visit` — this is the whole point. Every transition of the round
+    # counter, and the false→true flip of extendable_by?, IS a post_turn; before Slice 9
+    # the turn response touched only :transcript and :composer, so the counter froze at
+    # first paint and the Extend button never appeared at all (its window closes on the
+    # very next turn). These two assertions fail without BOTH halves of the fix.
+    expect(debate.reload).to be_extendable_by(opponent)
     within("##{dom_id(debate, :status)}") { expect(page).to have_content(/round 4 of 4/i) }
-    # Turn 5 is the response round either way; turn 6 is currently the second half of it.
-    expect_phase_label(debate, 5, "Response")
+    within("##{dom_id(debate, :actions)}") { expect(page).to have_button("Extend by one round") }
 
     click_button "Extend by one round"
 
@@ -118,17 +134,43 @@ RSpec.describe "Debate phases", type: :system, js: true do
     # The boundary has moved, so the affordance is gone.
     within("##{dom_id(debate, :actions)}") { expect(page).to have_no_button("Extend by one round") }
 
+    # Turn 5 is the response round either way — the already-painted labels did not move
+    # under the reader, which is exactly what confining extend to the boundary buys.
+    expect_phase_label(debate, 5, "Response")
+
     # Turn 7 now opens round 4 — no longer the closing round, so it is a counter.
     post_turn_as(challenger, debate, "Turn 7, which used to be a closing statement.")
     expect_phase_label(debate, 7, "Counter-argument")
 
-    # And the debate no longer caps at turn 8: turn 8 is still round 4.
-    post_turn_as(opponent, debate, "Turn 8, and we are not done yet.")
+    # Turn 8 at model level: that the cap moved with rounds_limit is already pinned by
+    # debate_phase_spec.rb ("bumps rounds_limit by one and moves the cap with it"), and
+    # re-driving it through Cuprite would buy nothing.
+    debate.post_turn(by: opponent, body: "Turn 8.")
     expect(debate.reload).to be_active
-    expect_phase_label(debate, 8, "Counter-argument")
 
     # Round 5 is the new closing round.
     post_turn_as(challenger, debate, "Turn 9, the real closing statement.")
     expect_phase_label(debate, 9, "Closing statement")
+  end
+
+  it "explains the ceiling in place of the Extend button once rounds_limit is maxed" do
+    debate = create(:debate, hujah: root, challenger: challenger, opponent: opponent,
+      status: :active, rounds_limit: Debate::MAX_ROUNDS)
+    # (MAX_ROUNDS - 1) * 2 turns = the closing-round boundary, i.e. the exact moment
+    # the Extend button WOULD be offered if the debate were not already at its ceiling.
+    ((Debate::MAX_ROUNDS - 1) * 2).times do |i|
+      create(:debate_turn, debate: debate, user: i.even? ? challenger : opponent)
+    end
+    expect(debate.reload).to be_at_round_ceiling
+    expect(debate).not_to be_extendable_by(challenger)
+
+    login_as_system(challenger)
+    visit "/debates/#{debate.slug}"
+
+    within("##{dom_id(debate, :actions)}") do
+      expect(page).to have_content(/maximum rounds reached/i) # CSS-uppercased
+      expect(page).to have_no_button("Extend by one round")
+      expect(page).to have_button("Conclude") # the ceiling caps rounds, not the debate
+    end
   end
 end

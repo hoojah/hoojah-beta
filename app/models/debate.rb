@@ -152,6 +152,17 @@ class Debate < ApplicationRecord
     broadcast_append_later_to self, target: dom_id(self, :transcript),
       partial: "debates/debate_turn", locals: {debate_turn: turn}
     broadcast_to_each_participant(target: :composer, partial: "debates/turn_composer")
+    # Slice 9: the status region carries "Round n of N" and the actions region carries
+    # the Extend affordance, and EVERY transition of either is a post_turn — the round
+    # advances on each even position, and extendable_by? flips false→true the moment a
+    # closing-round boundary is reached. Without this the counter would freeze at first
+    # paint and the Extend button would never appear at all, since its window closes on
+    # the very next turn.
+    #
+    # `unless capped` because the capped branch already reached broadcast_state_change
+    # through conclude! above; firing it here too would enqueue the status + both
+    # actions replaces twice for the one capping turn.
+    broadcast_state_change unless capped
     true
   end
 
