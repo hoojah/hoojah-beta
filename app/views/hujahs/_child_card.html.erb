@@ -1,17 +1,44 @@
 <%# Port of the legacy SPA `Hujah/card_small.js` — a threaded child response. The left border
     is colored by the responder's stance, and the element is a response-filter item
-    tagged with that stance so the Stimulus filter can show/hide it. %>
+    tagged with that stance so the Stimulus filter can show/hide it.
+
+    DESIGN SYSTEM (Slice 9, Task 4.3) —
+    docs/design-system/components/hujah/CompactHujahCard.prompt.md: "the 8px left border
+    is the responder's stance — this is the signature Hoojah motif. Tallies below the
+    body are faint light-grey, all three stances always shown."
+
+    That border now comes from `ui/_card`'s `stance:` rather than from interpolating the
+    stance into `border-<...>` here. The interpolation LOOKED harmless — every stance is
+    in the `@source inline` safelist — but it had no guard: `ds_card_classes` raises on a
+    value outside CARD_STANCES, whereas raw interpolation of a typo yields a class with no
+    rule behind it and renders as a card that merely looks unstanced. Neither review nor
+    CI sees that. The `|| "primary"` fallback for an unvoted response is in the set for
+    exactly this reason.
+
+    `padded:` stays unset (the inner rows own their padding) and `pr-2 flex items-center
+    mb-1` rides in `class:`. `mb-1` is 4px, not the feed's 8px, deliberately: the
+    challenge row below hangs off it with `-mt-1`, and threaded children stack tighter
+    than top-level cards.
+
+    FROZEN: `data-response-filter-target="item"` / `data-response-filter-vote` are the
+    response-filter controller's whole API and are matched by string against the copies
+    documented in `_response_filter` and repeated in `_challenge_dialog`. They stay on
+    the anchor, spelled exactly as they were. %>
 <% stance = {1 => "agree", 2 => "neutral", 3 => "disagree"}[child.vote] || "primary" %>
 <%= link_to hujah_path(child.slug),
       class: "block no-underline",
       data: { "response-filter-target": "item", "response-filter-vote": stance } do %>
-  <div class="shadow border-l-8 border-<%= stance %> pr-2 flex items-center mb-1 bg-white">
+  <%= render layout: "ui/card",
+        locals: {stance: stance, class: "pr-2 flex items-center mb-1"} do %>
     <div class="flex py-1">
-      <%= image_tag child.user.photo, class: "rounded-full mx-2 w-8 h-8 shrink-0", alt: child.user.username %>
+      <%# 32px — the design system's compact-card avatar. Via the partial because
+          `image_tag user.photo` raises on a photoless responder and would take the
+          whole thread down with it. %>
+      <%= render "ui/avatar", user: child.user, size: :sm, class: "mx-2" %>
       <div class="flex flex-col min-w-0">
         <div>
           <span class="mr-1 text-primary"><%= child.user.full_name %></span>
-          <small class="text-grey">@<%= child.user.username %></small>
+          <small class="text-sm text-grey">@<%= child.user.username %></small>
         </div>
         <div class="mb-0 text-black break-words"><%= format_body(child.body) %></div>
         <div class="flex items-center text-sm text-light-grey fill-light-grey">
@@ -23,13 +50,14 @@
         </div>
       </div>
     </div>
-  </div>
+  <% end %>
 <% end %>
 
 <%# "Challenge to debate" escalates this argument into a one-on-one debate. Shown
     only to a signed-in viewer who is not the argument's author. Rendered OUTSIDE the
-    card anchor (a <dialog>/<form> can't nest in an <a>); it carries the same
-    response-filter item+vote so it hides in sync with the card. %>
+    card anchor (a <dialog>/<form> can't nest in an <a>) — CompactHujahCard.prompt.md
+    says the same thing about `ChallengeLink`: "renders below the card, never inside it".
+    It carries the same response-filter item+vote so it hides in sync with the card. %>
 <% if user_signed_in? && current_user.id != child.user_id %>
   <%= render "hujahs/challenge_dialog", argument: child, hujah: hujah, stance: stance %>
 <% end %>

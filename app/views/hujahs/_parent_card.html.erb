@@ -1,13 +1,35 @@
 <%# Port of `Hujah/form.js` displayParentCard: reminds the replier how they voted on
     the parent, then shows the parent body with a stance-colored left border.
-    Locals: parent. %>
+    Locals: parent.
+
+    DESIGN SYSTEM (Slice 9, Task 4.3) — this is the third surface that reaches for the
+    8px stance border, and `DesignSystemHelper::CARD_STANCES` names it explicitly:
+    "`hujahs/_parent_card` falls back to `primary` when the viewer never voted". So the
+    body block goes through `ui/_card` with `stance:` instead of interpolating
+    `border-<...>` by hand — same reason as `_child_card`: the helper raises on a value
+    outside the set, raw interpolation renders a borderless card and says nothing.
+
+    That DOES change one pixel-level thing: `ui/_card` carries `shadow`, and this block
+    had `bg-white` alone. It is a card in every other respect — white, square, stance
+    border — and the design system has one card surface, not two. Treat the shadow as
+    the correction it is, the same way `ui/_empty_state` adds `bg-white` to the three
+    call sites that had no background.
+
+    `padded:` stays unset so `pl-2` in `class:` cannot collide with it (the same-family
+    padding trap in ui/_card's header).
+
+    The stance verb above the card keeps its raw `text-<stance> fill-<stance>`
+    interpolation. Both are BARE utilities over the stance trio, which
+    `@source inline("{bg,text,border,fill}-{agree,neutral,disagree,primary}")` covers —
+    unlike a variant such as `peer-checked:bg-<stance>`, which a safelist entry does not
+    generate and which shipped blank in `_stance_picker` until Task 4.2. `stance` here is
+    nil or one of the trio; `verb` gates the span, so nothing renders when it is nil. %>
 <%
   stance = parent.current_user_vote(logged_in: true, current_user_id: current_user.id)
   verb = {"agree" => "agreed", "neutral" => "were neutral", "disagree" => "disagreed"}[stance]
-  border = stance || "primary"
 %>
 <div class="bg-white pb-2">
-  <small class="text-grey">
+  <small class="text-sm text-grey">
     You
     <% if verb %>
       <span class="inline-flex items-center gap-1 text-<%= stance %> fill-<%= stance %>">
@@ -17,6 +39,6 @@
     to <span class="text-primary"><%= parent.user.full_name %></span>'s claim:
   </small>
 </div>
-<div class="bg-white pl-2 border-l-8 border-<%= border %>">
+<%= render layout: "ui/card", locals: {stance: stance || "primary", class: "pl-2"} do %>
   <h6 class="text-black pt-1 leading-snug"><%= format_body(parent.body) %></h6>
-</div>
+<% end %>

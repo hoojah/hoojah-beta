@@ -1,12 +1,34 @@
 <%# Faithful port of the legacy SPA `Hujah/card_header.js`: avatar + full_name + @handle,
     plus a share menu (native <details>, no JS needed). Optional `parent:` local
-    renders the "Response to ..." parent stub (port of card_parent.js). %>
+    renders the "Response to ..." parent stub (port of card_parent.js).
+
+    DESIGN SYSTEM (Slice 9, Task 4.3) —
+    docs/design-system/components/hujah/HujahHeader.prompt.md: "full name is indigo
+    medium; `@handle · date` is 14px grey underneath. Timestamps are always the compact
+    `%b %-d` form." The name and the timestamp format were already right; the 14px was
+    not. A bare `<small>` is 0.8em, i.e. 12.8px against the body's 16px — the design
+    system's UI text is 14px, so both `<small>`s here now say `text-sm` outright. Same
+    correction, same reason, as the navbar labels in Task 4.1: they were inheriting a
+    size rather than being assigned one.
+
+    Both avatars go through `ui/_avatar` — 44px (`md`) for the byline, 32px (`sm`) for
+    the parent stub, which are the design system's own boxes for those two slots. That
+    is not only tidiness: `image_tag user.photo` RAISES when `photo` is blank, and
+    `:photo` is user-editable while `assign_random_photo` only backfills on create. This
+    partial renders inside every feed card, so one photoless author 500s the whole feed.
+    Pass the box through `size:`, never a `w-*` in `class:` — those compete rather than
+    override, and the bundle's order decides (see the partial's own header).
+
+    The stub's `shadow-sm` stays. It is the only `shadow-sm` in the app and it is NOT
+    the card shadow: this strip sits above the byline inside a card that already has
+    `shadow`, and promoting it to a full `shadow` would read as a second card edge —
+    which is precisely what ui/_divider's header says internal sections must not grow. %>
 <% if local_assigns[:parent].present? %>
   <%= link_to hujah_path(parent.slug), class: "block no-underline" do %>
     <div class="shadow-sm border-b border-light-grey px-4 py-1 flex items-center">
-      <%= image_tag parent.user.photo, class: "rounded-full w-8 h-8 mr-2", alt: parent.user.username %>
+      <%= render "ui/avatar", user: parent.user, size: :sm, class: "mr-2" %>
       <div class="flex flex-col min-w-0">
-        <small class="text-grey">
+        <small class="text-sm text-grey">
           Response to <span class="text-primary"><%= parent.user.full_name %></span>'s hoojah
         </small>
         <div class="text-grey text-sm truncate max-w-[350px]"><%= strip_tags(parent.body) %></div>
@@ -18,13 +40,15 @@
 <div class="px-4 pt-3 pb-0 flex justify-between items-center">
   <div class="flex items-center min-w-0">
     <%= link_to "#", class: "shrink-0" do %>
-      <%= image_tag hujah.user.photo, class: "rounded-full w-11 h-11 mr-3", alt: hujah.user.username %>
+      <%= render "ui/avatar", user: hujah.user, size: :md, class: "mr-3" %>
     <% end %>
     <div class="flex flex-col min-w-0">
       <%= link_to hujah.user.full_name, "#", class: "text-primary font-medium no-underline truncate" %>
-      <small class="text-grey">
+      <small class="text-sm text-grey">
         @<%= hujah.user.username %>
         <span class="mx-1">·</span>
+        <%# `data-local="time-ago"` is local_time's hook — the compact "%b %-d" here is
+            the server-rendered fallback the design system specifies, not a placeholder. %>
         <time datetime="<%= hujah.created_at.iso8601 %>" data-local="time-ago"><%= hujah.created_at.strftime("%b %-d") %></time>
       </small>
     </div>

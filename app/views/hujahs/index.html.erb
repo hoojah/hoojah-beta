@@ -1,3 +1,7 @@
+<%# The feed. DESIGN SYSTEM (Slice 9, Task 4.3): the layout here already IS the
+    design system's page shape and is left alone — a `max-w-xl` (576px) centred content
+    column, and on `lg` a 256px (`w-64`) trending sidebar beside it. The cards inside
+    stack with their own 8px gaps, which is why this column sets no `gap`. %>
 <%= render "shared/navbar" %>
 
 <main class="max-w-5xl mx-auto px-4 py-6 lg:flex lg:gap-8 lg:justify-center">
@@ -6,6 +10,12 @@
 
     <%= render "feed_tabs" %>
 
+    <%# Deliberately NOT `ui/_empty_state`. That primitive is the product's one-line
+        empty state — "one Lucide glyph, one plain sentence" — and its six call sites
+        are all single fragments ("No response yet", "Nothing trending yet."). This is
+        two sentences, the second of which tells you what to do about it, so it is a
+        centred paragraph rather than an icon row. Compressing it into the primitive
+        would either truncate the instruction or stretch the primitive. %>
     <% if params[:filter] == "following" && user_signed_in? && @hujahs.empty? %>
       <p class="text-center text-grey py-8">
         Your Following feed is empty. Follow some people to see their hoojahs here.

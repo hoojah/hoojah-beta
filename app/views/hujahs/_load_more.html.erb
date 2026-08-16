@@ -1,3 +1,14 @@
+<%# The feed's pagination control. `data-turbo-stream` makes Turbo request
+    `index.turbo_stream.erb`, which appends the next page and replaces this row.
+
+    DESIGN SYSTEM (Slice 9, Task 4.3) — deliberately NOT `ds_button_classes`. The
+    design system's Button is a pill, and its one non-pill variant (`link`) is the bare
+    text control inside a notification row: `border-0 bg-transparent p-0 inline-flex`.
+    This is a full-width centred row with its own `py-3` tap target, so asking for that
+    variant would mean overriding display AND padding — same-family utilities, which
+    resolve by their order in the bundle rather than the caller's (see the `padded:`
+    note in ui/_card). It is already the DS's link treatment otherwise: primary indigo,
+    medium weight. Left alone on purpose. %>
 <%= link_to "Load more",
       root_path(page: @pagy.next, filter: params[:filter]),
       data: { turbo_stream: true },
