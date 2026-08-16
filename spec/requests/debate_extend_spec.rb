@@ -29,6 +29,11 @@ RSpec.describe "Debate extend", type: :request do
     # runs in dev, so the actor's own affordances must update from this response.
     expect(response.body).to include(dom_id(d, :status))
     expect(response.body).to include(dom_id(d, :actions))
+    # The region must render POPULATED, not merely present: an empty :actions
+    # span satisfies the dom_id assertion above and is exactly what a missing or
+    # nil `viewer:` local produces. Conclude is the actions partial's active-debate
+    # affordance, so its presence proves the viewer plumbing survived.
+    expect(response.body).to include("Conclude")
     expect(d.reload.rounds_limit).to eq(5)
   end
 
