@@ -1,7 +1,33 @@
-<%# Compact user row for the followers / following lists. Locals: user. %>
+<%# Compact user row for the followers / following lists (and, via
+    `blocks/index`, the blocked-users list). Locals: user.
+
+    DESIGN SYSTEM (Slice 9, Task 4.4) —
+    docs/design-system/components/social/UserRow.prompt.md: "40px avatar, medium name,
+    faint light-grey @handle; hovers to `--color-gray-50`. Rows sit directly on white
+    with a bottom border, not on separate cards." The name, the handle and the
+    no-card-per-row shape were already right. Three things were not:
+
+    - The avatar now goes through `ui/_avatar` at `row` (40px — the size exists in
+      AVATAR_SIZES for this row and nothing else). `image_tag user.photo` raises on a
+      blank photo, so a single photoless follower 500'd the whole followers page.
+    - `border-b` carried no colour. Tailwind's reset leaves border-color at
+      `currentColor`, and the base layer paints an `<a>` with `--fg-link` — so the
+      separator rendered in brand indigo, a 1px blue rule between every row. It is the
+      design system's `#f3f4f6` hairline, same as `ui/_divider`.
+    - The hover fill was `hover:bg-neutral-<N>` off Tailwind's own `neutral` ramp, NOT
+      Hoojah's `neutral` stance — a genuinely confusing collision, since a `*-neutral`
+      utility means pink everywhere else in this app. The design system asks for
+      `gray-50`, so that is what this row now says. (The old class name is spelled with
+      a placeholder above on purpose: Tailwind reads these files as text with no
+      ERB-comment awareness, so writing a dead utility in prose keeps generating a rule
+      for it — the exact trap Task 4.2's review had to unpick.)
+
+    A row is NOT a `ui/_card`: the list is one white surface with hairlines through it,
+    and giving each row a shadow would grow the edges that `ui/_divider`'s header
+    describes. The `shadow` lives on the list wrapper in each of the three callers. %>
 <%= link_to profile_path(user.username),
-      class: "flex items-center gap-3 p-3 bg-white border-b hover:bg-neutral-50" do %>
-  <%= image_tag user.photo, class: "rounded-full w-10 h-10 object-cover", alt: user.username %>
+      class: "flex items-center gap-3 p-3 bg-white border-b border-gray-100 hover:bg-gray-50" do %>
+  <%= render "ui/avatar", user: user, size: :row %>
   <div class="flex flex-col">
     <span class="font-medium"><%= user.full_name %></span>
     <span class="text-sm text-light-grey">@<%= user.username %></span>

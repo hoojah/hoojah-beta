@@ -1,10 +1,37 @@
 <%# One notification row — faithful port of the legacy SPA `Notifications/card.js`.
     Left border colored read/unread; a category-specific Lucide icon + copy; the body
     is a PATCH button (mark read → redirect to the hoojah); a trash button DELETEs it
-    (Turbo-Stream removes this card). Locals: notification. %>
+    (Turbo-Stream removes this card). Locals: notification.
+
+    DESIGN SYSTEM (Slice 9, Task 4.4) —
+    docs/design-system/components/social/NotificationCard.prompt.md: "same 8px-left-border
+    shape as a compact hoojah card, but the border encodes read state instead of stance."
+    That is why `DesignSystemHelper::CARD_STANCES` is six values and not three — `read`
+    and `unread` are in the set for this file alone, and `ui/_card`'s `stance:` builds
+    `border-<state>` by the same interpolation this partial used to do inline. The two
+    colours behind those classes arrived in Task 1.1; before that the border rendered as
+    nothing at all, which is what spec/system/design_tokens_spec.rb now pins (it asserts
+    the class AND the computed colour, so a lost class and a lost token fail separately).
+
+    The bare Accept / Decline / Mark as read controls take
+    `ds_button_classes(variant: :link, ...)`. That variant carries no font size on
+    purpose — these sit in a 14px row and an emitted `text-base` would visibly enlarge
+    them against it. Tone is the design system's: primary for the affirmative action,
+    grey for Decline and for the trash.
+
+    The two `link_to "View profile"` rows and the two body `button_to`s are deliberately
+    NOT buttons-by-helper. The body ones are truncating text blocks (`truncate` plus a
+    `max-w-[350px]` clamp) and the `:link` variant's `inline-flex` would break the
+    overflow they depend on; the "View profile" rows are already plain primary links.
+
+    FROZEN: `dom_id(notification)` is what `destroy.turbo_stream.erb` removes.
+    Every `button_to` path and verb, and `aria-label="Delete notification"`, which
+    spec/system/notifications_spec.rb clicks by name. %>
 <% read = notification.read? %>
-<div id="<%= dom_id(notification) %>"
-     class="shadow border-l-8 border-<%= read ? "read" : "unread" %> pr-2 flex items-center mb-1 bg-white">
+<%= render layout: "ui/card",
+      locals: {id: dom_id(notification),
+               stance: read ? "read" : "unread",
+               class: "pr-2 flex items-center mb-1"} do %>
   <div class="flex items-center py-1 w-full">
     <div class="flex items-center ml-3 fill-grey shrink-0">
       <% case notification.category %>
@@ -70,9 +97,9 @@
             hit /follow_requests/:id; FollowRequestPolicy restricts them to this user. %>
         <div class="flex items-center gap-3">
           <%= button_to "Accept", follow_request_path(req_follow), method: :patch,
-                class: "text-left p-0 bg-transparent border-0 text-primary no-underline" %>
+                class: ds_button_classes(variant: :link) %>
           <%= button_to "Decline", follow_request_path(req_follow), method: :delete,
-                class: "text-left p-0 bg-transparent border-0 text-grey no-underline" %>
+                class: ds_button_classes(variant: :link, tone: "grey") %>
         </div>
       <% elsif notification.follow_accepted? && notification.subject_user %>
         <%= link_to "View profile", profile_path(notification.subject_user.username),
@@ -80,14 +107,14 @@
       <% elsif notification.badge_earned? %>
         <%# badge_earned has no hujah/subject_user, so add its own mark-read affordance. %>
         <%= button_to "Mark as read", notification_path(notification), method: :patch,
-              class: "text-left p-0 bg-transparent border-0 text-primary no-underline" %>
+              class: ds_button_classes(variant: :link) %>
       <% end %>
     </div>
 
     <%= button_to notification_path(notification), method: :delete,
-          class: "flex items-center ml-auto mr-2 fill-grey bg-transparent border-0 p-0",
+          class: "#{ds_button_classes(variant: :link, tone: "grey")} ml-auto mr-2",
           aria: {label: "Delete notification"} do %>
       <%= lucide_icon("trash-2", class: "w-4 h-4") %>
     <% end %>
   </div>
-</div>
+<% end %>

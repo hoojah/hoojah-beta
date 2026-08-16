@@ -7,10 +7,7 @@
     <% if @notifications.any? %>
       <%= render partial: "notification_card", collection: @notifications, as: :notification %>
     <% else %>
-      <div class="flex items-center text-sm text-light-grey fill-light-grey card-body p-3 bg-white">
-        <%= lucide_icon("bell", class: "w-4 h-4") %>
-        <span class="ml-1">You have no notifications</span>
-      </div>
+      <%= render "ui/empty_state", message: "You have no notifications", icon: "bell" %>
     <% end %>
   </div>
 </main>

@@ -1,5 +1,18 @@
 <%# Compact trending list — reused by the lazy sidebar frame on the feed and by
-    the standalone /trending page. Locals: hujahs. %>
+    the standalone /trending page. Locals: hujahs.
+
+    DESIGN SYSTEM (Slice 9, Task 4.4) —
+    docs/design-system/components/social/TrendingList.prompt.md: "all grey text, no
+    cards, no numbers, no rank badges. Bodies truncate at ~90 characters. Empty copy is
+    exactly 'Nothing trending yet.'" All four were already true, so the list itself is
+    untouched — resist adding a rank number or a card per row; their absence is the
+    component. The empty line moves onto `ui/_empty_state` for the same wording in the
+    same place, `icon: nil` because this one is a bare sentence and `lucide_icon(nil)`
+    raises, `tone: :muted` because grey is what the prompt asks for and faint is the
+    partial's default. The padding is zeroed through all three longhands rather than a
+    `p-0`: `p-0` and the partial's baked `p-3` are the same Tailwind family and resolve
+    by bundle order, where `.p-0` comes FIRST and therefore loses (see the partial's
+    own header). `px-* pt-* pb-*` are emitted after the shorthand and do win. %>
 <section aria-label="Trending hoojahs">
   <h2 class="text-sm font-semibold text-grey uppercase tracking-wide mb-2 flex items-center gap-1">
     <%= lucide_icon("flame", class: "w-4 h-4") %> Trending
@@ -17,6 +30,7 @@
       <% end %>
     </ol>
   <% else %>
-    <p class="text-sm text-grey">Nothing trending yet.</p>
+    <%= render "ui/empty_state", message: "Nothing trending yet.", icon: nil,
+          tone: :muted, class: "px-0 pt-0 pb-0" %>
   <% end %>
 </section>
