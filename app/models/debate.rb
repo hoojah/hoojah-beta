@@ -16,6 +16,12 @@ class Debate < ApplicationRecord
   enum :status, {pending: 0, active: 1, concluded: 2, declined: 3}, default: :pending
 
   validates :challenger_stance, :opponent_stance, presence: true
+  # Below 2 the model degenerates: phase_for can never yield :closing (round 1
+  # returns :opening first) while final_position is still 2, so the debate would
+  # cap with no closing statement ever labelled. The upper bound is the same
+  # ceiling extend_rounds! enforces, restated as an invariant of the row.
+  validates :rounds_limit, numericality: {only_integer: true,
+                                          greater_than_or_equal_to: 2, less_than_or_equal_to: MAX_ROUNDS}
   validate { errors.add(:opponent_stance, "must oppose") if challenger_stance == opponent_stance }
   validate { errors.add(:opponent_id, "must differ") if challenger_id == opponent_id }
 
@@ -44,31 +50,50 @@ class Debate < ApplicationRecord
     round.even? ? :counter : :response
   end
 
-  # The position of the last turn this debate can hold. `>=` (not `==`) is used
-  # against it in post_turn so the cap is a floor, not an exact hit: a debate
-  # whose rounds_limit were ever lowered, or whose positions had somehow skipped,
-  # would step OVER an equality check and run unbounded.
+  # The phase to show for a debate as a whole. NEVER call phase_for(current_round)
+  # directly from a view: current_round is turns.count / 2 + 1, so a concluded
+  # 8-turn debate reports round 5, one PAST rounds_limit, and phase_for would
+  # answer :response — "Response" printed on the concluded transcript everyone
+  # reads. Clamped here once rather than in every caller.
+  def current_phase
+    return nil unless active?
+    phase_for([current_round, rounds_limit].min)
+  end
+
+  # The position of the last turn this debate can hold. post_turn compares with
+  # `>=`, not `==`: the cap is a floor, so a position that ever landed past it
+  # still stops the debate instead of stepping over an equality check.
   def final_position = rounds_limit * 2
+
+  # Exposed separately from extendable_by? so a view can distinguish "no button
+  # because the debate is at its ceiling" (say so) from "no button because this
+  # is the wrong moment" (stay silent).
+  def at_round_ceiling? = rounds_limit >= MAX_ROUNDS
 
   # Only at the closing-round BOUNDARY: the round has been reached but holds no
   # turn yet. Extending once a closing turn exists would silently relabel it from
   # CLOSING to COUNTER, because phase is derived at render time.
-  #
-  # `turns.count` and `turns.maximum(:position)` are interchangeable here —
-  # positions are contiguous from 1 (assigned as maximum + 1 under the debate row
-  # lock, unique index on [debate_id, position], no per-turn delete path) — but
-  # count states the intent ("both halves of the previous round are in") directly.
   def extendable_by?(user)
-    active? && participant?(user) && rounds_limit < MAX_ROUNDS &&
+    active? && participant?(user) && !at_round_ceiling? &&
       turns.count == (rounds_limit - 1) * 2
   end
 
   # Unilateral by design: the window belongs to whoever moves first in the closing
   # round, and the other participant retains conclude! throughout — so no
   # negotiation state is needed.
+  #
+  # The lock guards the LABEL INVARIANT, not a counter — do not remove it as
+  # redundant. post_turn takes the same debates-row FOR UPDATE, so without it an
+  # extend could read turns.count == 6 while post_turn is committing position 7:
+  # the bump would land, and that already-written turn would flip :closing →
+  # :counter under every reader. Serialised, the loser re-reads a count of 7 and
+  # extendable_by? correctly fails. Broadcasting stays outside the lock, as in
+  # post_turn.
   def extend_rounds!(by:)
-    return false unless extendable_by?(by)
-    update!(rounds_limit: rounds_limit + 1)
+    with_lock do
+      return false unless extendable_by?(by)
+      update!(rounds_limit: rounds_limit + 1)
+    end
     broadcast_state_change
     true
   end

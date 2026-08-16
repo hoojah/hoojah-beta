@@ -2,10 +2,9 @@ require "rails_helper"
 require Rails.root.join("db/migrate/20260814120000_add_rounds_limit_to_debates")
 
 RSpec.describe "debate rounds and phases", type: :model do
-  # `position` is assigned explicitly: the factory's `sequence(:position)` is
-  # global to the process, so consecutive helper calls would hand a debate
-  # positions like 11..20. Turn counts survive that, but DebateTurn#round is
-  # derived FROM position, so the round/phase math needs a 1-based run. The
+  # `position` is stated literally even though the factory now derives the same
+  # value: this file's entire subject is position-derived round math, so its
+  # fixtures should not be reading the answer out of the thing under test. The
   # challenger always opens, so even indices are theirs.
   def debate_with_turns(status, count)
     create(:debate, status: status).tap do |debate|
@@ -14,6 +13,19 @@ RSpec.describe "debate rounds and phases", type: :model do
           user: (i.even? ? debate.challenger : debate.opponent))
       end
     end
+  end
+
+  # Every `SELECT ... FOR UPDATE` issued against `debates` while the block runs.
+  def locking_statements
+    seen = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+      sql = payload[:sql].to_s
+      seen << sql if sql.include?("FOR UPDATE") && sql.include?('"debates"')
+    end
+    yield
+    seen
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber)
   end
 
   describe "rounds_limit" do
@@ -117,6 +129,62 @@ RSpec.describe "debate rounds and phases", type: :model do
     end
   end
 
+  describe "#current_phase" do
+    it "tracks the round in flight on an active debate" do
+      expect(debate_with_turns(:active, 0).current_phase).to eq(:opening)  # round 1
+      expect(debate_with_turns(:active, 2).current_phase).to eq(:counter)  # round 2
+      expect(debate_with_turns(:active, 4).current_phase).to eq(:response) # round 3
+      expect(debate_with_turns(:active, 6).current_phase).to eq(:closing)  # round 4
+    end
+
+    # The trap this method exists to close: current_round on a full debate is 5,
+    # one PAST rounds_limit, and phase_for(5) is :response. Views must never see
+    # "Response" on a concluded transcript.
+    it "is nil once the debate is over, rather than reporting a phantom round" do
+      debate = debate_with_turns(:active, 7)
+      debate.post_turn(by: debate.opponent, body: "closing")
+      debate.reload
+
+      expect(debate).to be_concluded
+      expect(debate.current_round).to eq(5)
+      expect(debate.phase_for(debate.current_round)).to eq(:response) # the trap
+      expect(debate.current_phase).to be_nil # the clamp
+    end
+
+    it "is nil on a pending debate" do
+      expect(create(:debate).current_phase).to be_nil
+    end
+  end
+
+  describe "rounds_limit validation" do
+    # Associations are passed explicitly: a bare `build(:debate)` leaves both
+    # challenger_id and opponent_id nil, which trips the "must differ" validation
+    # and would make every one of these examples pass for the wrong reason.
+    def debate_with_limit(limit)
+      build(:debate, challenger: create(:user), opponent: create(:user), rounds_limit: limit)
+    end
+
+    it "rejects a limit below 2, where no round could ever be :closing" do
+      debate = debate_with_limit(1)
+
+      expect(debate).not_to be_valid
+      expect(debate.errors[:rounds_limit]).to be_present
+    end
+
+    it "rejects a limit above MAX_ROUNDS" do
+      debate = debate_with_limit(Debate::MAX_ROUNDS + 1)
+
+      expect(debate).not_to be_valid
+      expect(debate.errors[:rounds_limit]).to be_present
+    end
+
+    it "accepts the whole supported range" do
+      (2..Debate::MAX_ROUNDS).each do |limit|
+        expect(debate_with_limit(limit)).to be_valid
+      end
+    end
+  end
+
   describe "the turn cap" do
     it "concludes the debate when the final turn is posted" do
       debate = debate_with_turns(:active, 7)
@@ -164,6 +232,32 @@ RSpec.describe "debate rounds and phases", type: :model do
       expect(debate.post_turn(by: debate.challenger, body: "one more")).to be(false)
       expect(debate.turns.count).to eq(8)
     end
+
+    describe "broadcast ordering" do
+      include ActiveJob::TestHelper
+
+      def stream(*streamables) = streamables.map(&:to_gid_param).join(":")
+
+      # PINS the ordering: conclude! is enqueued BEFORE the composer broadcast.
+      # Every *_later_to renders inside a job, from a GlobalID-reloaded record, at
+      # EXECUTION time — not from the state at enqueue time. Move conclude! back
+      # below the broadcasts and the composer job renders while the debate is
+      # still `active`, painting the turn form for the opponent; conclude!'s
+      # broadcast_state_change only replaces :status and :actions, so nothing
+      # would ever correct it. The whole suite stays green without this example.
+      it "leaves BOTH participants' composers reading as concluded, never the turn form" do
+        debate = debate_with_turns(:active, 7)
+
+        perform_enqueued_jobs { debate.post_turn(by: debate.opponent, body: "closing") }
+
+        [debate.challenger, debate.opponent].each do |participant|
+          html = ActionCable.server.pubsub.broadcasts(stream(debate, participant)).join
+          expect(html).to include(ActionView::RecordIdentifier.dom_id(debate, :composer))
+          expect(html).to include("This debate has concluded")
+          expect(html).not_to include("Post turn")
+        end
+      end
+    end
   end
 
   describe "#extend_rounds!" do
@@ -201,6 +295,58 @@ RSpec.describe "debate rounds and phases", type: :model do
       expect(debate.extendable_by?(debate.challenger)).to be(false)
       expect(debate.extend_rounds!(by: debate.challenger)).to be(false)
       expect(debate.reload.rounds_limit).to eq(Debate::MAX_ROUNDS)
+    end
+
+    # extendable_by? collapses every refusal into one `false`. A view needs to
+    # tell "at the ceiling" (say "maximum rounds reached") from "wrong moment"
+    # (stay silent), so the ceiling is exposed on its own.
+    it "reports the ceiling separately from the extension window" do
+      at_ceiling = debate_with_turns(:active, 18)
+      at_ceiling.update!(rounds_limit: Debate::MAX_ROUNDS)
+      wrong_moment = debate_with_turns(:active, 3)
+
+      expect(at_ceiling.at_round_ceiling?).to be(true)
+      expect(wrong_moment.at_round_ceiling?).to be(false)
+      expect([at_ceiling, wrong_moment].map { |d| d.extendable_by?(d.challenger) }).to eq([false, false])
+    end
+
+    # The guard's whole purpose, asserted on the SUCCESS path — the refusal case
+    # below only shows the guard fires, not that a label survives an extension
+    # that actually happens. Walks to the ceiling, extending at every boundary.
+    it "never changes an already-posted turn's label across a successful extend" do
+      debate = debate_with_turns(:active, 6)
+      movers = [debate.challenger, debate.opponent]
+      labels = ->(d) { DebateTurn.where(debate: d).order(:position).map { |t| [t.position, t.phase_label] } }
+
+      while debate.reload.rounds_limit < Debate::MAX_ROUNDS
+        before = labels.call(debate)
+
+        expect(debate.extend_rounds!(by: debate.challenger)).to be(true)
+
+        expect(labels.call(debate)).to eq(before)
+
+        # Play out the round the extension opened, re-reaching the boundary.
+        movers.each { |mover| debate.post_turn(by: mover, body: "turn") }
+      end
+
+      expect(debate.reload.rounds_limit).to eq(Debate::MAX_ROUNDS)
+      expect(debate.turns.count).to eq(18)
+    end
+
+    # A concurrent post_turn committing position 7 while an extend reads a count
+    # of 6 would bump the limit and flip that turn :closing -> :counter. Both
+    # methods take the SAME debates-row FOR UPDATE, so Postgres serialises them
+    # and the loser re-reads a count of 7. Asserted as an identical lock
+    # statement rather than by racing two connections.
+    it "serialises against post_turn on the same debates-row lock" do
+      debate = debate_with_turns(:active, 6)
+
+      extend_locks = locking_statements { debate.extend_rounds!(by: debate.challenger) }
+      post_locks = locking_statements { debate.post_turn(by: debate.challenger, body: "t7") }
+
+      expect(extend_locks.size).to eq(1)
+      expect(post_locks.size).to eq(1)
+      expect(extend_locks).to eq(post_locks) # same table, same row, same lock mode
     end
 
     # The reason the guard is the boundary and not merely "before the cap":
