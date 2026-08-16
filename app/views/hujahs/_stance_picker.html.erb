@@ -24,10 +24,16 @@
     WHY THE COLOURS ARE SPELLED OUT AND NOT INTERPOLATED (a bug fix, Task 4.2): this
     partial used to build the checked fill by interpolating the stance name into
     `peer-checked:bg-` with an ERB output tag, and that class HAS NO RULE in the bundle.
-    `@source inline(...)` safelists the BARE utilities — `bg-agree` exists,
-    `peer-checked:bg-agree` never did, because a safelist entry generates the utility it
-    names and not every variant of it, and Tailwind's scanner cannot see a class that
-    ERB assembles at render time. The two white halves of the inversion are literals, so
+    `@source inline(...)` safelists the BARE utilities — `bg-<stance>` exists,
+    `peer-checked:bg-<stance>` never did, because a safelist entry generates the utility
+    it names and not every variant of it, and Tailwind's scanner cannot see a class that
+    ERB assembles at render time.
+
+    NOTE the `<stance>` placeholders above and below: the scanner has no idea this is a
+    comment, it reads the file as text, so writing a real class name in this prose would
+    emit that class from the COMMENT and the spec below would pass on a partial that no
+    longer spells it out. Same defect Task 1.1 fixed with `@source not "../../../docs"`.
+    Never name a concrete utility in a comment that a nearby guard depends on. The two white halves of the inversion are literals, so
     `peer-checked:fill-white` and `peer-checked:text-white` DID compile: picking a stance
     turned the glyph white against a still-white circle and the button read as empty.
     Written out below, the scanner reads them as text and emits them.
