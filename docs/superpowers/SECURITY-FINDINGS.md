@@ -53,3 +53,47 @@ Ranked from the auditor. Each would alter behavior the React SPA currently relie
 
 - **GHSA-96qw-h329-v5rg — shakapacker 6.6.0 (High):** EnvironmentPlugin can leak ENV secrets into client bundles. Fix = shakapacker ≥ 9.5.0.
   - **Accepted for now, tracked in `.bundler-audit.yml`.** Rationale: the webpack/React JS build is not active during the upgrade and **shakapacker is removed entirely in Project 2** (React → Hotwire on importmap+Propshaft). Bumping to 9.x means the exact webpack-rename churn the upgrade deliberately avoided, on code about to be deleted. Re-audit after Project 2; the ignore entry should be removed then.
+
+---
+
+## ✅ Fixed in Slice 9 (2026-08-16) — rack-attack throttles were bypassable
+
+Found while reviewing the Slice 9 debate-extend endpoint, which had been told to mirror an
+existing throttle block. The mirror propagated a defect present in **every** throttle.
+
+**1. Format suffix bypassed all 13 throttles.** Every Rails route accepts `(.:format)`, but the
+matchers anchored on the bare path — `req.path == "/login"`, or `%r{\A/debates/[^/]+/extend\z}`.
+A `.json` / `.turbo_stream` / any `.ext` suffix therefore missed the matcher entirely while still
+reaching the controller. Demonstrated: 40 × `POST /debates/:slug/extend.turbo_stream` produced
+**zero 429s** and the first request succeeded.
+
+**The auth throttles were the serious case.** 11 × `POST /login.json` returned **401, not 429** —
+Devise ran eleven real credential checks. `login/email` was bypassed identically, so the
+per-account limit was gone too, leaving an unmetered credential-stuffing endpoint.
+`password/ip` is a live mail-bombing vector: `POST /password.json` raises `UnknownFormat`, but
+*after* `send_reset_password_instructions` — the mail goes out, then it 406s.
+
+**2. `signup/ip` never fired at all.** `devise_for path: ""` puts `registrations#create` at
+**`POST /`**; `/signup` is only the GET form. The matcher was `req.path == "/signup" && req.post?`,
+which nothing ever sends. Account creation had **no** rate limit, format suffix or not.
+Verified: `bin/rails routes` shows `POST / → users/registrations#create`.
+
+**Fix.** One shared `Rack::Attack.throttled_path(*segments)` helper building
+`%r{\A/<path>(\.[^/]+)?\z}`. Literal segments are `Regexp.escape`d; dynamic ones pass an
+`ANY_SEGMENT` sentinel so escaping cannot swallow the wildcard. All 13 throttles are built
+through it, so a newly added throttle cannot reintroduce the gap. The suffix group is `[^/]+`
+rather than `\w+` deliberately — over-matching an unrouted path costs nothing, under-matching
+is the bug.
+
+**Coverage.** 12 new request-spec examples, each red before the fix: format-suffixed hits on
+extend / verdicts / turns / challenge / flags / compose / follow / unfollow / block / password /
+login, plus signup at the corrected `POST /`. Matcher boundaries asserted directly (16 cases)
+including the negatives `/u/bob/followers` ∉ `FOLLOW_PATH` and `/hoojah/x/flags` ∉ `COMPOSE_PATH`.
+
+**Watch item.** `signup/ip` now genuinely throttles `POST /` at 5/min per IP. That is the
+intended behaviour but it is newly enforced, and shared-NAT users are the population most likely
+to notice.
+
+**Note on test coverage limits.** Rack::Attack is disabled for system specs (its user-keyed
+throttles mis-deserialize the Warden test stash under Devise 5), so request specs are the only
+guard. Commits: `99f7898`.
