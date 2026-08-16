@@ -1,8 +1,31 @@
 <%# A debate's entry in the hoojah "Debates" lens. Links to the transcript screen.
-    Local: debate. %>
+    Local: debate.
+
+    DESIGN SYSTEM (Slice 9, Task 4.5) —
+    docs/design-system/components/debate/DebateCard.prompt.md. The card surface comes
+    from `ds_card_classes` rather than `ui/_card`, because this card IS the link: it
+    carries `href`, a `dom_id` and the `.debate-card` hook a system spec selects on, and
+    `ui/_card` has no `href:` local by design. Its own header names this file as the
+    documented escape hatch — "If your card IS a link … call `ds_card_classes` directly
+    on the `link_to` instead."
+
+    `padded:` is NOT used. DebateCard.jsx sets `padding: var(--space-2) var(--space-4)`,
+    i.e. `px-4 py-2`, and the helper's `padded:` is the taller `px-4 py-3` of a hujah
+    card. Mixing the two is the trap `ui/_card`'s header spells out — same-family
+    utilities resolve by bundle order, so `py-3` would silently beat the `py-2` this row
+    wants. Spell the padding, omit the flag.
+
+    The state colours are FIXED (DebateCard.prompt.md: pending → agree orange, active →
+    indigo, concluded → grey, declined → light-grey) and the label is a 12px uppercase
+    `tracking-wide` micro-label — the same treatment as the verdict heading and the turn
+    phase caption. `text-<state>` is INTERPOLATED, so the four tones behind it live in
+    the `@source inline` safelist in app/assets/tailwind/application.css; all four are
+    already covered there by the stance and grey lines. The map is duplicated in the
+    sibling `_debate_status` on purpose: that partial renders in a BROADCAST context and
+    the two files may not share a request-only seam. %>
 <% state_color = {"pending" => "agree", "active" => "primary", "concluded" => "grey", "declined" => "light-grey"}[debate.status] || "grey" %>
 <%= link_to debate_path(debate.slug), id: dom_id(debate, :card),
-      class: "debate-card block no-underline shadow bg-white px-4 py-2 flex items-center justify-between" do %>
+      class: "#{ds_card_classes} debate-card no-underline px-4 py-2 flex items-center justify-between" do %>
   <span class="flex items-center gap-1 text-black fill-neutral min-w-0">
     <%= lucide_icon("swords", class: "w-4 h-4 shrink-0") %>
     <span class="truncate">@<%= debate.challenger.username %> vs @<%= debate.opponent.username %></span>

@@ -1,6 +1,15 @@
 <%# The debate transcript — the pinned Turbo-Stream target that new turns append to
-    (debate_turns/create.turbo_stream.erb) and that Increment 2b broadcasting will
-    reuse untouched. Locals: debate, turns (eager-loaded, ordered by position). %>
-<div id="<%= dom_id(debate, :transcript) %>" class="debate-transcript flex flex-col gap-2 my-4">
+    (debate_turns/create.turbo_stream.erb) and that Increment 2b broadcasting reuses
+    untouched. Locals: debate, turns (eager-loaded, ordered by position).
+
+    DESIGN SYSTEM (Slice 9, Task 4.5) — DebateTurn.prompt.md: "Turns alternate between
+    the two participants and stack with 4px gaps." A transcript is the one stack in the
+    product that is TIGHTER than the 8px cards-on-a-page rhythm of Card.prompt.md,
+    because the rows are one exchange rather than unrelated feed items — so `gap-1`,
+    not `gap-2`. It stays a plain flex stack: no wrapper card, no divider, no border.
+    Nesting a card here would give the transcript edges of its own, which is exactly
+    what Card.prompt.md's "internal sections are separated by a hairline, not by extra
+    shadow" rules out. %>
+<div id="<%= dom_id(debate, :transcript) %>" class="debate-transcript flex flex-col gap-1 my-4">
   <%= render partial: "debates/debate_turn", collection: turns, as: :debate_turn %>
 </div>

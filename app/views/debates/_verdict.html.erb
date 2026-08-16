@@ -5,7 +5,29 @@
     (participants, anonymous, already-voted) sees the read-only tally bar built
     from verdict_tally (compute-on-read) using the _vote_bars width-% idiom.
 
-    Locals: debate. %>
+    Locals: debate.
+
+    This is the ONE debate partial that is never broadcast — nothing targets
+    dom_id(debate, :verdict) from a job, only debate_verdicts/create.turbo_stream.erb
+    replaces it — which is why `current_user` is legitimate here and nowhere else in
+    this family. Do not add a `viewer:` local to "match the siblings"; there is no
+    broadcast render context to defend against, and the eligibility check needs the
+    real session.
+
+    DESIGN SYSTEM (Slice 9, Task 4.5) —
+    docs/design-system/components/debate/Verdict.prompt.md. Colours are fixed:
+    challenger indigo (`primary`), opponent purple (`disagree`), draw grey. The heading
+    is uppercase + `tracking-wide` at Verdict.jsx's own `--text-sm`, not the 12px of the
+    state/phase micro-labels, and takes the medium weight the component sets. The bars
+    are the product's standard 8px track. All three colour tokens are INTERPOLATED into
+    `border-`/`text-`/`bg-`, so each must stay covered by the `@source inline` safelist
+    in app/assets/tailwind/application.css — the stance line and the grey line between
+    them already do.
+
+    The card is `ui/_card` without `padded:`: Verdict.jsx sets a uniform
+    `var(--space-4)` box, and mixing the flag with a `p-4` in `class:` is the bundle-
+    order trap `ui/_card`'s header spells out. `my-4` is the caller's own margin — the
+    card primitive deliberately owns none. %>
 <%
   eligible = DebateVerdictPolicy.new(current_user, debate.debate_verdicts.new(user: current_user)).create?
   voted = current_user.present? && debate.debate_verdicts.exists?(user_id: current_user.id)
@@ -15,14 +37,14 @@
     ["opponent", "disagree", "@#{debate.opponent.username}"],
     ["draw", "grey", "Draw"]]
 %>
-<div id="<%= dom_id(debate, :verdict) %>" class="my-4 shadow bg-white p-4">
-  <h2 class="text-sm uppercase tracking-wide text-grey mb-3">Spectator verdict</h2>
+<%= render layout: "ui/card", locals: {id: dom_id(debate, :verdict), class: "my-4 p-4"} do %>
+  <h2 class="text-sm font-medium uppercase tracking-wide text-grey mb-3">Spectator verdict</h2>
 
   <% if eligible && !voted %>
     <div class="flex flex-col gap-2">
       <% rows.each do |choice, color, label| %>
         <%= button_to debate_verdicts_path(debate.slug), params: {choice: choice},
-              class: "shadow rounded-full px-4 py-2 border-2 border-#{color} text-#{color} bg-white cursor-pointer" do %>
+              class: ds_button_classes(variant: :outline, tone: color, size: :md) do %>
           <%= label %>
         <% end %>
       <% end %>
@@ -32,15 +54,17 @@
       <% count = tally[choice].to_i %>
       <% pct = total.zero? ? 0 : (count * 100.0 / total).round %>
       <div class="flex items-center mb-3 last:mb-0">
-        <small class="w-28 shrink-0 truncate text-<%= color %>"><%= label %></small>
+        <%# `text-sm` explicitly: `<small>` renders at 80% of its parent (12.8px), and
+            Verdict.jsx pins both of these labels at 14px. %>
+        <small class="w-28 shrink-0 truncate text-sm text-<%= color %>"><%= label %></small>
         <div class="flex-1 mx-3 h-2 bg-gray-200 rounded overflow-hidden">
           <div class="h-2 rounded bg-<%= color %>" style="width: <%= pct %>%"></div>
         </div>
-        <small class="w-10 text-right text-<%= color %>"><%= pct %>%</small>
+        <small class="w-10 text-right text-sm text-<%= color %>"><%= pct %>%</small>
       </div>
     <% end %>
     <% if total.zero? %>
       <p class="text-grey text-center text-sm py-1">No verdicts yet.</p>
     <% end %>
   <% end %>
-</div>
+<% end %>

@@ -26,10 +26,16 @@
     </p>
   </header>
 
-  <div class="shadow bg-white px-4 py-3 flex items-center justify-between gap-2">
+  <%# The status header card. `ui/_card` with `padded:` — its `px-4 py-3` is exactly
+      what this row spelled by hand — and the flex layout in `class:`, which is a
+      different utility family from the padding so it cannot collide with the flag.
+      The two children are the pinned broadcast regions and stay siblings: `:status` is
+      viewer-agnostic and rides the debate stream, `:actions` is viewer-scoped and rides
+      this viewer's user-signed stream, so `viewer:` is passed EXPLICITLY here. %>
+  <%= render layout: "ui/card", locals: {padded: true, class: "flex items-center justify-between gap-2"} do %>
     <%= render "debates/debate_status", debate: @debate %>
     <%= render "debates/debate_actions", debate: @debate, viewer: current_user %>
-  </div>
+  <% end %>
 
   <%= render "debates/debate_transcript", debate: @debate, turns: @turns %>
 
