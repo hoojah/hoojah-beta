@@ -9,6 +9,13 @@
     in the product (docs/design-system/readme.md, VISUAL FOUNDATIONS). Its icons are 24px;
     16px is for inline icons elsewhere.
 
+    Every piece of text in here is `text-sm`. That is the design system's "UI text 14px",
+    and it is stated on each element rather than once on the `<nav>` because the menu
+    rows get theirs from `ds_menu_item_classes` and the `@handle` heading is a 12px
+    micro-label — a single inherited size on the bar would have to be overridden twice
+    and would read as the exception rather than the rule. Before Slice 9 these labels
+    inherited 16px from the body, which was drift, not a decision.
+
     The three icon links below are deliberately NOT `ds_button_classes`. That helper emits
     the house *button* — a pill, or the `link` variant used by the bare text controls in a
     notification row — and both carry `active:scale-95`, which the design system assigns to
@@ -23,7 +30,7 @@
     <div class="flex items-center gap-3">
       <%= link_to trending_path, class: "flex items-center text-grey hover:text-primary no-underline", aria: {label: "Trending"} do %>
         <%= lucide_icon("flame", class: "w-6 h-6") %>
-        <span class="hidden lg:inline ml-1">Trending</span>
+        <span class="hidden lg:inline ml-1 text-sm">Trending</span>
       <% end %>
 
       <% if user_signed_in? %>
@@ -39,38 +46,45 @@
                 navbar, i.e. every signed-in page at once. %>
             <%= render "ui/avatar", user: current_user, size: :nav %>
             <% if current_user.unread_notifications_count > 0 %>
-              <%# 8px pink dot, never a count badge — the design system is explicit. %>
-              <span class="ml-1 inline-block w-2 h-2 rounded-full bg-neutral" aria-label="Unread notifications"></span>
+              <%# 8px pink dot, never a count badge — the design system is explicit.
+                  `role="img"` for the same reason `ui/_avatar`'s fallback carries one:
+                  ARIA prohibits an author-supplied name on `role=generic`, which a bare
+                  <span> is, so without it a screen reader may drop the label entirely
+                  and the only unread signal left is a pink circle. `img` and not
+                  `status`: a live region announces *changes*, and this dot is rendered
+                  on page load rather than streamed in, so `status` would re-announce on
+                  every navigation and never fire when it was supposed to. %>
+              <span role="img" aria-label="Unread notifications"
+                    class="ml-1 inline-block w-2 h-2 rounded-full bg-neutral"></span>
             <% end %>
           </summary>
-          <%# The house `MenuItem` row, shared by all three of the product's dropdowns.
-              Spelled once here so the Log Out button cannot drift from the links above
-              it — it is the one row that is not an `<a>`, and it looked different by a
-              `no-underline` before this. %>
-          <% menu_row = "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
-          <div class="absolute right-0 mt-1 w-56 bg-white shadow rounded p-2 z-10">
+          <%= render layout: "ui/menu", locals: {width: "w-56"} do %>
             <h6 class="text-xs text-grey px-3 pb-1">@<%= current_user.username %></h6>
-            <%= link_to "Your profile", profile_path(current_user.username), class: menu_row %>
-            <%= link_to "Dashboard", dashboard_path, class: menu_row %>
-            <%= link_to notifications_path, class: menu_row do %>
+            <%= link_to "Your profile", profile_path(current_user.username), class: ds_menu_item_classes %>
+            <%= link_to "Dashboard", dashboard_path, class: ds_menu_item_classes %>
+            <%= link_to notifications_path, class: ds_menu_item_classes do %>
               Your notifications
+              <%# The same dot, unlabelled and hidden: the row it sits in already says
+                  "Your notifications", so a label here would announce the row twice. %>
               <% if current_user.unread_notifications_count > 0 %>
-                <span class="ml-1 inline-block w-2 h-2 rounded-full bg-neutral align-middle"></span>
+                <span aria-hidden="true" class="ml-1 inline-block w-2 h-2 rounded-full bg-neutral align-middle"></span>
               <% end %>
             <% end %>
             <%= render "ui/divider", class: "my-1" %>
+            <%# `button_to` emits its own form and button, so the class string is the
+                only seam it has — see the note on `ds_menu_item_classes`. %>
             <%= button_to "Log Out", destroy_user_session_path, method: :delete,
-                  class: "#{menu_row} w-full text-left" %>
-          </div>
+                  class: ds_menu_item_classes %>
+          <% end %>
         </details>
       <% else %>
-        <%= link_to "Login", new_user_session_path, class: "text-primary no-underline" %>
-        <%= link_to "Sign up", new_user_registration_path, class: "text-grey no-underline" %>
+        <%= link_to "Login", new_user_session_path, class: "text-sm text-primary no-underline" %>
+        <%= link_to "Sign up", new_user_registration_path, class: "text-sm text-grey no-underline" %>
       <% end %>
 
       <%= link_to new_hujah_path, class: "flex items-center fill-primary text-primary no-underline", aria: { label: "New Claim" } do %>
         <%= lucide_icon("message-square-plus", class: "w-6 h-6") %>
-        <span class="hidden lg:inline ml-1">New Claim</span>
+        <span class="hidden lg:inline ml-1 text-sm">New Claim</span>
       <% end %>
     </div>
   </div>

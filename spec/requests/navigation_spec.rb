@@ -16,6 +16,19 @@ RSpec.describe "Navbar", type: :request do
     expect(response.body).not_to match(/<a[^>]*href="#"[^>]*>\s*Your profile/)
   end
 
+  # The unread indicator is an 8px pink dot and, per the design system, must never become
+  # a count badge — so the label is the ONLY thing that carries its meaning to a screen
+  # reader. ARIA prohibits an author-supplied name on `role=generic`, which a bare <span>
+  # is, so before the role the label could legitimately be dropped and the sole remaining
+  # signal was a pink circle. Same fix, same reason, as `ui/_avatar`'s initials fallback.
+  it "gives the unread dot a role, so its label is not discarded as an ARIA violation" do
+    sign_in user
+    create(:notification, user: user, read: false)
+    get "/"
+
+    expect(response.body).to include(%(<span role="img" aria-label="Unread notifications"))
+  end
+
   # The navbar called `image_tag current_user.photo` directly. `photo` is nullable —
   # `photo_from_cloudinary` returns early on a blank value and `assign_random_photo` is
   # `after_create` only, so an account that later clears its photo keeps it blank — and

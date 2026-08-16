@@ -115,6 +115,51 @@ module DesignSystemHelper
       ("px-4 py-3" if padded)].compact.join(" ")
   end
 
+  # The hover row inside a `ui/_menu` panel — DropdownMenu.prompt.md's `MenuItem`.
+  # Eleven rows across three files spell this string by hand today.
+  #
+  # This is a HELPER and not a `ui/_menu_item` partial, which is the obvious thing to
+  # reach for and does not work here. Of those eleven rows, one is a `button_to` (navbar
+  # Log Out) and one is a `<button>` carrying frozen `data-share-target` /
+  # `data-action` attributes (`hujahs/_share_menu`); the rest are `link_to` / `mail_to`.
+  # `button_to` emits its own `<form>` + `<button>` and cannot be wrapped by a layout
+  # partial at all — moving it would mean rewriting a form whose action and verb are
+  # frozen. So the only seam every row shares is the class string, which is exactly the
+  # case `ui/_card`'s header already carves out for `ds_card_classes`: "If your card IS
+  # a link … call `ds_card_classes` directly on the `link_to` instead; that is the
+  # supported escape hatch." Same shape, one step further — here every call site is that
+  # escape hatch, so there is no partial left to write.
+  #
+  # `text-sm` is baked in: the design system puts UI text at 14px (readme.md, VISUAL
+  # FOUNDATIONS) and these rows inherited 16px from the body. One string is what makes
+  # that a single edit rather than eleven.
+  #
+  # `block` is likewise baked in, and `hujahs/show`'s report row wants `flex items-center
+  # gap-1` instead. That override DOES work — the bundle emits `.block` ahead of `.flex`,
+  # so the caller's `flex` wins — but it works by bundle order rather than by call order,
+  # which is the `ui/_card` `padded:` trap wearing a different hat. Pass a different
+  # display only knowing that; do not pass a second *padding* or *width*.
+  MENU_ITEM_BASE = "block w-full text-left px-3 py-1 text-sm rounded no-underline hover:bg-gray-100".freeze
+
+  # Narrower than TONES on purpose, and not a subset of it either. A menu row is ink by
+  # default; `grey` is the disabled row (`hujahs/show`'s "Delete hoojah (Slice 2)"); and
+  # `neutral` is DropdownMenu.prompt.md's rule that "destructive/report rows take
+  # tone=neutral (pink)". Nothing renders an agree-coloured or primary-coloured menu row,
+  # and offering one would invite a menu that looks like a stance.
+  MENU_ITEM_TONES = %w[black grey neutral].freeze
+
+  # Same contract as every helper above: nil is an unpassed local and takes the default,
+  # anything else outside the set is a typo and says so.
+  #
+  # No `fill-` is emitted even though the report row has an icon. That row already
+  # spells `fill-neutral` itself, and adding a fill here would put `fill-black` — a
+  # class no view spells and no `@source inline` line covers — into ten rows that have
+  # no icon at all.
+  def ds_menu_item_classes(tone: "black")
+    tone = ds_option(tone&.to_s, "black", MENU_ITEM_TONES, "tone")
+    "#{MENU_ITEM_BASE} text-#{tone}"
+  end
+
   # The avatar's fallback when a user has no photo. Two letters, because three do not
   # fit a 32px circle and Malaysian names run long ("Nurul Izzah binti Anwar"). A name
   # that yields nothing — blank, whitespace, nil — gets `?` rather than an empty

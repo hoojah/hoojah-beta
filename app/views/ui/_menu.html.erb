@@ -1,0 +1,45 @@
+<%# The dropdown PANEL — the white, `shadow`ed, 4px-rounded surface that hangs off a
+    `<details>` trigger (docs/design-system/components/navigation/DropdownMenu.prompt.md,
+    which this mirrors). Three surfaces share it verbatim today: the navbar avatar menu,
+    `hujahs/_share_menu`, and the more-actions menu in `hujahs/show`.
+
+    THIS IS A LAYOUT PARTIAL, like `ui/_card`. It wraps a block, so it must be called as
+
+      render layout: "ui/menu", locals: {width: "w-56"} do ... end
+
+    inside an ERB output tag. `render partial: "ui/menu" do ... end` does NOT work —
+    given a Hash and a block, `RenderingHelper#render` renders `options[:layout]` and
+    ignores `options[:partial]`. See `ui/_card`'s header for the full explanation.
+
+    Locals: `width:` a Tailwind width utility (REQUIRED); `class:` extra utilities.
+
+    It is the PANEL ONLY — not the `<details>`, not the `<summary>`. Deliberately: the
+    three triggers have nothing in common (an avatar plus an unread dot; a share glyph;
+    a more-horizontal glyph), and `_share_menu`'s `<details>` carries a `data-controller`
+    and three `data-*-value` attributes that the real-time freeze rules keep exactly
+    where they are. A partial that owned the `<details>` would have to accept arbitrary
+    data attributes just to avoid breaking one call site, which is not a primitive.
+    Keep the `<details class="relative">` at the call site — `absolute` here needs it.
+
+    `width:` is its own local, and required, rather than a default overridable through
+    `class:`. That is not ceremony: a baked-in default and a caller's width are the same
+    Tailwind family, and same-family utilities resolve by their order in the bundle, not
+    by call order. The bundle emits `.w-52` ahead of `.w-56`, so a baked `w-56` would
+    silently beat `class: "w-52"` — and two of the three call sites want `w-56` while the
+    third wants `w-52`. Requiring it makes a miss a KeyError at the call site instead of a
+    menu that is quietly the wrong width (same reasoning as `ui/_empty_state`'s `message`,
+    and the same trap as `ui/_card`'s `padded:`).
+
+    `p-2` IS baked in, because it does not have that problem: Tailwind emits the
+    shorthand before the longhands (`.p-2` … `.px-3` … `.py-1`), so a caller's
+    `class: "px-3"` genuinely does override the x axis and later wins.
+
+    `rounded` is deliberate and is the one place this partial parts company with
+    `ui/_card`, whose first rule is "never round a feed card". A menu is not a card:
+    DropdownMenu.prompt.md specifies a 4px-rounded floating panel. Do not "correct" it.
+
+    Deliberately NOT a Rails strict-locals signature: one of the locals is `class`, which
+    cannot be a Ruby parameter name (same constraint as `ui/_card` and `ui/_avatar`).
+%><%= content_tag :div,
+      class: "absolute right-0 mt-1 bg-white shadow rounded p-2 z-10 " \
+             "#{local_assigns.fetch(:width)} #{local_assigns[:class]}".squish do %><%= yield %><% end %>

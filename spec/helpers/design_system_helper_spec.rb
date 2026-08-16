@@ -353,6 +353,76 @@ RSpec.describe DesignSystemHelper, type: :helper do
       expect(helper.ds_card_classes(stance: "aggree")).to eq(helper.ds_card_classes)
     end
   end
+
+  # The hover row inside a `ui/_menu` panel (DropdownMenu.prompt.md's `MenuItem`).
+  # A helper rather than a partial because two of its eleven call sites are a
+  # `button_to` and a `<button>` with frozen `data-*` attributes, neither of which a
+  # layout partial can wrap — see the note on the constant.
+  describe "#ds_menu_item_classes" do
+    def tokens(**opts)
+      helper.ds_menu_item_classes(**opts).split
+    end
+
+    it "is a full-width hover row in the design system's menu grey" do
+      expect(tokens).to include("block", "w-full", "text-left", "hover:bg-gray-100")
+    end
+
+    # readme.md, VISUAL FOUNDATIONS: "UI text 14px". These rows inherited 16px from the
+    # body before Slice 9. Asserted on the token list rather than by name so a stray
+    # `text-base` sneaking back in still fails.
+    it "is 14px, and carries exactly one type size" do
+      expect(tokens).to include("text-sm")
+      expect(tokens.grep(/\Atext-(xs|sm|base|lg|xl|2xl)\z/)).to eq(["text-sm"])
+    end
+
+    it "is ink by default" do
+      expect(tokens).to include("text-black")
+    end
+
+    # DropdownMenu.prompt.md: "destructive/report rows take tone=neutral (pink)".
+    it "colours a destructive row pink and a disabled one grey" do
+      expect(tokens(tone: "neutral")).to include("text-neutral")
+      expect(tokens(tone: "grey")).to include("text-grey")
+    end
+
+    it "never carries two colours at once" do
+      DesignSystemHelper::MENU_ITEM_TONES.each do |tone|
+        expect(tokens(tone: tone).grep(/\Atext-(?!sm\z|left\z)/).size).to eq(1)
+      end
+    end
+
+    # No `fill-` on any tone: ten of the eleven rows have no icon, and `fill-black` is a
+    # class no view spells and no `@source inline` line covers. The report row that does
+    # have an icon spells `fill-neutral` itself.
+    it "emits no fill colour, which would put `fill-black` on ten iconless rows" do
+      DesignSystemHelper::MENU_ITEM_TONES.each do |tone|
+        expect(tokens(tone: tone).grep(/\Afill-/)).to be_empty
+      end
+    end
+
+    # A menu row is not a card and not a button: no shadow, no border, no pill.
+    it "is a flat row — no shadow, no border, no pill" do
+      expect(tokens).not_to include("shadow", "rounded-full")
+      expect(tokens.grep(/\Aborder/)).to be_empty
+    end
+
+    # Same convention as every helper in this file.
+    it "treats a nil tone as unset, and a misspelled one as a typo" do
+      expect(helper.ds_menu_item_classes(tone: nil)).to eq(helper.ds_menu_item_classes)
+      expect { helper.ds_menu_item_classes(tone: "pink") }
+        .to raise_error(ArgumentError, /pink.*#{Regexp.escape(DesignSystemHelper::MENU_ITEM_TONES.join(", "))}/m)
+    end
+
+    it "accepts a symbol as readily as a string" do
+      expect(helper.ds_menu_item_classes(tone: :neutral)).to eq(helper.ds_menu_item_classes(tone: "neutral"))
+    end
+
+    it "degrades to an ink row instead of raising in production" do
+      allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("production"))
+
+      expect(helper.ds_menu_item_classes(tone: "pink")).to eq(helper.ds_menu_item_classes)
+    end
+  end
 end
 
 # `ds_button_classes` interpolates the tone into `bg-` / `text-` / `border-` / `fill-`,
@@ -431,6 +501,32 @@ RSpec.describe "Card stance utilities reach the compiled bundle" do
 
     expect(missing).to be_empty,
       "these card utilities are absent from app/assets/builds/tailwind.css — " \
+      "add them to the `@source inline(...)` safelist: #{missing.join(", ")}"
+  end
+end
+
+# `ds_menu_item_classes` interpolates its tone into `text-#{tone}` — same blind spot as
+# the button tones and the card stances, and the same quiet failure: `text-neutral` with
+# no rule behind it leaves a "Flag this hoojah" row rendered in ordinary ink, which
+# reads as a perfectly normal menu entry rather than a destructive one.
+#
+# `text-black` is the interesting member. Unlike `grey` and `neutral` it is covered by no
+# `@source inline(...)` line at all — it survives purely because some view still spells it
+# as a literal, and eight later tasks are busy replacing hand-written strings with helper
+# calls. The day the last literal goes, this example is what says so.
+RSpec.describe "Menu item tone utilities reach the compiled bundle" do
+  before(:all) { TailwindBuild.once! }
+
+  let(:view) { ApplicationController.helpers }
+
+  it "generates the row's own utilities and every tone it can take" do
+    wanted = DesignSystemHelper::MENU_ITEM_TONES
+      .flat_map { |tone| view.ds_menu_item_classes(tone: tone).split }.uniq
+
+    missing = wanted.reject { |klass| TailwindBuild.emitted?(klass) }
+
+    expect(missing).to be_empty,
+      "these menu utilities are absent from app/assets/builds/tailwind.css — " \
       "add them to the `@source inline(...)` safelist: #{missing.join(", ")}"
   end
 end

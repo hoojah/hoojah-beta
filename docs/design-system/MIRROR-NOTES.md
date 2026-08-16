@@ -72,11 +72,13 @@ anywhere in the app, so those 8px borders currently render as nothing. The token
 
 ## Deviations in the app
 
-Where `app/assets/tailwind/application.css` intentionally departs from
-`tokens/*.css`. The app file is authoritative; this table exists so the mirror and
-the app do not silently disagree.
+Where the app intentionally departs from the mirror — `app/assets/tailwind/application.css`
+against `tokens/*.css`, and `app/views/**` against `components/**/*.prompt.md`. The app is
+authoritative; this table exists so the mirror and the app do not silently disagree, and so
+that a later agent reading a prompt file does not "restore" something the app moved past
+on purpose.
 
-| DS token | In the app | Why |
+| DS artifact | In the app | Why |
 | --- | --- | --- |
 | `--text-body`, `--text-muted`, `--text-faint`, `--text-link`, `--text-inverse` | renamed to `--fg-body`, `--fg-muted`, `--fg-faint`, `--fg-link`, `--fg-inverse` | `--text-*` **is** Tailwind v4's font-size namespace — the same one `--text-xs`…`--text-2xl` use. Colours under those names are a trap: promote one into `@theme` and you emit `.text-muted{font-size:#8e8e8e}`. `fg-` is not a v4 namespace, so the collision cannot happen. |
 | `--notif-unread`, `--notif-read` | `--color-unread`, `--color-read` (in `@theme`) | They must generate the `border-unread` / `border-read` utilities the notification card interpolates, so they have to sit in the `--color-*` namespace. |
@@ -86,3 +88,4 @@ the app do not silently disagree.
 | `--font-medium`, `--font-semibold`, `--font-bold` | `--font-weight-medium`, `--font-weight-semibold`, `--font-weight-bold` | v4's namespace for weights is `--font-weight-*`. Under the DS spelling `font-semibold` would generate nothing. |
 | `--text-xs-lh`…`--text-2xl-lh` | `--text-xs--line-height`…`--text-2xl--line-height` | v4 pairs a line-height to a size with the `--text-<size>--line-height` suffix, not a separate `-lh` token. |
 | `--font-sans` | **omitted** | `@layer base` sets `body { font-family: var(--font-sans) }`, so the live stack is Tailwind v4's default — `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, …`. That is **not** what `tokens/typography.css` specifies (`ui-sans-serif, system-ui, sans-serif, …`); the two agree on macOS and Windows but diverge on Linux and Android. The omission is deliberate — restoring the DS value would change rendering on those platforms and needs a visual pass first. |
+| `components/navigation/Navbar.prompt.md` — "The brand is the bold indigo *text* lockup, not the SVG wordmark." | `shared/_navbar.html.erb` ships `image_tag "logo.svg"` | **The prompt line is stale, not a spec.** It describes the navbar as it stood when the mirror was pulled; Slice 9 **Task 1.2** deliberately replaced the text lockup with the gradient wordmark asset, and `readme.md`'s own **Assets** section lists `assets/logo.svg` as a real artifact ("gradient 'hoojah' wordmark (green→blue radial)") — so the mirror contradicts itself, and the readme half is the current one. `spec/system/branding_spec.rb` pins the asset (`nav a[href='/'] img[alt='Hoojah']`) and a second example fails if the seven `radialGradient` defs ever go unreferenced. Do **not** revert the navbar to text on the strength of the prompt line. |
