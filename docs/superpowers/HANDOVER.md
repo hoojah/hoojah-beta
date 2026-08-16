@@ -665,3 +665,120 @@ Then **Project 3 — Hotwire Native**: Rails-side path-config + native auth, the
 | `docs/superpowers/UPGRADE-LOG.md` | Per-hop upgrade record |
 | `docs/superpowers/SECURITY-FINDINGS.md` | Audit triage + open items |
 | `README.md` | Stack + run instructions |
+
+---
+
+## Slice 9 (Design System + Debate Phases) — IN PROGRESS ⏸
+
+_Branch `slice-9-design-system`, 37 commits, **not merged**. Suite **507 examples / 0 failures /
+2 pending** (was 273 on `master` — note HANDOVER previously said 271, which was stale by two specs
+added in `11be59a`). brakeman 0; `standardrb` clean. 144 files, +6811/−360._
+
+Paused mid-Phase-4 on a session usage limit, not a blocker. **Read
+`docs/superpowers/plans/2026-08-14-slice-9-design-system.md` for the task list and
+`docs/superpowers/specs/2026-08-14-design-system-and-debate-phases-design.md` for the approved
+design.** The design system itself is mirrored at `docs/design-system/` — start with its
+`readme.md`, then `MIRROR-NOTES.md`.
+
+### The framing that matters
+
+**The design system was generated FROM this codebase** (its `readme.md` names `hoojah-beta/` as
+source). Phase 4 is therefore a **codification pass, not a redesign** — most markup was already
+conformant, and the job is to route it through shared primitives and fix what the extraction
+exposed. Every visual change is either a documented DS correction or a bug fix; none is taste.
+
+### What is DONE
+
+- **Phase 1 — tokens + brand.** All 72 DS custom properties in `app/assets/tailwind/application.css`
+  (`@theme` for namespaced ones, `:root` for `var()`-only aliases). Gradient wordmark in the navbar.
+- **Phase 2 — five primitives.** `ui/_card` (layout partial), `ui/_avatar`, `ui/_divider`,
+  `ui/_empty_state`, `ui/_menu`, plus `DesignSystemHelper` (`ds_button_classes`,
+  `ds_card_classes`, `ds_avatar_classes`, `ds_menu_item_classes`, `ds_initials`,
+  `ds_debate_state_color`).
+- **Phase 3 — debate phases.** `debates.rounds_limit` (default 4) with a safe active-debate
+  backfill; derived Opening/Counter/Response/Closing; auto-conclude at `rounds_limit * 2`;
+  `extend_rounds!` at the closing-round boundary only, under `with_lock`; the extend endpoint;
+  phase labels + round counter + Extend button in the UI.
+- **Phase 4 — 6 of 8 view families:** navigation, voting, hujah, social, debate, forms.
+
+### What is LEFT
+
+1. **Task 4.7 (analytics)** — `analytics/show`, `_stat`, `_distribution_bar`. Not started.
+2. **Task 4.8 (overlays)** — `hujahs/_flag_dialog`, `_challenge_dialog`. Not started.
+3. **Task 4.6 retroactive freeze harness** — see the caveat below.
+4. **Task 5.1 gate sweep + this HANDOVER's final version.**
+5. Three recorded findings, below.
+
+### ⚠️ Task 4.6 (forms) is committed but under-verified
+
+`a410be7` was implemented by an agent killed by a session limit before it ran the per-element
+freeze harness the other seven families ran, and before it enumerated its visual deltas. **I
+verified and committed it** rather than lose 10 files of finished work. Confirmed: full suite green
+including the system pass, every Devise field name identical across all ten files,
+`invisible_captcha :subtitle` intact, form URLs and verbs unchanged. **Not** confirmed: the
+Nokogiri attribute/text-node diff, and a written delta list. Do that before the gate sweep.
+
+### Findings recorded but NOT fixed — decisions needed
+
+- **Six notification categories render blank.** `Notification` declares 14 categories;
+  `_notification_card` has 8 `when` arms. `admin`, `flag` and four `debate_*` categories — fired on
+  every debate challenge/turn/decline/conclude — render with no icon and no copy. Pre-existing.
+  Fixing needs six user-facing strings in the product's voice, so it was recorded rather than
+  guessed at. **Owner decision.**
+- **`fill-*` is inert repo-wide.** Every icon is `lucide_icon`, which emits `fill="none"` as a
+  presentation attribute that beats any inherited value. All 43 `fill-*` occurrences do nothing,
+  including the `fill-#{tone}` `ds_button_classes` emits on every button; the `fill` third of three
+  `@source inline` lines supports nothing. Colour reaches icons via `text-*` → `currentColor` →
+  `stroke`. Strip or keep for future inline SVG — decide in 5.1.
+- **Gate correction:** the plan's `grep image_tag .*\.photo` → nothing is wrong. It returns 11 —
+  10 explanatory comments plus the live guarded call inside `ui/_avatar` itself, which is correct.
+
+### Out-of-scope security fix that landed here
+
+**All 13 rack-attack throttles were bypassable** (`99f7898`, recorded in `SECURITY-FINDINGS.md`).
+Matchers anchored on the bare path while every Rails route accepts `(.:format)`, so `.json` /
+`.turbo_stream` evaded them. Worst case: 11 × `POST /login.json` returned **401, not 429** — Devise
+ran eleven real credential checks. Separately, **`signup/ip` never fired at all**: `devise_for
+path: ""` puts `registrations#create` at `POST /`, while the matcher tested `/signup`, which is
+GET-only. Fixed with one shared `throttled_path` helper. **Watch item:** signup is now genuinely
+throttled at 5/min/IP, newly enforced, and shared-NAT users will notice first.
+
+### Defect classes this slice found — do not reintroduce
+
+1. **Tailwind reads the repo as text.** `docs/` acted as a safelist, then an ERB comment did, then
+   `spec/` did. `@source not "../../../docs"` and `@source not "../../../spec"` now exclude two;
+   for prose, write `bg-<stance>`, never a concrete class. Cheap check: md5 the built bundle before
+   and after a comment-only edit — it must not change.
+2. **Interpolated variant classes die silently.** `@source inline("bg-agree")` safelists the *bare*
+   utility, not `peer-checked:bg-agree`. `_stance_picker` shipped that bug and a picked stance
+   rendered blank.
+3. **Same-family utilities resolve by bundle order, not call order.** `.px-4` precedes `.px-5`;
+   `.w-52` precedes `.w-56`. A call-site override of a baked-in padding or width is a coin flip —
+   which is why `ui/_menu`'s `width:` is required and `ui/_card`'s `padded:` must never be combined
+   with padding in `class:`.
+4. **A border with no colour class inherits `currentColor`.** Every follower row was separated by an
+   indigo rule because `border-b` was uncoloured inside an `<a>`, and `@layer base` makes anchors
+   `--fg-link`.
+5. **`have_broadcasted_to(...).with { }` runs its block against EVERY payload on the stream** — it
+   asserts "every broadcast was this one", not "this one was broadcast". Two pre-existing examples
+   only passed because each stream carried one payload.
+
+### Working method that paid off
+
+Per task: implementer → independent spec/quality review → batched fixes → re-verify. Reviews caught
+**seven** cases where the plan's own instructions were wrong (a Tailwind v3 shadow value under v4, a
+`--text-*` namespace collision, the logo provenance, a false `render partial:` claim, an SVG stroke
+that switched on an invisible element, an overstated bug-reachability claim, and racy broadcast
+ordering in `post_turn`). Phase 4 families verified the freeze **mechanically** — render N screens,
+Nokogiri-dump every attribute *except* `class` plus every text node, diff. **Its blind spot: it
+excludes `class`, the only thing a DS refactor changes** — so every visual delta must also be stated
+in the commit body by hand.
+
+### Environment notes specific to this slice
+
+- **All agents share one Postgres test DB.** Concurrent full-suite runs collide with
+  `PG::ObjectInUse`. Run one implementer at a time; reviewers should use targeted specs.
+- `spec/support/tailwind_build.rb` rebuilds the bundle once per suite run — needed because
+  `app/assets/builds/tailwind.css` is gitignored and nothing else rebuilds it before RSpec.
+- Never `git commit --amend` unless HEAD is verifiably your own commit — an agent amending another's
+  cost a history repair early in this slice.
