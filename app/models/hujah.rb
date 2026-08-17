@@ -43,7 +43,11 @@ class Hujah < ApplicationRecord
     will_save_change_to_body? || slug.blank?
   end
 
-  COUNTER_FOR = {1 => :agree_count, 2 => :neutral_count, 3 => :disagree_count}.freeze
+  # The closed vote domain, in one place. `votes.vote` stores these integers;
+  # everything user-facing (stance colours, CSS classes, the serializer) speaks the
+  # string. COUNTER_FOR is derived so the two can never drift apart.
+  STANCES = {1 => "agree", 2 => "neutral", 3 => "disagree"}.freeze
+  COUNTER_FOR = STANCES.transform_values { |stance| :"#{stance}_count" }.freeze
 
   # Trending top-level hoojahs by Hacker-News gravity on TOTAL activity (votes +
   # child arguments), decayed by age. Computed on read and cached for 15 min: the
@@ -97,25 +101,15 @@ class Hujah < ApplicationRecord
     parent != nil
   end
 
-  def has_children?
-    children.exists?
-  end
-
+  # The viewer's current stance on this hoojah as a STANCES string, or nil.
+  # One query — this runs per card on the feed, the hottest read path here.
+  # `votes.vote` is a legacy array column APPENDED to on every cast, so the last
+  # element is the current stance (and `&.last` on an empty array is nil).
+  # No `joins(:user)`: `User has_many :votes, dependent: :destroy`, so a vote row
+  # whose user is gone cannot exist and the join could only ever cost a table scan.
   def current_user_vote(logged_in: nil, current_user_id: nil)
-    if logged_in
-      if votes.joins(:user).find_by(user_id: current_user_id).nil?
-        nil
-      else
-        vote = votes.joins(:user).find_by(user_id: current_user_id).vote.last
-        if vote == 1
-          "agree"
-        elsif vote == 2
-          "neutral"
-        elsif vote == 3
-          "disagree"
-        end
-      end
-    end
+    return unless logged_in
+    STANCES[votes.find_by(user_id: current_user_id)&.vote&.last]
   end
 
   private

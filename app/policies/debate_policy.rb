@@ -32,7 +32,7 @@ class DebatePolicy < ApplicationPolicy
     # (Slice 7b, Gate 8). Visibility depends on the accepted-follower graph, so the
     # concluded set is filtered in Ruby — the lens is one hoojah's (small) debate set.
     def resolve
-      concluded_visible = scope.where(status: :concluded).select do |d|
+      concluded_visible = scope.where(status: :concluded).includes(:challenger, :opponent).select do |d|
         d.challenger.visible_to?(user) && d.opponent.visible_to?(user)
       end
       return concluded_visible unless user

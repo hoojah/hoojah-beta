@@ -8,6 +8,13 @@ class DebatesController < ApplicationController
   # posting, must get a flat 403, not a friendly redirect).
   rescue_from Pundit::NotAuthorizedError, with: :render_forbidden
 
+  # accept!/decline!/conclude!/extend_rounds! all go through update!, which
+  # revalidates the WHOLE row, not just the column being changed. Each action's own
+  # guard already refuses the invalid transition (extendable_by? at the MAX_ROUNDS
+  # ceiling, the policy for the rest), so what is left is a row that went invalid by
+  # some other route — that must be a 422, never a 500.
+  rescue_from ActiveRecord::RecordInvalid, with: :render_unprocessable
+
   # Public, read-only transcript. `authorize @debate` resolves DebatePolicy#show?
   # (concluded → anyone incl. logged-out; active → participants only). Turns +
   # participants eager-loaded for the view.
@@ -21,11 +28,15 @@ class DebatesController < ApplicationController
   # argument, never accepted from params (only :argument_id + :challenger_stance).
   def create
     @hujah = Hujah.friendly.find(params[:slug])
-    argument = Hujah.find(challenge_params[:argument_id])
-    # The argument must be a direct child of the URL's hoojah, else it is forged.
-    # This is input validation, not authorization — skip_authorization satisfies
-    # verify_authorized on the early-out.
-    unless argument.parent_id == @hujah.id
+    # The argument must be a direct child of the URL's hoojah, else it is forged, so
+    # scope the lookup by that constraint rather than re-checking it afterwards
+    # (the same move as `current_user.challenged_debates` below). Both bad-input
+    # cases — an unknown id and a real argument on another hoojah — then converge on
+    # one 422; an unscoped `Hujah.find` would raise RecordNotFound for the first and
+    # turn a turbo_stream POST into a 404 HTML page. This is input validation, not
+    # authorization — skip_authorization satisfies verify_authorized on the early-out.
+    argument = @hujah.children.find_by(id: challenge_params[:argument_id])
+    unless argument
       skip_authorization
       return head :unprocessable_content
     end
@@ -57,24 +68,18 @@ class DebatesController < ApplicationController
     authorize @debate, :accept?
     @debate.accept!(by: current_user)
     render_status
-  rescue ActiveRecord::RecordInvalid
-    head :unprocessable_content
   end
 
   def decline
     authorize @debate, :decline?
     @debate.decline!(by: current_user)
     render_status
-  rescue ActiveRecord::RecordInvalid
-    head :unprocessable_content
   end
 
   def conclude
     authorize @debate, :conclude?
     @debate.conclude!(by: current_user)
     render_status
-  rescue ActiveRecord::RecordInvalid
-    head :unprocessable_content
   end
 
   # Extend the debate by one round (Slice 9). Named `extend_rounds`, not `extend`,
@@ -97,12 +102,6 @@ class DebatesController < ApplicationController
     else
       head :unprocessable_content
     end
-  rescue ActiveRecord::RecordInvalid
-    # extendable_by? already refuses at the ceiling, so the rounds_limit bump
-    # itself cannot go invalid — but extend_rounds! calls update!, which
-    # revalidates the WHOLE row. A row that went invalid by some other route
-    # would otherwise 500 here. Same guard the sibling actions carry.
-    head :unprocessable_content
   end
 
   private
@@ -110,6 +109,8 @@ class DebatesController < ApplicationController
   def set_debate = @debate = Debate.friendly.find(params[:slug])
 
   def render_forbidden = head :forbidden
+
+  def render_unprocessable = head :unprocessable_content
 
   def challenge_params = params.permit(:argument_id, :challenger_stance)
 
