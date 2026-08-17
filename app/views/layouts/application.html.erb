@@ -8,7 +8,7 @@
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
-  <body class="body">
+  <body>
     <%= yield %>
     <%# Third-party widgets (Cloudinary upload + Drift live chat). Skipped in test:
         headless Chrome would hang on these external hosts, surfacing as intermittent
