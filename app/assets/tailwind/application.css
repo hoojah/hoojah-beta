@@ -42,6 +42,17 @@
 @source not "../../../spec";
 
 /*
+ * Keep binary-ish assets out of the scanner. `app/assets/images/` holds a committed
+ * draw.io architecture diagram whose XML contains `grid="1"` — which the scanner reads
+ * as the utility `grid` and duly emits `.grid{display:grid}` into production CSS. No
+ * view in this app uses a grid, so that rule shipped to every visitor because a diagram
+ * happened to store an editor preference. An image/diagram directory has no business
+ * determining the CSS bundle; it is markup nobody renders. Same principle as the two
+ * lines above — only what `app/views` and `app/helpers` actually spell should get a rule.
+ */
+@source not "../../../app/assets/images";
+
+/*
  * Safelist the stance color utilities. The vote widget builds class names like
  * `bg-agree` / `text-disagree` / `fill-neutral` by interpolating the stance name,
  * which Tailwind's source scanner can't see as literal strings. `@source inline`

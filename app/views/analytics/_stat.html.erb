@@ -11,8 +11,13 @@
     intended one: Card.prompt.md's first line is "Never round a feed card", and the
     house surface is white + SQUARE + `shadow`, with `#f3f4f6` reserved for hairlines
     INSIDE a card (`ui/_divider`) rather than around one. So the chip loses its 4px
-    rounding and its grey outline and gains the card shadow, which is what every other
-    surface in the product already carries.
+    rounding and its grey edge and gains the card shadow, which is what every other card
+    surface in the product already carries. "Card surface", not "every surface": the
+    product's other white surface is `ui/_empty_state`, which renders on THIS page a few
+    lines below these chips and carries a bare `bg-white` with NO shadow — matching
+    docs/design-system/components/core/EmptyState.jsx, which sets a background, padding, a
+    gap, a font size and a colour, and no `boxShadow` at all. So on the dashboard the chips
+    and the empty state deliberately do not match. Don't "unify" them.
 
     `padded: true` emits exactly the `px-4 py-3` this file spelled by hand, and the
     remaining utilities ride in `class:`. Deliberately no padding in `class:` — the two

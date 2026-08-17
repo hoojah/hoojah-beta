@@ -5,10 +5,13 @@
     for the two chips and the bars; readme.md VISUAL FOUNDATIONS for everything else.
 
     The page title takes the product's page-title idiom, `text-lg font-medium mb-3`, the
-    same string `blocks/index`, `users/followers` and `users/following` already use. It
-    was `text-xl font-bold`: 20px is the token scale's single-hujah BODY size, and
+    same string `blocks/index`, `users/followers` and `users/following` already use —
+    that shared string is the whole reason, and it is enough. It was `text-xl font-bold`;
     VISUAL FOUNDATIONS puts weights at "medium for names/CTAs, semibold section heads,
-    bold rare" — a page title is neither of the rare cases. `text-black` came off with it
+    bold rare" — a page title is neither of the rare cases. (No argument is made from the
+    20px size itself: readme.md hands 20px to the single-hujah body, but it hands 18px to
+    a hujah body too, so "that size is a body size" would rule out the size we picked just
+    as fast as the one we dropped.) `text-black` came off with it
     because `@layer base` already paints the body `--fg-body`, which IS `--color-black`.
 
     The `gap-3` on the chip row is StatChip.prompt.md's "12px gap", stated once here
@@ -17,8 +20,12 @@
     The empty state is `ui/_empty_state` rather than the icon + sentence this file used to
     hand-roll — the sixth and last of the six copies that partial was extracted from. Its
     baked-in `p-3 bg-white` and `gap-1` reproduce what was here; what it drops is
-    `rounded`, per Card.prompt.md's "Never round a feed card". The sentence is unchanged
-    to the byte, and EmptyState.prompt.md quotes it as real product copy. %>
+    `rounded`. The authority for that is its OWN component file, not Card.prompt.md:
+    docs/design-system/components/core/EmptyState.jsx declares a background, padding, a
+    gap, a font size and a colour — and no `borderRadius` at all. An empty state is not a
+    card, so "Never round a feed card" was never the rule that applied to it; the rule
+    that applies is that this component has no corner radius to begin with. The sentence
+    is unchanged to the byte, and EmptyState.prompt.md quotes it as real product copy. %>
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">

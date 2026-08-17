@@ -19,27 +19,51 @@
     `ChallengeLink` and which "renders below the card, never inside it". The panel was
     already the design system's dialog to the letter — 8px rounding, the large shadow,
     the 40% black backdrop, 448px max width, a hairline header carrying the title and an
-    X — so the shell does not move, and neither does the header, which is the same markup
-    `users/_profile_edit` kept in Task 4.6. What changed:
+    X — so the shell does not move, and neither does the header, the same markup
+    `users/_profile_edit` carries. Dialog.prompt.md names all three of these ("Flag this
+    hoojah, Challenge @user to a debate, Edit your profile") as one component, and the X
+    in all three now comes from `ds_button_classes(variant: :link, tone: "grey")` — true
+    again only after a follow-up, because Task 4.8 moved this one and the flag dialog's
+    and left `users/_profile_edit` on the string it kept in Task 4.6. What changed:
 
     - The trigger and the X and Cancel controls all go through
       `ds_button_classes(variant: :link, ...)`, whose emitted string the trigger was
-      already spelling by hand almost exactly. The variant is the bare borderless
-      transparent text control: pink for the challenge affordance, grey for the two
-      dismissals, which is Dialog.prompt.md's "bare grey Cancel". `text-xs` stays at the
-      call site because `:link` deliberately carries no font size — this link is 12px,
-      not the 16px it would otherwise inherit, and the helper's contract is that a link
-      button inherits its context.
+      already spelling by hand almost exactly. Almost, in full: against the retired
+      hand-typed string the trigger picks up SIX utilities — `justify-center`,
+      `transition`, `active:scale-95`, `disabled:opacity-50`, `disabled:cursor-default`,
+      and an explicit `p-0`. Only the two press utilities are visible here; the other four
+      are inert (the row has no free main-axis space to distribute, the button is never
+      disabled, and preflight already zeroes a button's padding). That is the whole list —
+      do not restate it as "just `transition` and `active:scale-95`". The variant itself is
+      the bare borderless transparent text control: pink for the challenge affordance, grey
+      for the two dismissals, which is Dialog.prompt.md's "bare grey Cancel". `text-xs`
+      stays at the call site because `:link` deliberately carries no font size — this link
+      is 12px, not the 16px it would otherwise inherit, and the helper's contract is that a
+      link button inherits its context.
     - The stance rows lose the 1px edge and the rounding around each one, and the gap
       between them. That is the same correction Task 4.7 made to the two analytics
-      surfaces: this design system spends `#f3f4f6` on hairlines INSIDE a surface
-      (`ui/_divider`) and never as an edge around one, and Card.prompt.md forbids
-      rounding outright. They do NOT become `ui/_card`s the way those two did — a card
-      nested in a dialog is the second shadow the same rule rejects. What is left is the
-      shared hairline between rows, which is also what makes this list and the flag
-      dialog's reason list render identically at last: they are one component in the
-      design system (`DialogChoiceList`) and were two different shapes in the app.
-      Row padding is untouched, so the rows sit exactly where they sat.
+      surfaces, and the authority is readme.md's VISUAL FOUNDATIONS assigning the greys by
+      job: "Tailwind grays for hairlines (`#f3f4f6`), field borders/tracks (`#e5e7eb`),
+      hover fills (`#f9fafb`)". `#f3f4f6` is the HAIRLINE token — what `ui/_divider` spends
+      INSIDE a surface — so a `border` in it drawn around the outside of one is off-token,
+      and the per-row rounding was only softening a box that should not have been drawn.
+      NOT because "rounding is forbidden": Card.prompt.md's rule is the narrow "Never round
+      a feed card", and this design system rounds plenty else — readme.md gives dialogs
+      `rounded-lg` and menus `rounded`, and `--radius: 4px` exists for small chrome. The
+      `<dialog>` this list sits inside is itself `rounded-lg`. They do NOT become
+      `ui/_card`s the way those two did — a card nested in a dialog is the second shadow
+      the same rule rejects. What is left is the shared hairline between rows, which is
+      also what makes this list and the flag dialog's reason list render identically at
+      last: they are one component in the design system (`DialogChoiceList`) and were two
+      different shapes in the app.
+      Row padding is untouched, but unlike the flag dialog the rows do NOT sit exactly
+      where they sat: this list was `flex flex-col gap-2`, so 8px of gap became a 1px
+      hairline and rows two and three each rise about 7px. The flag dialog's list already
+      drew a 1px rule between its rows (the `divide-<axis>` utilities in the hairline
+      grey), so there it really was 1px for 1px and the same sentence is literally true —
+      it is not here. (Spelled `divide-<axis>` on purpose: Tailwind scans this file as
+      text, and the concrete class would put a rule back in the bundle that no view asks
+      for.)
 
     FROZEN: `dom_id(argument, :challenge_dialog)`, which `debates/create.turbo_stream.erb`
     closes remotely; `data-response-filter-target` / `data-response-filter-vote` on the

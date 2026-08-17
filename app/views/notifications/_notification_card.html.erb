@@ -1,7 +1,9 @@
 <%# One notification row — faithful port of the legacy SPA `Notifications/card.js`.
     Left border colored read/unread; a category-specific Lucide icon + copy; the body
-    is a PATCH button (mark read → redirect to the hoojah); a trash button DELETEs it
-    (Turbo-Stream removes this card). Locals: notification.
+    is a PATCH button (mark read, then redirect to whatever the row is about — the
+    DEBATE when one is attached, else the hoojah, else back to the notifications list;
+    see the precedence note on `NotificationsController#update`); a trash button DELETEs
+    it (Turbo-Stream removes this card). Locals: notification.
 
     DESIGN SYSTEM (Slice 9, Task 4.4) —
     docs/design-system/components/social/NotificationCard.prompt.md: "same 8px-left-border

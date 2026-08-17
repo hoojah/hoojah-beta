@@ -22,8 +22,19 @@
       textarea (Headline) and the single-line inputs already carried the design
       system's field-border colour, which is the one thing the auth screens got wrong.
     - "Update photo" and "Save changes" go through `ds_button_classes` instead of two
-      hand-typed strings: the outline pill at the small size, and the solid pill the
+      hand-typed strings: the `:outline` pill at the small size, and the solid pill the
       design system names for exactly this control ("Save changes" is its own example).
+    - (Later than the rest of this list.) The header's X close goes through
+      `ds_button_classes(variant: :link, tone: "grey")` too, like its two siblings.
+      Task 4.8 put the flag and challenge dialogs' X buttons
+      on that helper and left this one on the hand-typed
+      `text-<tone> fill-<tone> p-0 leading-none` it had carried since Task 4.6 — which
+      meant that for one commit the three headers Dialog.prompt.md calls ONE component
+      ("Flag this hoojah, Challenge @user to a debate, Edit your profile") were two shapes.
+      Bringing this one across is a class-only change: same grey, same box, plus the house
+      pointer cursor and press state, minus `leading-none` (the variant's `inline-flex`
+      supersedes it). All three headers are byte-identical again apart from their id and
+      their title.
     - "Private account" is Checkbox.prompt.md as it stood: a 16px NATIVE checkbox with
       a 14px grey label. There is no switch component in Hoojah and none is wanted.
     - The error panel is the FormError idiom — summarised at the top of the form, never
@@ -50,7 +61,7 @@
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
       <h5 id="dialog-title-profile-edit" class="text-lg font-medium m-0">Edit your profile</h5>
       <button type="button" data-action="dialog#close" aria-label="Close"
-              class="text-grey fill-grey p-0 leading-none">
+              class="<%= ds_button_classes(variant: :link, tone: "grey") %>">
         <%= lucide_icon("x", class: "w-5 h-5") %>
       </button>
     </div>

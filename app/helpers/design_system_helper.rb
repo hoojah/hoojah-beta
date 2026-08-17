@@ -176,10 +176,22 @@ module DesignSystemHelper
   # that a single edit rather than eleven.
   #
   # `block` is likewise baked in, and `hujahs/show`'s report row wants `flex items-center
-  # gap-1` instead. That override DOES work — the bundle emits `.block` (8699) ahead of
-  # `.flex` (8720), so the caller's `flex` wins — but it works by bundle order rather
-  # than by call order, which is the `ui/_card` `padded:` trap wearing a different hat.
-  # Pass a different display only knowing that; do not pass a second *padding* or *width*.
+  # gap-1` instead. That override DOES work — Tailwind emits the display utilities in its
+  # own fixed order, and `.block` comes before `.flex` in it, so the caller's `flex` is the
+  # later rule and wins — but it works by bundle order rather than by call order, which is
+  # the `ui/_card` `padded:` trap wearing a different hat. Pass a different display only
+  # knowing that; do not pass a second *padding* or *width*.
+  #
+  # The RELATIVE ORDER is the load-bearing fact and the only thing pinned here. Byte
+  # offsets deliberately are not: every bundle change moves them, so a number in this
+  # comment rots the next time anyone adds a utility. To re-verify after a build, ask the
+  # bundle which comes first rather than where either one sits:
+  #
+  #   bin/rails tailwindcss:build
+  #   grep -bo -e '[.]block{' -e '[.]flex{' app/assets/builds/tailwind.css | head -2
+  #
+  # The block rule must print first. If it ever prints second, the report row silently
+  # goes back to `display:block` and nothing else in the suite will notice.
   #
   # The one row that legitimately ignores `block` without saying so is `_share_menu`'s
   # native-share `<button hidden>`. It stays invisible because Tailwind v4's preflight
