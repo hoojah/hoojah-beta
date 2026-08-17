@@ -892,3 +892,113 @@ agent amending another's already cost a history repair on this branch. So these 
   claims, a concealed header divergence, and one agent's incorrect root-cause for `.outline` that
   would have led to renaming a helper variant for no reason. **Verify agent claims before acting on
   them** — one audit's sole reported defect was itself a false positive.
+
+---
+
+## Post-Slice-9 review passes (2026-08-17) — simplifier, Stimulus, security
+
+Three specialist passes over the finished slice, run analysis-first so proposals could be triaged
+against this codebase's many recorded decisions before anything was edited. Suite went
+**513 / 0 / 2 → 530 / 0 / 0** — the two `# Not yet implemented` stubs are gone, so there are now
+**no pending examples**. brakeman 0, standardrb clean, bundler-audit clean throughout.
+
+Commits: `fc3afa7` (Stimulus tidy + the API flags bug), `1b04b79` (audit ledger),
+`26c577a` (simplifier findings).
+
+### Security audit — clean
+
+No new findings at Critical/High and **no regressions** across the slice's 47 commits / 160 files.
+Twelve security-critical invariants were verified by direct source inspection rather than by trusting
+the comments — full list and the two ledger re-triages are in `SECURITY-FINDINGS.md` under
+"Audit 2026-08-17". Headline corrections: **M1 (CORS) came down Med → Low** (the config only admits an
+`Origin` a browser never sends from another page — dead config, not a live hole, but still fix before
+Project 3 since native clients aren't CORS-gated at all), and **L1 was narrowed to
+`Api::V1::FlagsController` and then closed** — it was the last holdout of the `.create` + `if record`
+success-on-failure bug, reporting 200 on an unpersisted record.
+
+### What changed
+
+- **`Hujah#current_user_vote` ran its query twice** — once to nil-test, once to read — with a
+  redundant `joins(:user)` and a 1/2/3 if/elsif ladder, on the hottest read path in the app (six ERB
+  sites + the serializer, several per feed card). Now one `find_by` through a new
+  `Hujah::STANCES`, from which `COUNTER_FOR` is derived so the stance trio has one home instead of
+  two. The join was safe to drop because `User has_many :votes, dependent: :destroy`.
+- **`DebatePolicy::Scope#resolve` N+1'd both participants** on every concluded debate. Now
+  `.includes(:challenger, :opponent)`; the deliberate Ruby-side `select` is unchanged, since
+  visibility is follow-graph dependent and cannot move into SQL.
+- **`DebatesController#create` gave two different answers to two bad inputs** — a forged parent got a
+  clean 422, but a bogus `argument_id` raised `RecordNotFound`, which nothing handles, turning a
+  `turbo_stream` POST into a 404 HTML page. The constraint is now the scope of the lookup
+  (`@hujah.children.find_by(id:)`), so both converge on 422.
+- **Four identical `rescue ActiveRecord::RecordInvalid` blocks** in `DebatesController` collapsed to
+  one `rescue_from`. `create`'s `RecordNotUnique` rescue stays inline — different exception class.
+- **`Hujah#has_children?` was dead** and is deleted.
+- **`spec/factories/flags.rb` had never been run.** It said `hoojah { nil }` — no such attribute, the
+  association is `hujah` — so `create(:flag)` raised `NoMethodError`. **That is why `flag_spec.rb`
+  was a stub.** Factory fixed; both model stubs filled (7 + 11 examples).
+- **`hello_controller.js`** (stock scaffold, unreferenced) deleted; **`cloudinary_upload_controller`**
+  gained the `disconnect()` teardown it never had — it created a widget in `connect()` whose iframe
+  lives *outside* the controller's element, so Stimulus's own bookkeeping never cleaned it up.
+
+### The secret-ballot guard now has a test
+
+The rule that a `new_vote` notification carries **no `subject_user_id`** was previously asserted only
+from the `Hujah` side. `spec/models/notification_spec.rb` now pins it three ways: the notification is
+valid and persists with a nil `subject_user`; `reflect_on_association(:subject_user).options[:optional]`
+is `true` — **the thing a "tidy" would flip**; and `cast_vote` actually writes a row with no voter
+recorded. This is the guard against someone making that association required and silently
+de-anonymizing voters through the serializer.
+
+### Traps recorded by these passes
+
+- **`Flag` cannot be made invalid through its enum.** Assigning an out-of-enum `subject` raises
+  `ArgumentError` (a 500), not a validation error. Use a nonexistent `hujah_id`, which fails as
+  `hujah: ["must exist"]` under `load_defaults 8.1`.
+- **`Notification.unread` is never globally empty in a fresh example.** `create(:notification)`'s
+  `association :hujah` fires `award_authoring_badge`, which writes an unread `badge_earned`
+  notification for a *different* user. Scope assertions to `user.notifications.unread`. This is a
+  live property of the factory graph, not a test artifact.
+- **`window.cloudinary` is never defined under Cuprite** (host blacklisted, script skipped in test),
+  so `cloudinary_upload_controller`'s widget branch — including its new `disconnect()` — is
+  **unreachable in specs**. A green suite is not coverage there; the teardown is guarded three ways
+  for that reason.
+
+### Deferred with reasoning — decisions, not oversights
+
+- **The stance trio is three un-enum'd integer columns** (`hujahs.vote`,
+  `debates.challenger_stance`, `debates.opponent_stance`), all carrying the same closed 1/2/3 domain.
+  So `DebatesController#create` does a raw int hop between two tables and `Debate` cannot distinguish
+  a real stance from a `7`. **The largest latent simplification in the codebase — and it needs its own
+  slice.** The hazard is specific: enum-ing `Hujah#vote` flips its reader from `1` to `"agree"`, which
+  then lands in `opponent_stance:` on a non-enum integer column and **coerces to 0** — silent data
+  corruption unless both models move in one commit, plus every view and `HujahSerializer` reading
+  `.vote`, plus a backfill audit.
+- **`current_user_vote`'s `logged_in:` keyword is dead weight** — `find_by(user_id: nil)` already
+  yields nil, and three of the eight call sites hardcode `logged_in: true`. Removing it is a 9-site
+  change (7 ERB + `HujahSerializer` + a spec).
+- **`Api::V1::FlagsController`'s `flag_params` has no `require`** — a POST with no `flag` key raises
+  `NoMethodError` on nil → **500**, before `authorize` is reached. The HTML sibling already uses
+  `require`. Left open because changing it alters the API's answer to a malformed request, which is a
+  contract decision for the native-client surface.
+- **`DebatePolicy#extend?` was NOT aliased to `conclude?`** despite being byte-identical and despite
+  the house precedent `decline? = accept?`. Aliasing couples them, so a future tightening of
+  `conclude?` would silently narrow `extend?` — in a policy, silent narrowing is the worst failure
+  mode. The existing comment already states the intent.
+- **`IconsHelper#stance_color` answers a colour question via the icon map** — correct today only
+  because the key sets coincide. Not changed: the fix would have a helper reach into a model
+  constant, which is its own smell.
+- **`debate_composer_controller`'s `connect()` calls `.focus()`, which scrolls by default** — so a
+  "your turn" broadcast yanks a mid-transcript reader down to the composer. `connect()` also fires on
+  Turbo cache-restore, contrary to its own comment. `focus({preventScroll: true})` would fix the
+  first; whether the scroll is a feature is a product call.
+- **`_challenge_dialog`'s wrapper carries both `data-controller="dialog"` and
+  `data-response-filter-target="item"`.** Open the modal, then click a filter tab that hides that
+  stance, and the ancestor gets `hidden` while the `<dialog>` is still in the top layer. **Reasoned,
+  not verified** — settling it needs a headed Cuprite session.
+
+### Process gap — there is no CI
+
+No `.github/workflows/`, no `bin/ci`. brakeman, bundler-audit and standardrb run manually per
+`CLAUDE.md`. Every gate in this program has been green **by convention, not by enforcement** — and
+this session found a wall-clock-dependent spec that three consecutive green runs missed. Worth a
+decision before Project 3.
