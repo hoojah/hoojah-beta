@@ -11,7 +11,43 @@
     construction and works with JS off (plain form POST → the debate show page).
 
     Locals: argument (the child hoojah being challenged), hujah (the root hoojah),
-    stance (the argument author's stance name, for the response-filter sync). %>
+    stance (the argument author's stance name, for the response-filter sync).
+
+    DESIGN SYSTEM (Slice 9, Task 4.8) —
+    docs/design-system/components/overlays/Dialog.prompt.md, plus
+    CompactHujahCard.prompt.md for the trigger, which the design system calls
+    `ChallengeLink` and which "renders below the card, never inside it". The panel was
+    already the design system's dialog to the letter — 8px rounding, the large shadow,
+    the 40% black backdrop, 448px max width, a hairline header carrying the title and an
+    X — so the shell does not move, and neither does the header, which is the same markup
+    `users/_profile_edit` kept in Task 4.6. What changed:
+
+    - The trigger and the X and Cancel controls all go through
+      `ds_button_classes(variant: :link, ...)`, whose emitted string the trigger was
+      already spelling by hand almost exactly. The variant is the bare borderless
+      transparent text control: pink for the challenge affordance, grey for the two
+      dismissals, which is Dialog.prompt.md's "bare grey Cancel". `text-xs` stays at the
+      call site because `:link` deliberately carries no font size — this link is 12px,
+      not the 16px it would otherwise inherit, and the helper's contract is that a link
+      button inherits its context.
+    - The stance rows lose the 1px edge and the rounding around each one, and the gap
+      between them. That is the same correction Task 4.7 made to the two analytics
+      surfaces: this design system spends `#f3f4f6` on hairlines INSIDE a surface
+      (`ui/_divider`) and never as an edge around one, and Card.prompt.md forbids
+      rounding outright. They do NOT become `ui/_card`s the way those two did — a card
+      nested in a dialog is the second shadow the same rule rejects. What is left is the
+      shared hairline between rows, which is also what makes this list and the flag
+      dialog's reason list render identically at last: they are one component in the
+      design system (`DialogChoiceList`) and were two different shapes in the app.
+      Row padding is untouched, so the rows sit exactly where they sat.
+
+    FROZEN: `dom_id(argument, :challenge_dialog)`, which `debates/create.turbo_stream.erb`
+    closes remotely; `data-response-filter-target` / `data-response-filter-vote` on the
+    wrapper, which the response filter matches by string against the copies in
+    `_response_filter` and `_child_card`; every `data-*` on the trigger and the dialog;
+    the POST to /hoojah/:slug/debates with argument_id + challenger_stance; and every word
+    of copy — spec/system/debate_spec.rb clicks "Challenge to debate" and "Argue Agree" by
+    name. %>
 <% stance_labels = {1 => "Agree", 2 => "Neutral", 3 => "Disagree"} %>
 <% opponent_stance = argument.vote %>
 <div data-controller="dialog"
@@ -19,7 +55,7 @@
      data-response-filter-vote="<%= stance %>"
      class="flex justify-end -mt-1 mb-1 pr-2">
   <button type="button" data-action="dialog#open"
-          class="inline-flex items-center gap-1 text-xs text-neutral fill-neutral no-underline cursor-pointer bg-transparent border-0">
+          class="<%= ds_button_classes(variant: :link, tone: "neutral") %> text-xs">
     <%= lucide_icon("swords", class: "w-3.5 h-3.5") %> Challenge to debate
   </button>
 
@@ -33,7 +69,7 @@
         Challenge @<%= argument.user.username %> to a debate
       </h5>
       <button type="button" data-action="dialog#close" aria-label="Close"
-              class="text-grey fill-grey p-0 leading-none">
+              class="<%= ds_button_classes(variant: :link, tone: "grey") %>">
         <%= lucide_icon("x", class: "w-5 h-5") %>
       </button>
     </div>
@@ -43,18 +79,19 @@
         They argued <strong><%= stance_labels[opponent_stance] || "their side" %></strong>.
         Pick the side you'll argue — you move first.
       </p>
-      <div class="flex flex-col gap-2">
-        <% ([1, 2, 3] - [opponent_stance]).each do |cs| %>
+      <div class="flex flex-col">
+        <% ([1, 2, 3] - [opponent_stance]).each_with_index do |cs, i| %>
+          <%= render "ui/divider" unless i.zero? %>
           <%= button_to "/hoojah/#{hujah.slug}/debates",
                 params: {argument_id: argument.id, challenger_stance: cs},
-                class: "w-full text-left px-4 py-3 rounded border border-gray-100 hover:bg-gray-50 bg-white cursor-pointer" do %>
+                class: "w-full text-left px-4 py-3 hover:bg-gray-50 bg-white cursor-pointer" do %>
             Argue <strong><%= stance_labels[cs] %></strong>
           <% end %>
         <% end %>
       </div>
       <div class="text-right mt-4">
         <button type="button" data-action="dialog#close"
-                class="text-grey no-underline px-4 py-2 bg-transparent border-0 cursor-pointer">Cancel</button>
+                class="<%= ds_button_classes(variant: :link, tone: "grey") %>">Cancel</button>
       </div>
     </div>
   </dialog>
