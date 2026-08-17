@@ -27,7 +27,7 @@ User.create!(
 hoojah = User.create!(
   full_name: "Hoojah",
   email: "hello@hoojah.my",
-  username: "hoojah",
+  username: "hoojahhq", # "hoojah" is a RESERVED_USERNAME (see User model); use a non-reserved handle for the official seed account
   password: PASSWORD,
   password_confirmation: PASSWORD,
   photo: "https://res.cloudinary.com/hoojah/image/upload/v1586917414/xecjnelhwisrdo4k8bcl.png"
