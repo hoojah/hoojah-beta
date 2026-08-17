@@ -6,8 +6,11 @@ _Last updated: 2026-08-06. Read this first when resuming._
 
 **Project 1 (Rails 6.0 → 8.1 upgrade + backend modernization) is DONE and merged to `master`.**
 The app runs **Rails 8.1.3.1 on Ruby 3.4.9**, suite is **24 examples / 0 failures / 2 pending**,
-boots in dev + test. Merge commit: `93a3ff2`. **Not pushed** — run `git push origin master` when ready
-(remote is Bitbucket).
+boots in dev + test. Merge commit: `93a3ff2`. **Not pushed** — run `git push origin master` when ready.
+
+> **Correction (2026-08-17):** this line used to say the remote is Bitbucket. It is **GitHub** —
+> `https://github.com/hoojah/hoojah-beta.git`. That matters: it makes GitHub Actions the right answer
+> for the CI gap, with no migration needed.
 
 **Project 2 (React SPA → Hotwire) is COMPLETE** — all 8 slices shipped (Hotwire foundation, features +
 Pundit, social, Debate MVP + increments, privacy + analytics, badges + trending, block, private
