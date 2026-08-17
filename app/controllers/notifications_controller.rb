@@ -11,12 +11,30 @@ class NotificationsController < ApplicationController
       .order(created_at: :desc)
   end
 
-  # Mark read, then bounce to the related hoojah. The redirect target is always an
-  # internal `hujah_path` (never a user-supplied URL) — no open-redirect.
+  # Mark read, then bounce to whatever the notification is about. The debate wins the
+  # precedence because all four `debate_*` categories set BOTH `debate_id` and
+  # `hujah_id` (see `Debate#notify`) and the debate is the thing that happened — the
+  # hoojah is only the claim it grew out of. Both targets are internal slug paths,
+  # never user-supplied, so neither branch is an open-redirect.
+  #
+  # No extra visibility guard on the debate branch: `Debate#notify`'s recipient is by
+  # construction a participant, and `DebatePolicy#show?` is
+  # `record.participant?(user) || (record.concluded? && …)` — the participant branch
+  # admits them unconditionally in every status, `declined` included. `DebatesController#show`
+  # re-authorizes on arrival anyway. The two branches are NOT equivalent in how they
+  # fail, though: `DebatesController` has its own `rescue_from Pundit::NotAuthorizedError`
+  # that renders a flat 403, where `hujahs#show` inherits the app-wide friendly
+  # redirect-back-with-alert. So a pathological row would degrade harder here. It is
+  # unreachable given the above, but don't read the two branches as behaving alike.
+  #
+  # `belongs_to :debate, optional: true` means a deleted debate simply falls through
+  # to the hoojah branch.
   def update
     authorize @notification
     @notification.update!(read: true)
-    if @notification.hujah
+    if @notification.debate
+      redirect_to debate_path(@notification.debate.slug), status: :see_other
+    elsif @notification.hujah
       redirect_to hujah_path(@notification.hujah.slug), status: :see_other
     else
       redirect_to notifications_path, status: :see_other

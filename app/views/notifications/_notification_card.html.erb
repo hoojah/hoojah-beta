@@ -24,6 +24,18 @@
     `max-w-[350px]` clamp) and the `:link` variant's `inline-flex` would break the
     overflow they depend on; the "View profile" rows are already plain primary links.
 
+    CATEGORY COVERAGE — both `case`es cover all fourteen `Notification` categories.
+    They used to stop at eight, so the four `debate_*` ones (which fire on every
+    challenge / decline / your-turn / conclude) plus the two legacy SPA leftovers
+    (`admin`, `flag`, which nothing in this codebase creates but which may still
+    exist as migrated rows) rendered with no icon and no copy line at all.
+    Icon choices: `swords` is the established debate motif here (challenge dialog,
+    debate card, debate header); `flag` matches the flagging UI's own uses; `bell`
+    matches the notifications empty state in `notifications/index.html.erb`.
+    The `else` arms are unreachable today — the enum rejects unknown values, so no
+    factory can exercise them. They are insurance for the fifteenth category: a new
+    enum value renders a bell and a generic line instead of a blank row.
+
     FROZEN: `dom_id(notification)` is what `destroy.turbo_stream.erb` removes.
     Every `button_to` path and verb, and `aria-label="Delete notification"`, which
     spec/system/notifications_spec.rb clicks by name. %>
@@ -51,6 +63,20 @@
         <%= lucide_icon("user-check", class: "w-4 h-4") %>
       <% when "badge_earned" %>
         <%= lucide_icon("award", class: "w-4 h-4") %>
+      <% when "debate_challenge" %>
+        <%= lucide_icon("swords", class: "w-4 h-4") %>
+      <% when "debate_declined" %>
+        <%= lucide_icon("x-circle", class: "w-4 h-4") %>
+      <% when "debate_your_turn" %>
+        <%= lucide_icon("reply", class: "w-4 h-4") %>
+      <% when "debate_concluded" %>
+        <%= lucide_icon("gavel", class: "w-4 h-4") %>
+      <% when "admin" %>
+        <%= lucide_icon("shield", class: "w-4 h-4") %>
+      <% when "flag" %>
+        <%= lucide_icon("flag", class: "w-4 h-4") %>
+      <% else %>
+        <%= lucide_icon("bell", class: "w-4 h-4") %>
       <% end %>
     </div>
 
@@ -73,6 +99,20 @@
           @<%= notification.subject_user&.username %> accepted your follow request
         <% when "badge_earned" %>
           You earned the <strong><%= Badge::REGISTRY.dig(notification.body, :name) || "achievement" %></strong> badge
+        <% when "debate_challenge" %>
+          @<%= notification.subject_user&.username %> challenged you to a debate
+        <% when "debate_declined" %>
+          @<%= notification.subject_user&.username %> declined your debate challenge
+        <% when "debate_your_turn" %>
+          It's your turn in your debate with @<%= notification.subject_user&.username %>
+        <% when "debate_concluded" %>
+          Your debate with @<%= notification.subject_user&.username %> has concluded
+        <% when "admin" %>
+          You have a message from the Hoojah team
+        <% when "flag" %>
+          Your hoojah was flagged for review
+        <% else %>
+          You have a new notification
         <% end %>
       </span>
 
@@ -104,8 +144,11 @@
       <% elsif notification.follow_accepted? && notification.subject_user %>
         <%= link_to "View profile", profile_path(notification.subject_user.username),
               class: "text-left text-primary no-underline" %>
-      <% elsif notification.badge_earned? %>
-        <%# badge_earned has no hujah/subject_user, so add its own mark-read affordance. %>
+      <% else %>
+        <%# badge_earned has no hujah/subject_user, and neither do admin, flag, or any
+            notification whose hoojah is gated from the recipient by the branch above.
+            An `else` rather than a category check, so every card always carries at
+            least a mark-read affordance and none of them is stuck unread. %>
         <%= button_to "Mark as read", notification_path(notification), method: :patch,
               class: ds_button_classes(variant: :link) %>
       <% end %>
