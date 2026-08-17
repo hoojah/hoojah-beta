@@ -1,4 +1,8 @@
 class Debate < ApplicationRecord
+  PHASE_LABELS = {opening: "Opening statement", counter: "Counter-argument",
+                  response: "Response", closing: "Closing statement"}.freeze
+  MAX_ROUNDS = 10
+
   extend FriendlyId
 
   friendly_id :slug_source, use: :slugged
@@ -12,6 +16,12 @@ class Debate < ApplicationRecord
   enum :status, {pending: 0, active: 1, concluded: 2, declined: 3}, default: :pending
 
   validates :challenger_stance, :opponent_stance, presence: true
+  # Below 2 the model degenerates: phase_for can never yield :closing (round 1
+  # returns :opening first) while final_position is still 2, so the debate would
+  # cap with no closing statement ever labelled. The upper bound is the same
+  # ceiling extend_rounds! enforces, restated as an invariant of the row.
+  validates :rounds_limit, numericality: {only_integer: true,
+                                          greater_than_or_equal_to: 2, less_than_or_equal_to: MAX_ROUNDS}
   validate { errors.add(:opponent_stance, "must oppose") if challenger_stance == opponent_stance }
   validate { errors.add(:opponent_id, "must differ") if challenger_id == opponent_id }
 
@@ -32,6 +42,61 @@ class Debate < ApplicationRecord
   end
 
   def current_round = (turns.count / 2) + 1
+
+  # Pure derivation — nothing is stored on debate_turns.
+  def phase_for(round)
+    return :opening if round == 1
+    return :closing if round == rounds_limit
+    round.even? ? :counter : :response
+  end
+
+  # The phase to show for a debate as a whole. NEVER call phase_for(current_round)
+  # directly from a view: current_round is turns.count / 2 + 1, so a concluded
+  # 8-turn debate reports round 5, one PAST rounds_limit, and phase_for would
+  # answer :response — "Response" printed on the concluded transcript everyone
+  # reads. Clamped here once rather than in every caller.
+  def current_phase
+    return nil unless active?
+    phase_for([current_round, rounds_limit].min)
+  end
+
+  # The position of the last turn this debate can hold. post_turn compares with
+  # `>=`, not `==`: the cap is a floor, so a position that ever landed past it
+  # still stops the debate instead of stepping over an equality check.
+  def final_position = rounds_limit * 2
+
+  # Exposed separately from extendable_by? so a view can distinguish "no button
+  # because the debate is at its ceiling" (say so) from "no button because this
+  # is the wrong moment" (stay silent).
+  def at_round_ceiling? = rounds_limit >= MAX_ROUNDS
+
+  # Only at the closing-round BOUNDARY: the round has been reached but holds no
+  # turn yet. Extending once a closing turn exists would silently relabel it from
+  # CLOSING to COUNTER, because phase is derived at render time.
+  def extendable_by?(user)
+    active? && participant?(user) && !at_round_ceiling? &&
+      turns.count == (rounds_limit - 1) * 2
+  end
+
+  # Unilateral by design: the window belongs to whoever moves first in the closing
+  # round, and the other participant retains conclude! throughout — so no
+  # negotiation state is needed.
+  #
+  # The lock guards the LABEL INVARIANT, not a counter — do not remove it as
+  # redundant. post_turn takes the same debates-row FOR UPDATE, so without it an
+  # extend could read turns.count == 6 while post_turn is committing position 7:
+  # the bump would land, and that already-written turn would flip :closing →
+  # :counter under every reader. Serialised, the loser re-reads a count of 7 and
+  # extendable_by? correctly fails. Broadcasting stays outside the lock, as in
+  # post_turn.
+  def extend_rounds!(by:)
+    with_lock do
+      return false unless extendable_by?(by)
+      update!(rounds_limit: rounds_limit + 1)
+    end
+    broadcast_state_change
+    true
+  end
 
   def participant?(user) = user && [challenger_id, opponent_id].include?(user.id)
 
@@ -58,13 +123,46 @@ class Debate < ApplicationRecord
       return false unless active? && by == current_turn_user
       turn = turns.create!(user: by, body: body, position: (turns.maximum(:position) || 0) + 1)
     end
-    notify(other(by), :debate_your_turn)
+    # The closing turn ends the debate, so there is no next mover to summon.
+    capped = turn.position >= final_position
+    if capped
+      # Conclude BEFORE enqueuing any broadcast, and deliberately OUTSIDE the
+      # with_lock block above.
+      #
+      # Outside the lock because conclude! calls UserBadge.award, which rescues
+      # RecordNotUnique — doing that inside an open Postgres transaction would
+      # poison it and lose the turn we just wrote (see UserBadge.award's note).
+      # The lock has already committed here, so conclude!'s own update! takes a
+      # fresh transaction and cannot self-deadlock.
+      #
+      # Before the broadcasts because every *_later_to renders in a job, from a
+      # GlobalID-reloaded record, at execution time — not from the state at
+      # enqueue time. If the composer job ran while the debate were still
+      # `active`, it would paint the turn form for the opponent, and
+      # conclude!'s broadcast_state_change (status + actions only) would never
+      # correct it. Concluding first makes every render observe the final state.
+      conclude!(by: nil)
+    else
+      notify(other(by), :debate_your_turn)
+    end
     # Real-time: append the new turn to everyone on the debate stream, then refresh
     # each participant's own composer (the mover flips to "waiting", the other to
-    # the turn form) on their user-signed stream.
+    # the turn form — or both to "concluded" on the capping turn) on their
+    # user-signed stream.
     broadcast_append_later_to self, target: dom_id(self, :transcript),
       partial: "debates/debate_turn", locals: {debate_turn: turn}
     broadcast_to_each_participant(target: :composer, partial: "debates/turn_composer")
+    # Slice 9: the status region carries "Round n of N" and the actions region carries
+    # the Extend affordance, and EVERY transition of either is a post_turn — the round
+    # advances on each even position, and extendable_by? flips false→true the moment a
+    # closing-round boundary is reached. Without this the counter would freeze at first
+    # paint and the Extend button would never appear at all, since its window closes on
+    # the very next turn.
+    #
+    # `unless capped` because the capped branch already reached broadcast_state_change
+    # through conclude! above; firing it here too would enqueue the status + both
+    # actions replaces twice for the one capping turn.
+    broadcast_state_change unless capped
     true
   end
 

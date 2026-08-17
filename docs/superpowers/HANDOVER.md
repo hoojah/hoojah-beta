@@ -12,6 +12,13 @@ boots in dev + test. Merge commit: `93a3ff2`. **Not pushed** — run `git push o
 **Project 2 (React SPA → Hotwire) is COMPLETE** — all 8 slices shipped (Hotwire foundation, features +
 Pundit, social, Debate MVP + increments, privacy + analytics, badges + trending, block, private
 accounts). The **"land everything" roadmap is done** — see "Slice 8 … 🏁 PROGRAM COMPLETE" below.
+
+**Slice 9 (design-system adoption + structured debate phases) is also DONE** on branch
+`slice-9-design-system`, **not merged** — suite **513 / 0 / 2**. Read its section at the bottom of
+this file before touching views or Tailwind: it corrects CLAUDE.md's gotcha #1 (Ruby `#` comments are
+NOT scanned; ERB `<%# %>` comments ARE) and records nine CSS rules that ship with no view asking for
+them.
+
 Next up: **Project 3 (Hotwire Native)** — not started.
 
 ---
@@ -664,4 +671,334 @@ Then **Project 3 — Hotwire Native**: Rails-side path-config + native auth, the
 | `docs/superpowers/plans/2026-08-03-rails-6-to-8.1-upgrade.md` | Implementation plan |
 | `docs/superpowers/UPGRADE-LOG.md` | Per-hop upgrade record |
 | `docs/superpowers/SECURITY-FINDINGS.md` | Audit triage + open items |
+| `docs/superpowers/slice-9-task-4.6-freeze-audit.md` | Retroactive freeze audit of the forms family + its visual delta list |
+| `docs/design-system/` | The design system, extracted from this codebase (`readme.md`, then `MIRROR-NOTES.md`) |
 | `README.md` | Stack + run instructions |
+
+---
+
+## Slice 9 (Design System + Debate Phases) — DONE ✅
+
+_Branch `slice-9-design-system`, **not merged**. Suite **513 examples / 0 failures / 2 pending**
+(was 273 on `master`). `spec/system` is 30 examples and was run twice back-to-back with zero
+flakes. brakeman **0**; `standardrb` clean; `bundler-audit` clean (1232 advisories, DB at `677ced9`).
+Built bundle: 23,767 bytes, 365 rules._
+
+The slice adopted the Hoojah Design System across all ~75 views and gave debate turns named
+Opening / Counter / Response / Closing phases. Plan:
+`docs/superpowers/plans/2026-08-14-slice-9-design-system.md`. Approved design:
+`docs/superpowers/specs/2026-08-14-design-system-and-debate-phases-design.md`. The design system
+mirror is `docs/design-system/` — start at its `readme.md`, then `MIRROR-NOTES.md`.
+
+**The framing that mattered throughout:** the design system was generated FROM this codebase, so
+Phase 4 was a **codification pass, not a redesign**. Every visual change is a documented DS
+correction or a bug fix; none is taste.
+
+### What shipped
+
+- **Phase 1 — tokens + brand.** All 72 DS custom properties in
+  `app/assets/tailwind/application.css` (`@theme` for namespaced ones, `:root` for `var()`-only
+  aliases). Gradient wordmark in the navbar. Closed the latent gap where
+  `border-read` / `border-unread` were used by `_notification_card` and defined nowhere.
+- **Phase 2 — five primitives.** `ui/_card` (a **layout** partial), `ui/_avatar`, `ui/_divider`,
+  `ui/_empty_state`, `ui/_menu`, plus `DesignSystemHelper` (`ds_button_classes`, `ds_card_classes`,
+  `ds_avatar_classes`, `ds_menu_item_classes`, `ds_initials`, `ds_debate_state_color`).
+- **Phase 3 — debate phases.** `debates.rounds_limit` (default 4) with a safe active-debate
+  backfill; derived Opening/Counter/Response/Closing; auto-conclude at `rounds_limit * 2`;
+  `extend_rounds!` at the closing-round boundary only, under `with_lock`; the extend endpoint.
+- **Phase 4 — all eight view families:** navigation, voting, hujah, social, debate, forms,
+  analytics (`c97b1ce`), overlays (`b8db08c`).
+- **Phase 5 — gates + docs**, plus four out-of-plan items described below.
+
+### Task 4.6's freeze gap — closed retroactively, verdict CLEAN
+
+`a410be7` (forms) shipped without the per-element freeze harness the other seven families ran; its
+implementing agent was killed by a session limit first. A retrospective audit stripped every `class`
+attribute and ERB comment from both sides of all ten files and diffed the residue, so the non-`class`
+change set is mechanical rather than eyeballed. **No violations.** Full findings and the visual delta
+list that was never written: **`docs/superpowers/slice-9-task-4.6-freeze-audit.md`**.
+
+Two incidental facts from it worth keeping: `.btn`, `.btn-link`, `.field` and `.actions` have **no
+CSS rule anywhere in this repo** (retired-Bootstrap leftovers), and `devise/confirmations/new` +
+`unlocks/new` are **unreachable today** (`User` is neither `:confirmable` nor `:lockable`) — they
+were restyled so enabling either module cannot land an unstyled screen.
+
+### Out-of-plan work that landed here
+
+**All fourteen notification categories now render (`7bd60e6`).** `Notification` declares 14
+categories; `_notification_card` had 8 `when` arms, so `admin`, `flag` and the four `debate_*`
+categories — which fire on **every** debate challenge / decline / your-turn / conclude — rendered
+with no icon and no copy. Both `case`es now cover all fourteen plus a terminal `else` (bell +
+"You have a new notification") so no future category can render blank. The body chain's final
+`elsif notification.badge_earned?` became a bare `else`, which also closes a **stuck-unread bug**:
+an `admin` notification with no hoojah previously had no control to click at all.
+`NotificationsController#update` now prefers `debate_path` when `notification.debate` is present
+(all four `debate_*` categories set both `debate_id` and `hujah_id`); no extra guard is needed
+because the recipient is a participant by construction and `DebatePolicy#show?` admits participants
+unconditionally in every status — but note the two branches do **not** fail alike, since
+`DebatesController` renders a flat 403 where `hujahs#show` gets the friendly redirect.
+
+> ⚠️ **`flag`'s copy is a guess and is the one string not derivable from the code.** Nothing creates
+> that category — it is a legacy SPA leftover — so its intended recipient is unknowable. "Your hoojah
+> was flagged for review" assumes it addresses the *author*; if migrated production rows actually
+> addressed a moderator, it is wrong for them. **Check production data before treating it as settled.**
+
+**The inert `fill-*` utilities are gone (`652c80d`).** Every icon in the product is `lucide_icon`,
+and lucide-rails writes `fill="none"` as a **presentation attribute on the `<svg>` itself** — a
+specified value, which beats any fill inherited from an ancestor's utility class. All 30 occurrences
+sat on wrapping elements, so all 30 were dead, including the one `ds_button_classes` emitted on
+every button. Colour reaches icons via `text-<tone>` → `currentColor` → the stroke attribute. The
+strip is provably pixel-identical (the only non-Lucide SVGs are `image_tag`-loaded, and an external
+SVG document is unreachable by the host page's CSS). A tombstone in `application.css` records why,
+and a new helper-spec invariant asserts no variant × tone × size combination ever emits one again.
+
+**A real suite flake, found and fixed during the final sweep.** `spec/requests/rate_limit_spec.rb`
+failed once on the compose example, then passed in isolation and on re-run. Cause: **Rack::Attack
+counts into a FIXED window, not a sliding one** — the cache key is
+`name:discriminator:(Time.now.to_i / period)`. All 16 examples in that file fire limit+1 requests in
+a loop and assert the last is throttled, so a loop that straddles a window boundary resets the
+counter mid-flight and the final request lands in a fresh window well under the limit. Compose is the
+most exposed (21 requests, each creating a `Hujah` and running its `after_create_commit` callbacks —
+the slowest loop in the file). Fixed with `around { |example| freeze_time { example.run } }` plus
+`config.include ActiveSupport::Testing::TimeHelpers` in `rails_helper`; verified with three
+consecutive clean runs of the file and a green full suite. **Note this was invisible to three
+back-to-back gate runs** — a green suite is not by itself evidence that a wall-clock-dependent spec
+is deterministic.
+
+**Comment-accuracy pass (`5a9061a`).** Reviews found the code correct but ten prose claims false or
+overstated. Notably: `ui/_empty_state` has no shadow, so "every other surface carries it" was wrong;
+`Card.prompt.md` says "Never round a **feed card**", not "forbids rounding outright" (the DS rounds
+dialogs and menus freely) — and that overreach had already propagated by copy. It also converged
+`users/_profile_edit`'s dialog X onto `ds_button_classes`, so all three `Dialog.prompt.md` headers
+are byte-identical again apart from `id` and title.
+
+### ⚠️ Tailwind gotcha #1 is narrower than CLAUDE.md says — corrected by experiment
+
+CLAUDE.md and earlier slices state that Tailwind v4 "scans the whole repo as text", implying every
+comment is a potential safelist. A four-cell experiment (token `rotate-45`, injected independently,
+each cell built and reverted, run twice by different agents with agreeing results) shows the
+extractors differ **by file type**:
+
+| Placement | Rule emitted? |
+| --- | --- |
+| `class="rotate-45"` in ERB markup (control) | **yes** |
+| `<%# rotate-45 %>` — ERB comment | **yes** |
+| `# rotate-45` — Ruby comment | **no** |
+| `ROTTEST = "rotate-45"` — Ruby **string literal** | **yes** |
+| `%i[rotate-45]` — Ruby bare word / symbol | **no** |
+| `/* rotate-45 */` in `app/assets/tailwind/application.css` | **no** |
+
+So: **the "write `bg-<stance>`, never a concrete class" discipline is load-bearing in ERB (and JS,
+YAML, SVG, Markdown) but NOT in Ruby `#` comments.** In Ruby it is specifically *string literals*
+that are extracted. This is exactly why `.outline` never shipped from the dozen `variant: :outline`
+symbols — an earlier agent concluded the opposite and recommended renaming the variant; **that
+conclusion was wrong, do not act on it.** The input CSS file is not scanned as a source at all,
+which makes the `application.css` tombstone inherently leak-proof.
+
+Two real leaks were caught and removed this slice: `.grid` came from `app/assets/images/Untitled
+Diagram.drawio` (`grid="1"`), fixed with `@source not "../../../app/assets/images"`; `.outline` came
+from four ERB comments, fixed by rewording. And `.fill-black` — removed with the rest — was in **no**
+`@source inline` line and existed *only* because a comment spelled it literally.
+
+**Nine rules still ship that no view asks for.** Documented, not fixed:
+
+| Rule | Source |
+| --- | --- |
+| `.capitalize` | `stance.capitalize` in four ERB views |
+| `.filter` | `params[:filter]` in five ERB views |
+| `.blur`, `.grow`, `.visible`, `.container`, `.inline` | ordinary prose in ERB comments (`.container` also from YAML config; `.inline` pervasively from `@source inline(...)` written in prose, incl. `CLAUDE.md`) |
+| `.static` | `vendor/javascript/local-time.js`, Stimulus `static targets =`, and `t.boolean "static"` in `db/queue_schema.rb` |
+| `.transform` | **`public/safari-pinned-tab.svg`** — its `<g transform="…">` attribute, bisect-proven as the only source |
+
+Cost is a few hundred bytes and there is no correctness risk. `.transform` is removable by adding
+`public/safari-pinned-tab.svg` to the `@source not` list. Also untracked-by-`@source not` and worth
+knowing if you ever chase more phantom rules: `README.md`, `CLAUDE.md`, and the two ~5MB
+`.yarn/releases/yarn-*.js` bundles are all scanned.
+
+### Other defect classes this slice found — do not reintroduce
+
+1. **`@source not` paths resolve relative to the working directory, not to the CSS file.** Building
+   the bundle from anywhere but the repo root re-admits `docs/` and `spec/` and silently adds ~14
+   rules. Anything that builds this bundle must `cd` to the repo root first.
+2. **A comment describing a class you just deleted can resurrect it.** One agent's draft fix spelled
+   a *retired* class literally and would have re-added two rules while documenting their removal.
+   Write `fill-<tone>`, never a concrete name — and run the canary.
+3. **The canary needs a positive control.** md5 the bundle, strip only the new comments, rebuild,
+   compare — but also append a comment naming an unused class and confirm the hash *moves*. Without
+   that, a broken harness is indistinguishable from a clean result. One agent's control failed and
+   led directly to the extractor finding above.
+4. **Interpolated variant classes die silently.** `@source inline("bg-agree")` safelists the *bare*
+   utility, not `peer-checked:bg-agree`.
+5. **Same-family utilities resolve by bundle order, not call order.** `.px-4` precedes `.px-5`. Hence
+   `ui/_menu`'s required `width:` and the rule that `ui/_card`'s `padded:` must never be combined
+   with padding in `class:`.
+6. **A border with no colour class inherits `currentColor`** — indigo inside an `<a>`, because
+   `@layer base` makes anchors `--fg-link`.
+7. **`have_broadcasted_to(...).with { }` runs its block against EVERY payload on the stream** — it
+   asserts "every broadcast was this one", not "this one was broadcast".
+8. **The freeze harness's blind spot is `class`** — the only thing a DS refactor changes. Every
+   visual delta must therefore be written out in prose by hand; the mechanical diff cannot see it.
+
+### Two commit messages are known-wrong and were deliberately not amended
+
+The workspace rule is never to `git commit --amend` unless HEAD is verifiably your own commit — an
+agent amending another's already cost a history repair on this branch. So these stand, corrected here:
+
+- **`652c80d`** says "24 occurrences across 19 views". The true figure is **30 fill tokens across 28
+  lines in 19 views**, plus 6 in `ds_button_variant` and 3 safelist members.
+- **`b8db08c`** presents the challenge trigger's gain as "`transition` + `active:scale-95` (and an
+  explicit `p-0`)". Three more are unlisted — `justify-center`, `disabled:opacity-50`,
+  `disabled:cursor-default` — all inert there. The in-file comment now carries the complete list.
+
+### Deferred out of this slice
+
+- **`_distribution_bar`'s unused `count` block arg** — `|stance, count, pct|` never reads `count`.
+  StandardRB only lints `.rb`, so nothing catches it in ERB. Pure churn to fix; sweep it with other
+  ERB housekeeping.
+- **`spec/system/analytics_spec.rb`'s `have_content("5")`** — the page also renders "fewer than 5
+  votes", so that assertion passes even if the stat chip vanishes. Suggested fix: assert the stat
+  row's normalized text equals `"5 Votes received"`, which survives class-level refactors. A class
+  selector would re-couple the spec to exactly the classes this slice churns; a `data-testid` is a
+  markup addition that deserves an explicit decision.
+- **`spec/models/notification_spec.rb` is an empty `# Not yet implemented` stub** — the enum, the
+  four `optional: true` associations and the `unread` scope have no model-level coverage; everything
+  is pinned only indirectly through request specs. (`spec/models/flag_spec.rb` is the other stub;
+  these two are the suite's 2 pending.)
+- **`app/assets/tailwind/application.css`'s `@layer base` comment** still refers to the layout's
+  `<body class="body">`, removed in `8da23b2`. Zero CSS impact — the input CSS is not scanned — but
+  it wants a one-word fix.
+- **Section-head idiom differs across three families** (`trending/_trending`, `debates/_verdict`,
+  `analytics/show`). Adjudicated as **not drift**: the DS pins per-component where a `.jsx` exists
+  and is silent otherwise, and `_verdict` is an exact port of `Verdict.jsx`. Trending's uppercase is
+  the mild outlier. Do not "unify" these.
+- **A terminator hairline above the first and below the last dialog choice row** — the old bounding
+  box drew one; the DS-native replacement would be a `ui/_divider` at each end.
+- `pinned-tab.svg` repair + favicon wiring; `loading.svg` animation restoration; `app-icon-512.png`
+  (fetch when Project 3 starts); the unmirrored `*.d.ts` / `*.jsx` / `guidelines/*.html` /
+  `ui_kits/web/*.jsx`, fetchable on demand via the `DesignSync` MCP tool (main-loop only).
+- `debate_won` badge (still blocked on a finalized verdict tally, per Slice 8).
+- Carried forward from the program: **Vote array→scalar**, **serializer N+1 / prosopite**,
+  **`Api::V1` visibility/block parity**, **`config.require_master_key`** (L4), **`rack-cors`** (M1),
+  and **Project 3 — Hotwire Native**.
+
+### Environment notes specific to this slice
+
+- **All agents share one Postgres test DB.** Concurrent full-suite runs collide with
+  `PG::ObjectInUse`. Run one implementer at a time; reviewers should use targeted specs or none.
+- `spec/support/tailwind_build.rb` rebuilds the bundle once per suite run — needed because
+  `app/assets/builds/tailwind.css` is gitignored and nothing else rebuilds it before RSpec.
+- The working method that paid off, again: implementer → independent spec/quality review → batched
+  fixes → re-verify. Reviews this slice caught a false "spec compliant" premise, four false comment
+  claims, a concealed header divergence, and one agent's incorrect root-cause for `.outline` that
+  would have led to renaming a helper variant for no reason. **Verify agent claims before acting on
+  them** — one audit's sole reported defect was itself a false positive.
+
+---
+
+## Post-Slice-9 review passes (2026-08-17) — simplifier, Stimulus, security
+
+Three specialist passes over the finished slice, run analysis-first so proposals could be triaged
+against this codebase's many recorded decisions before anything was edited. Suite went
+**513 / 0 / 2 → 530 / 0 / 0** — the two `# Not yet implemented` stubs are gone, so there are now
+**no pending examples**. brakeman 0, standardrb clean, bundler-audit clean throughout.
+
+Commits: `fc3afa7` (Stimulus tidy + the API flags bug), `1b04b79` (audit ledger),
+`26c577a` (simplifier findings).
+
+### Security audit — clean
+
+No new findings at Critical/High and **no regressions** across the slice's 47 commits / 160 files.
+Twelve security-critical invariants were verified by direct source inspection rather than by trusting
+the comments — full list and the two ledger re-triages are in `SECURITY-FINDINGS.md` under
+"Audit 2026-08-17". Headline corrections: **M1 (CORS) came down Med → Low** (the config only admits an
+`Origin` a browser never sends from another page — dead config, not a live hole, but still fix before
+Project 3 since native clients aren't CORS-gated at all), and **L1 was narrowed to
+`Api::V1::FlagsController` and then closed** — it was the last holdout of the `.create` + `if record`
+success-on-failure bug, reporting 200 on an unpersisted record.
+
+### What changed
+
+- **`Hujah#current_user_vote` ran its query twice** — once to nil-test, once to read — with a
+  redundant `joins(:user)` and a 1/2/3 if/elsif ladder, on the hottest read path in the app (six ERB
+  sites + the serializer, several per feed card). Now one `find_by` through a new
+  `Hujah::STANCES`, from which `COUNTER_FOR` is derived so the stance trio has one home instead of
+  two. The join was safe to drop because `User has_many :votes, dependent: :destroy`.
+- **`DebatePolicy::Scope#resolve` N+1'd both participants** on every concluded debate. Now
+  `.includes(:challenger, :opponent)`; the deliberate Ruby-side `select` is unchanged, since
+  visibility is follow-graph dependent and cannot move into SQL.
+- **`DebatesController#create` gave two different answers to two bad inputs** — a forged parent got a
+  clean 422, but a bogus `argument_id` raised `RecordNotFound`, which nothing handles, turning a
+  `turbo_stream` POST into a 404 HTML page. The constraint is now the scope of the lookup
+  (`@hujah.children.find_by(id:)`), so both converge on 422.
+- **Four identical `rescue ActiveRecord::RecordInvalid` blocks** in `DebatesController` collapsed to
+  one `rescue_from`. `create`'s `RecordNotUnique` rescue stays inline — different exception class.
+- **`Hujah#has_children?` was dead** and is deleted.
+- **`spec/factories/flags.rb` had never been run.** It said `hoojah { nil }` — no such attribute, the
+  association is `hujah` — so `create(:flag)` raised `NoMethodError`. **That is why `flag_spec.rb`
+  was a stub.** Factory fixed; both model stubs filled (7 + 11 examples).
+- **`hello_controller.js`** (stock scaffold, unreferenced) deleted; **`cloudinary_upload_controller`**
+  gained the `disconnect()` teardown it never had — it created a widget in `connect()` whose iframe
+  lives *outside* the controller's element, so Stimulus's own bookkeeping never cleaned it up.
+
+### The secret-ballot guard now has a test
+
+The rule that a `new_vote` notification carries **no `subject_user_id`** was previously asserted only
+from the `Hujah` side. `spec/models/notification_spec.rb` now pins it three ways: the notification is
+valid and persists with a nil `subject_user`; `reflect_on_association(:subject_user).options[:optional]`
+is `true` — **the thing a "tidy" would flip**; and `cast_vote` actually writes a row with no voter
+recorded. This is the guard against someone making that association required and silently
+de-anonymizing voters through the serializer.
+
+### Traps recorded by these passes
+
+- **`Flag` cannot be made invalid through its enum.** Assigning an out-of-enum `subject` raises
+  `ArgumentError` (a 500), not a validation error. Use a nonexistent `hujah_id`, which fails as
+  `hujah: ["must exist"]` under `load_defaults 8.1`.
+- **`Notification.unread` is never globally empty in a fresh example.** `create(:notification)`'s
+  `association :hujah` fires `award_authoring_badge`, which writes an unread `badge_earned`
+  notification for a *different* user. Scope assertions to `user.notifications.unread`. This is a
+  live property of the factory graph, not a test artifact.
+- **`window.cloudinary` is never defined under Cuprite** (host blacklisted, script skipped in test),
+  so `cloudinary_upload_controller`'s widget branch — including its new `disconnect()` — is
+  **unreachable in specs**. A green suite is not coverage there; the teardown is guarded three ways
+  for that reason.
+
+### Deferred with reasoning — decisions, not oversights
+
+- **The stance trio is three un-enum'd integer columns** (`hujahs.vote`,
+  `debates.challenger_stance`, `debates.opponent_stance`), all carrying the same closed 1/2/3 domain.
+  So `DebatesController#create` does a raw int hop between two tables and `Debate` cannot distinguish
+  a real stance from a `7`. **The largest latent simplification in the codebase — and it needs its own
+  slice.** The hazard is specific: enum-ing `Hujah#vote` flips its reader from `1` to `"agree"`, which
+  then lands in `opponent_stance:` on a non-enum integer column and **coerces to 0** — silent data
+  corruption unless both models move in one commit, plus every view and `HujahSerializer` reading
+  `.vote`, plus a backfill audit.
+- **`current_user_vote`'s `logged_in:` keyword is dead weight** — `find_by(user_id: nil)` already
+  yields nil, and three of the eight call sites hardcode `logged_in: true`. Removing it is a 9-site
+  change (7 ERB + `HujahSerializer` + a spec).
+- **`Api::V1::FlagsController`'s `flag_params` has no `require`** — a POST with no `flag` key raises
+  `NoMethodError` on nil → **500**, before `authorize` is reached. The HTML sibling already uses
+  `require`. Left open because changing it alters the API's answer to a malformed request, which is a
+  contract decision for the native-client surface.
+- **`DebatePolicy#extend?` was NOT aliased to `conclude?`** despite being byte-identical and despite
+  the house precedent `decline? = accept?`. Aliasing couples them, so a future tightening of
+  `conclude?` would silently narrow `extend?` — in a policy, silent narrowing is the worst failure
+  mode. The existing comment already states the intent.
+- **`IconsHelper#stance_color` answers a colour question via the icon map** — correct today only
+  because the key sets coincide. Not changed: the fix would have a helper reach into a model
+  constant, which is its own smell.
+- **`debate_composer_controller`'s `connect()` calls `.focus()`, which scrolls by default** — so a
+  "your turn" broadcast yanks a mid-transcript reader down to the composer. `connect()` also fires on
+  Turbo cache-restore, contrary to its own comment. `focus({preventScroll: true})` would fix the
+  first; whether the scroll is a feature is a product call.
+- **`_challenge_dialog`'s wrapper carries both `data-controller="dialog"` and
+  `data-response-filter-target="item"`.** Open the modal, then click a filter tab that hides that
+  stance, and the ancestor gets `hidden` while the `<dialog>` is still in the top layer. **Reasoned,
+  not verified** — settling it needs a headed Cuprite session.
+
+### Process gap — there is no CI
+
+No `.github/workflows/`, no `bin/ci`. brakeman, bundler-audit and standardrb run manually per
+`CLAUDE.md`. Every gate in this program has been green **by convention, not by enforcement** — and
+this session found a wall-clock-dependent spec that three consecutive green runs missed. Worth a
+decision before Project 3.

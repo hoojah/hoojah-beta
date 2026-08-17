@@ -1,22 +1,47 @@
 <%# The turn-posting form. Shown only to the current_turn_user; everyone else sees a
-    "waiting" note (or a concluded note). Local: debate. Wrapped in the pinned dom_id
-    so the Turbo-Stream replace lands here — the debate_composer controller refocuses
-    the field on both first paint and that post-turn replace. %>
+    "waiting" note (or a concluded note). VIEWER-SCOPED: takes an explicit `viewer:`
+    local, because `current_user` is undefined in a broadcast render context and using
+    it here would blank the composer on every broadcast. Local: debate, viewer (defaults
+    to current_user in the request context). Wrapped in the pinned dom_id so the
+    Turbo-Stream replace lands here — the debate_composer controller refocuses the field
+    on both first paint and that post-turn replace.
+
+    DESIGN SYSTEM (Slice 9, Task 4.5) —
+    docs/design-system/components/debate/TurnComposer.prompt.md. The form surface is
+    `ui/_card`, and `data:` carries `data-controller` onto the card element itself: that
+    attribute is the reason `ui/_card` has a `data:` local at all (its header names this
+    file), and the Stimulus controller must stay on the same element it was on. The
+    field keeps its own `debate-composer-target`.
+
+    `padded:` is NOT used — TurnComposer.jsx sets a uniform `var(--space-4)` box, so
+    `class: "p-4"` is spelled instead. That is the one combination `ui/_card`'s header
+    forbids mixing: `padded:` would emit `py-3`, and a same-family utility resolves by
+    bundle order rather than call order, so the flag would silently beat the `p-4` this
+    card wants.
+
+    The textarea keeps `border-light-grey` and its indigo focus border — that IS the
+    design system's boxed field ("The boxed variant borders light-grey and turns indigo
+    on focus", TextAreaField.prompt.md) — and keeps `.debate-composer-field`, which
+    carries `field-sizing: content` from the `@layer components` block in
+    app/assets/tailwind/application.css. Do not inline that CSS and do not drop `rows`:
+    it is the min-height fallback where `field-sizing` is unsupported.
+
+    The waiting and concluded notes are plain 14px-muted centred sentences with no card
+    behind them, exactly as TurnComposer.jsx renders its two non-form states. %>
 <% viewer = local_assigns.fetch(:viewer) { current_user } %>
 <div id="<%= dom_id(debate, :composer) %>" class="my-4">
   <% if debate.active? && debate.current_turn_user == viewer %>
-    <div data-controller="debate-composer" class="shadow bg-white p-4">
+    <%= render layout: "ui/card", locals: {class: "p-4", data: {controller: "debate-composer"}} do %>
       <%= form_with url: debate_turns_path(debate.slug), method: :post do |f| %>
         <%= f.text_area :body, rows: 3, required: true, "aria-label": "Your turn",
               data: {"debate-composer-target": "field"},
               placeholder: "Make your argument…",
               class: "debate-composer-field w-full resize-none rounded border border-light-grey p-2 text-black focus:outline-none focus:border-primary" %>
         <div class="text-right mt-2">
-          <%= f.submit "Post turn",
-                class: "shadow inline-flex items-center rounded-full px-5 py-2 border-2 border-primary text-primary fill-primary bg-white cursor-pointer" %>
+          <%= f.submit "Post turn", class: ds_button_classes(variant: :outline, tone: "primary", size: :md) %>
         </div>
       <% end %>
-    </div>
+    <% end %>
   <% elsif debate.active? %>
     <p class="text-grey text-center py-3">Waiting for @<%= debate.current_turn_user&.username %>…</p>
   <% elsif debate.concluded? %>

@@ -3,20 +3,47 @@
     using it would blank the opponent's buttons). accept!/conclude! broadcast this
     per-participant on each user-signed stream. Locals: debate, viewer (defaults to
     current_user in the request context). Pinned dom_id so the actions Turbo-Stream
-    replaces land here; the root element always renders so a later replace has a target. %>
+    replaces land here; the root element always renders so a later replace has a target.
+
+    DESIGN SYSTEM (Slice 9, Task 4.5) — all four controls take `ds_button_classes`. They
+    were already the house pill (2px border, white fill, coloured text, `shadow`) at
+    `px-4 py-1`, which is exactly the helper's `size: :sm`; what they were missing is the
+    `text-sm` that size carries and the `active:scale-95` press. That is the "two views
+    currently use `px-4 py-1` with no `text-sm`" drift `DesignSystemHelper` names in its
+    own comments — this is one of them.
+
+    "Waiting for @user to accept…" and "Maximum rounds reached" stay hand-spelled: the
+    first is 14px muted body copy and the second is a 12px uppercase `tracking-wide`
+    micro-label, the same treatment as the state label next to it. Neither is a button
+    and there is no primitive for either. %>
 <% viewer = local_assigns.fetch(:viewer) { current_user } %>
 <span id="<%= dom_id(debate, :actions) %>" class="debate-actions flex items-center gap-2 shrink-0">
   <% if viewer.present? %>
     <% if debate.pending? && viewer == debate.opponent %>
       <%= button_to "Accept", accept_debate_path(debate.slug), method: :patch,
-            class: "shadow rounded-full px-4 py-1 border-2 border-primary text-primary bg-white cursor-pointer" %>
+            class: ds_button_classes(variant: :outline, tone: "primary", size: :sm) %>
       <%= button_to "Decline", decline_debate_path(debate.slug), method: :patch,
-            class: "shadow rounded-full px-4 py-1 border-2 border-grey text-grey bg-white cursor-pointer" %>
+            class: ds_button_classes(variant: :outline, tone: "grey", size: :sm) %>
     <% elsif debate.pending? && viewer == debate.challenger %>
       <span class="text-sm text-grey">Waiting for @<%= debate.opponent.username %> to accept…</span>
     <% elsif debate.active? && debate.participant?(viewer) %>
+      <%# The extend window is the closing-round BOUNDARY only, so this button appears
+          for exactly one moment in a debate's life. at_round_ceiling? is the second
+          reason extendable_by? can be false, and the note below is why the model
+          exposes it separately: a participant who has been extending round by round
+          arrives at the boundary expecting the button they clicked last time, and
+          silence there reads as a bug. Because rounds_limit only reaches MAX_ROUNDS
+          BY extending (nothing else writes it), the ceiling is always reached at a
+          boundary — so the note replaces the button in place rather than sitting on
+          the page for the whole debate. %>
+      <% if debate.extendable_by?(viewer) %>
+        <%= button_to "Extend by one round", extend_debate_path(debate.slug),
+              method: :post, class: ds_button_classes(variant: :outline, size: :sm) %>
+      <% elsif debate.at_round_ceiling? %>
+        <span class="text-xs uppercase tracking-wide text-grey">Maximum rounds reached</span>
+      <% end %>
       <%= button_to "Conclude", conclude_debate_path(debate.slug), method: :patch,
-            class: "shadow rounded-full px-4 py-1 border-2 border-grey text-grey bg-white cursor-pointer" %>
+            class: ds_button_classes(variant: :outline, tone: "grey", size: :sm) %>
     <% end %>
   <% end %>
 </span>

@@ -2,10 +2,33 @@
     identically in request and broadcast contexts. accept!/conclude! broadcast this
     to the whole debate stream. The per-viewer accept/decline/conclude affordances
     live in the sibling `_debate_actions` partial. Local: debate. Pinned dom_id so
-    the status Turbo-Stream replaces land here. %>
-<% state_color = {"pending" => "agree", "active" => "primary", "concluded" => "grey", "declined" => "light-grey"}[debate.status] || "grey" %>
+    the status Turbo-Stream replaces land here.
+
+    The state colour comes from `ds_debate_state_color` (Slice 9 Task 4.5 review) —
+    the design system's exported `DEBATE_STATE_COLOR`, shared with the sibling
+    `_debate_card`, which used to hold a second inline copy of the same hash. A HELPER
+    and not a shared partial precisely because of this file's broadcast path: helpers
+    are available to `ApplicationController.render`, and a nested partial rendered
+    inside a job is one more thing that can raise where nobody sees it. %>
+<% state_color = ds_debate_state_color(debate.status) %>
 <span id="<%= dom_id(debate, :status) %>" class="debate-status flex flex-col min-w-0">
   <span class="debate-state text-xs uppercase tracking-wide text-<%= state_color %>"><%= debate.status.titleize %></span>
+  <%# ACTIVE ONLY. A round counter is an in-progress affordance: on a concluded debate
+      Debate#current_round has already run one past rounds_limit (turns.count / 2 + 1),
+      and current_phase is nil by design — while a debate concluded EARLY would read
+      "Round 2 of 4" under a "Concluded" label, which describes a debate still waiting
+      for two more rounds that will never come. The state label alone is the truth there.
+      This is why current_round is printed RAW: while active, post_turn has not yet
+      capped, so turns.count <= 2*rounds_limit - 1 and current_round <= rounds_limit
+      already. A [current_round, rounds_limit].min here would be a guard that can never
+      fire, whose only justification is the overshoot the `active?` test above excludes —
+      so it would read as protection this line does not have. The invariant lives in the
+      guard; do not print this outside it. %>
+  <% if debate.active? %>
+    <span class="debate-round text-xs uppercase tracking-wide text-grey">
+      Round <%= debate.current_round %> of <%= debate.rounds_limit %>
+    </span>
+  <% end %>
   <% if debate.declined? %>
     <span class="text-sm text-grey">@<%= debate.opponent.username %> declined the challenge.</span>
   <% end %>

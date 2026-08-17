@@ -9,10 +9,7 @@
     <% if @blocks.any? %>
       <%= render partial: "users/user_row", collection: @blocks.map(&:blocked), as: :user %>
     <% else %>
-      <div class="flex items-center text-sm text-light-grey fill-light-grey p-3 bg-white">
-        <%= lucide_icon("ban", class: "w-4 h-4") %>
-        <span class="ml-1">You haven't blocked anyone</span>
-      </div>
+      <%= render "ui/empty_state", message: "You haven't blocked anyone", icon: "ban" %>
     <% end %>
   </div>
 </main>

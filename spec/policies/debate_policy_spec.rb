@@ -56,6 +56,36 @@ RSpec.describe DebatePolicy do
     end
   end
 
+  describe "#extend?" do
+    it "permits either participant only while active" do
+      active = debate(status: :active)
+      expect(DebatePolicy.new(challenger, active).extend?).to be(true)
+      expect(DebatePolicy.new(opponent, active).extend?).to be(true)
+      expect(DebatePolicy.new(stranger, active).extend?).to be_falsey
+      expect(DebatePolicy.new(nil, active).extend?).to be_falsey
+
+      %i[pending concluded declined].each do |status|
+        expect(DebatePolicy.new(challenger, debate(status: status)).extend?).to be_falsey
+      end
+    end
+
+    # DELIBERATE: the policy answers "is this actor a party to a live debate",
+    # nothing finer. The closing-round window and the MAX_ROUNDS ceiling are
+    # applicability, not authorization — extendable_by? owns them, and the
+    # controller turns a false there into 422. A participant must never be told
+    # "not allowed" for asking at the wrong moment.
+    it "ignores the extension window and the ceiling — those are 422 conditions" do
+      fresh = debate(status: :active) # zero turns: nowhere near the boundary
+      at_ceiling = debate(status: :active)
+      at_ceiling.update!(rounds_limit: Debate::MAX_ROUNDS)
+
+      expect(DebatePolicy.new(challenger, fresh).extend?).to be(true)
+      expect(DebatePolicy.new(challenger, at_ceiling).extend?).to be(true)
+      expect(fresh.extendable_by?(challenger)).to be(false)
+      expect(at_ceiling.extendable_by?(challenger)).to be(false)
+    end
+  end
+
   describe "Scope" do
     it "shows a nil user only concluded debates" do
       concluded = debate(status: :concluded)

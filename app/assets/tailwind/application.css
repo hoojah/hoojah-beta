@@ -2,27 +2,107 @@
 
 /*
  * Theme tokens ported from the retired SPA's
- * `app/javascript/stylesheets/variables.scss` (the Bootstrap SCSS palette).
- * Registering them here makes `bg-agree`, `text-disagree`, `fill-neutral`,
+ * `app/javascript/stylesheets/variables.scss` (the Bootstrap SCSS palette), then
+ * extended in Slice 9 with the full 72-token design system extracted back out of
+ * this codebase (`docs/design-system/tokens/*.css`).
+ * Registering them here makes `bg-agree`, `text-disagree`,
  * `border-primary`, etc. available to the Hotwire views (feed, single-hujah,
  * vote bars, response filter).
+ *
+ * Tailwind v4 only generates utilities for *namespaced* variables, so the split
+ * below is deliberate: anything that must become a utility class lives in
+ * `@theme`; semantic aliases and fixed pixel sizes are plain custom properties in
+ * `:root` and are consumed via `var()` only.
  */
+
 /*
- * Safelist the stance color utilities. The vote widget builds class names like
- * `bg-agree` / `text-disagree` / `fill-neutral` by interpolating the stance name,
- * which Tailwind's source scanner can't see as literal strings. `@source inline`
- * forces them into the build.
+ * Keep documentation out of the scanner. Tailwind v4 auto-scans the whole repo,
+ * so prose in `docs/` (the design-system mirror, plans, specs) was silently
+ * acting as a safelist — `border-unread` appears as a literal in six committed
+ * docs files, which masked whether the `@source inline` below actually did
+ * anything. Documentation must not determine the production CSS bundle.
  */
-@source inline("{bg,text,border,fill}-{agree,neutral,disagree,primary}");
-@source inline("fill-white text-white bg-white");
+@source not "../../../docs";
+
+/*
+ * Keep the test suite out of the scanner, for a sharper reason than docs.
+ *
+ * Several specs assert that a utility reached the compiled bundle — the
+ * `TailwindBuild.emitted?` guards in `spec/helpers/design_system_helper_spec.rb`
+ * and friends. While `spec/` is scanned, such a guard can be satisfied by the
+ * literal inside the spec that asserts it: the test proves its own text exists,
+ * not that any view produced the class. Provenance scanning the bundle found
+ * `my-2`, `contents`, `rounded-md` and `rounded-sm` had rules whose ONLY literal
+ * source anywhere in the repo was a spec file. Nothing in `app/` uses them.
+ *
+ * The existing guards happen to dodge this — one interpolates its class name,
+ * another derives it from the helper constant — but that is discipline, not
+ * construction, and five more view families are about to copy the pattern.
+ */
+@source not "../../../spec";
+
+/*
+ * Keep binary-ish assets out of the scanner. `app/assets/images/` holds a committed
+ * draw.io architecture diagram whose XML contains `grid="1"` — which the scanner reads
+ * as the utility `grid` and duly emits `.grid{display:grid}` into production CSS. No
+ * view in this app uses a grid, so that rule shipped to every visitor because a diagram
+ * happened to store an editor preference. An image/diagram directory has no business
+ * determining the CSS bundle; it is markup nobody renders. Same principle as the two
+ * lines above — only what `app/views` and `app/helpers` actually spell should get a rule.
+ */
+@source not "../../../app/assets/images";
+
+/*
+ * TOMBSTONE, Slice 9 — there is no `fill-<tone>` utility anywhere in `app/` any
+ * more, and the whole family was removed here at the same time. The removal was
+ * provably pixel-identical, which is worth writing down so nobody "restores" it:
+ *
+ * Every icon in the product is `lucide_icon`, and lucide-rails puts `fill="none"`
+ * as a presentation ATTRIBUTE on the `<svg>` element itself. A presentation
+ * attribute is a specified value on that element, so it beats any fill the svg
+ * INHERITS from an ancestor's utility class — and every fill utility this repo ever
+ * spelled sat on an ancestor: a wrapping div, span, a or button, never on the
+ * `lucide_icon` call. Colour reaches an icon the other way round entirely, through
+ * `text-<tone>` → `currentColor` → the `stroke` attribute. So a fill utility on a
+ * wrapper was dead weight that MISDOCUMENTED the mechanism — it read as though fill
+ * were how a glyph gets its colour, and it never was.
+ *
+ * Reintroduce one only alongside a real inline `<svg>` that omits its own fill
+ * attribute, and safelist it here when you do — nothing below covers it now.
+ *
+ * Safelist the stance color utilities. The vote widget builds class names like
+ * `bg-agree` / `text-disagree` by interpolating the stance name, which Tailwind's
+ * source scanner can't see as literal strings. `@source inline` forces them into
+ * the build. `_notification_card` interpolates `border-<read|unread>` the same way,
+ * so it needs the same treatment.
+ */
+@source inline("{bg,text,border}-{agree,neutral,disagree,primary}");
+@source inline("border-{read,unread}");
+@source inline("text-white bg-white");
+
+/*
+ * `DesignSystemHelper#ds_button_classes` interpolates the same three prefixes, but over
+ * a wider palette: its `tone:` also accepts `grey` and `light-grey` (secondary and
+ * disabled chrome). Most of those six combinations survive today only because some
+ * view happens to spell them out — `bg-grey` and `bg-light-grey` did not, and were
+ * genuinely missing from the bundle until this line. Do not fold it into the block
+ * above: the tones there are stances, these are not, and they have different owners.
+ */
+@source inline("{bg,text,border}-{grey,light-grey}");
 
 /*
  * The debate turn composer auto-grows with its content via the native CSS
  * `field-sizing` property (no JS auto-grow controller). `rows="3"` stays on the
  * textarea as the min-height fallback for engines without `field-sizing`.
+ *
+ * Layered as a component on purpose: unlayered rules outrank every Tailwind
+ * utility, so an unlayered version of this would silently win against any
+ * utility set on the same element as this rule grows.
  */
-.debate-composer-field {
-  field-sizing: content;
+@layer components {
+  .debate-composer-field {
+    field-sizing: content;
+  }
 }
 
 @theme {
@@ -33,4 +113,87 @@
   --color-black: #343a40;
   --color-grey: #8e8e8e;
   --color-light-grey: #bac2ca;
+
+  /* Tailwind's own neutrals, which the views lean on (border-gray-100,
+     bg-gray-200, hover:bg-gray-50, text-white, the flag/report error palette).
+     These match the v4 defaults today and are restated as literal hex purely to
+     pin them: v4 ships its greys as oklch, so leaving them implicit means an
+     upstream palette tweak silently shifts the app. Keep them even though they
+     look redundant — the redundancy is the point. */
+  --color-white: #ffffff;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-red-50: #fef2f2;
+  --color-red-700: #b91c1c;
+
+  /* `border-read` / `border-unread` are used by
+     app/views/notifications/_notification_card.html.erb and were defined nowhere,
+     so the 8px left border rendered as nothing. */
+  --color-unread: #e1306c;      /* stance neutral pink, matching the unread dot */
+  --color-read: #bac2ca;        /* light-grey */
+
+  /* Size steps the views actually use. `--spacing` is deliberately NOT redefined:
+     the design system's --space-1..6 are the 4px steps Tailwind already ships. */
+  --text-xs: 12px;   --text-xs--line-height: 16px;
+  --text-sm: 14px;   --text-sm--line-height: 20px;
+  --text-base: 16px; --text-base--line-height: 24px;
+  --text-lg: 18px;   --text-lg--line-height: 1.375;   /* hujah body: text-lg leading-snug */
+  --text-xl: 20px;   --text-xl--line-height: 1.375;   /* single-hujah body */
+  --text-2xl: 24px;  --text-2xl--line-height: 32px;   /* auth screen headings */
+
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --leading-snug: 1.375;
+  --tracking-wide: 0.025em;  /* uppercase micro-labels (debate status, verdict heading) */
+
+  /* Feed cards are SQUARE; small chrome rounded; dialogs rounded-lg; pills/avatars
+     full. No --radius-none: v4's `rounded-none` is a static utility that ignores
+     the token, so declaring one is dead weight. */
+  --radius: 4px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  /* Restated to pin them, same rationale as the neutrals above. NO --shadow-sm,
+     deliberately: the DS token file lists one, but its value
+     (0 1px 2px 0 rgb(0 0 0/0.05)) is the Tailwind *v3* number, while its own prose
+     says "Shadows (Tailwind defaults)". Under v4 that value is `shadow-xs`, so
+     declaring it silently lightens every `shadow-sm` (only consumer:
+     hujahs/_hujah_header.html.erb). Nothing reads --shadow-sm via var(), so the
+     override buys nothing. Do not "restore" it from the DS token file. */
+  --shadow: 0 1px 3px 0 rgb(0 0 0/0.1), 0 1px 2px -1px rgb(0 0 0/0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0/0.1), 0 4px 6px -4px rgb(0 0 0/0.1);
+}
+
+/*
+ * Semantic aliases and fixed sizes — `var()`-only, they generate no utilities.
+ *
+ * The foreground aliases are renamed from the design system's `--text-*`, because
+ * the DS spells them `--text-<name>`, and that IS Tailwind v4's font-size
+ * namespace (the same one `--text-xs` … `--text-2xl` above use). Colours under
+ * those names are a trap: promote one into `@theme` and you emit
+ * `.text-muted{font-size:#8e8e8e}`. `fg-` is not a v4 namespace, so the collision
+ * cannot happen by accident. To colour text in markup use the `text-grey` /
+ * `text-primary` utilities, not these.
+ */
+:root {
+  --surface-page: #ffffff;  --surface-card: #ffffff;  --surface-menu: #ffffff;
+  --surface-nav: rgba(255,255,255,0.9);  --surface-profile: var(--color-primary);
+  --fg-body: var(--color-black);  --fg-muted: var(--color-grey);
+  --fg-faint: var(--color-light-grey);  --fg-link: var(--color-primary);
+  --fg-inverse: var(--color-white);
+  --border-hairline: var(--color-gray-100);  --border-field: var(--color-gray-200);
+  --track-bar: var(--color-gray-200);  --backdrop: rgba(0,0,0,0.4);
+  --border-stance: 8px;  --border-pill: 2px;
+  --nav-h: 56px;  --content-max: 576px;  --sidebar-w: 256px;
+  --vote-btn: 44px;  --bar-h: 8px;
+  --avatar-lg: 96px; --avatar-md: 44px; --avatar-row: 40px; --avatar-nav: 36px; --avatar-sm: 32px;
+}
+
+/* Port of docs/design-system/tokens/base.css — this is what gives the layout's
+   `<body class="body">` an actual definition. */
+@layer base {
+  body { font-family: var(--font-sans); color: var(--fg-body); background: var(--surface-page); margin: 0; }
+  a { color: var(--fg-link); text-decoration: none; }
 }

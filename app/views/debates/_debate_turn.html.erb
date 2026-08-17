@@ -1,12 +1,45 @@
 <%# One turn in the transcript. Local: debate_turn. Rendered on first paint and
     appended in place by debate_turns/create.turbo_stream.erb (local-time re-processes
-    stream-inserted <time> nodes automatically). %>
-<div id="<%= dom_id(debate_turn) %>" class="debate-turn shadow bg-white px-4 py-3">
+    stream-inserted <time> nodes automatically).
+
+    `dom_id(debate_turn)` on the row is LOAD-BEARING and not decoration: the synchronous
+    controller response and the async `broadcast_append_later_to` both append this same
+    turn, and Turbo's id dedup is the only reason the second append is a no-op instead
+    of a duplicate row. It is also what spec/system/debate_phases_spec.rb scopes its
+    phase assertions to. Never render this partial without it.
+
+    DESIGN SYSTEM (Slice 9, Task 4.5) —
+    docs/design-system/components/debate/DebateTurn.prompt.md. The surface is `ui/_card`
+    with `padded:` (its `px-4 py-3`, which is what this row already spelled by hand) and
+    NO `stance:`: "There is no stance border, no side label and no arrow — the byline is
+    the only indication of who is speaking." Do not add one, and do not colour the row
+    by the speaker; the two participants are told apart by name, not by chrome.
+
+    The avatar moves to `ui/_avatar` (`size: :sm`, the design system's 32px turn/compact
+    box). This was the LAST live `image_tag user.photo` in the app. `photo` is nullable
+    and `image_tag nil` raises `Nil location provided`, which is reachable here — a
+    debate turn by a user whose photo is blank 500s the whole transcript, and on the
+    broadcast path it fails inside a job where nobody sees it. The partial falls back to
+    initials on primary instead. Its `alt` is the full name on both branches by
+    contract, which is why this row's `alt` changes from the handle. %>
+<%= render layout: "ui/card", locals: {id: dom_id(debate_turn), padded: true, class: "debate-turn"} do %>
+  <%# DS micro-label (12px, uppercase, tracking-wide) — same treatment as the debate
+      state label and the verdict heading. On EVERY turn, not only where the phase
+      changes: this partial is rendered in isolation both by the create Turbo Stream
+      and by broadcast_append_later_to, with `debate_turn` as its only local, so it
+      has no access to the preceding row and cannot know whether the phase changed.
+      A label that renders only "where it changes" would therefore be wrong for every
+      appended turn. It is also a per-utterance fact, not a per-round heading — the
+      second turn of round 1 really is an opening statement, from the other side. %>
+  <div class="debate-turn-phase text-xs uppercase tracking-wide text-grey mb-1"><%= debate_turn.phase_label %></div>
   <div class="flex items-center min-w-0 mb-1">
-    <%= image_tag debate_turn.user.photo, class: "rounded-full w-8 h-8 mr-2 shrink-0", alt: debate_turn.user.username %>
+    <%= render "ui/avatar", user: debate_turn.user, size: :sm, class: "mr-2" %>
     <div class="flex flex-col min-w-0">
       <span class="text-primary font-medium truncate"><%= debate_turn.user.full_name %></span>
-      <small class="text-grey">
+      <%# `text-sm` is explicit because `<small>` is 80% of its parent — 12.8px here,
+          not the 14px DebateTurn.jsx sets on this byline. Same correction Task 4.4
+          made to `users/_user_hujah`'s handle. %>
+      <small class="text-sm text-grey">
         @<%= debate_turn.user.username %>
         <span class="mx-1">·</span>
         <time datetime="<%= debate_turn.created_at.iso8601 %>" data-local="time-ago"><%= debate_turn.created_at.strftime("%b %-d") %></time>
@@ -14,4 +47,4 @@
     </div>
   </div>
   <div class="hujah-body text-black break-words"><%= format_body(debate_turn.body) %></div>
-</div>
+<% end %>

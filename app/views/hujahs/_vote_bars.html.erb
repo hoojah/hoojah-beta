@@ -10,6 +10,36 @@
   submitter during the request and the same-origin round-trip is effectively instant,
   so a Stimulus controller would add nothing but code. Immediate press feedback comes
   from `active:scale-95` (CSS :active). Revisit only if a real deployment shows lag.
+
+  DESIGN SYSTEM (Slice 9, Task 4.2) — docs/design-system/components/voting/VoteBars.prompt.md
+  and VoteButton.prompt.md. Both halves of a row are spec'd to the pixel and neither is
+  free to drift:
+
+  - the button is CIRCULAR 44px (`w-11 h-11 rounded-full`) with a 2px stance border,
+    white fill and a stance-coloured glyph — INVERTED to a solid stance fill with a
+    white glyph when it is the viewer's vote. That inversion is the only "you voted"
+    signal in the product, so `voted` drives colour, not an extra checkmark or badge.
+  - the track is 8px (`h-2`) on `bg-gray-200` (`#e5e7eb`), filled by percentage in the
+    stance colour, with the label right-aligned in a fixed 10-unit column so the three
+    rows line up at any width.
+  - press feedback is `active:scale-95` and nothing else: no ripple, no spinner, no
+    fade. `transition` is here to smooth that one scale step.
+
+  It does NOT go through `ds_button_classes`. That helper's every variant is a PILL
+  with horizontal padding and a font size (`px-5 py-2 text-base` / `px-4 py-1 text-sm`);
+  this is a fixed 44px square box with no text in it at all. Asking for it would mean
+  overriding padding, width, height and font size — same-family Tailwind utilities,
+  which resolve by their order in the bundle rather than by the order the caller wrote
+  them (see the `padded:` note in ui/_card), so the overrides would be a coin flip
+  rather than a decision. The `voted` background would fight `bg-white` the same way.
+  A circular icon button is a DIFFERENT component from the DS Button — VoteButton.jsx,
+  not Button.jsx — and is spelled out here rather than bent out of the pill.
+
+  Stance names are interpolated into `border-`/`bg-`/`text-`, which the Tailwind
+  scanner cannot see; all three prefixes over the stance trio are covered by the
+  `@source inline(...)` safelist in app/assets/tailwind/application.css (and `bg-white`
+  /`text-white` by the line under it). Adding a NEW interpolated prefix here means
+  adding it there too.
 %>
 <%
   agree = hujah.agree_count.to_i
@@ -22,11 +52,13 @@
   <% rows.each do |stance, choice, count| %>
     <% pct = total.zero? ? 0 : (count * 100.0 / total).round %>
     <% voted = current_user_vote == stance %>
+    <% colours = voted ? "bg-#{stance} text-white" : "bg-white text-#{stance}" %>
     <div class="flex items-center mb-3 last:mb-0">
       <%= button_to hujah_votes_path(hujah.slug),
             params: { vote: choice },
             aria: { label: stance.capitalize, pressed: voted.to_s },
-            class: "shrink-0 w-11 h-11 rounded-full border-2 flex items-center justify-center shadow transition active:scale-95 border-#{stance} #{voted ? "bg-#{stance} fill-white text-white" : "fill-#{stance} text-#{stance}"}" do %>
+            class: "shrink-0 w-11 h-11 rounded-full border-2 border-#{stance} #{colours} " \
+                   "flex items-center justify-center shadow transition active:scale-95" do %>
         <%= stance_icon(stance, class: "w-4 h-4") %>
       <% end %>
       <div class="flex-1 mx-3 h-2 bg-gray-200 rounded overflow-hidden">

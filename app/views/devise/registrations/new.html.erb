@@ -1,4 +1,26 @@
-<div class="max-w-md mx-auto mt-16 p-6 bg-white rounded shadow">
+<%# The sign-up screen. POSTs to Devise's registration path with `user[full_name]`,
+    `user[username]`, `user[email]`, `user[password]`, `user[password_confirmation]` —
+    all frozen, all sanitised by `Users::RegistrationsController`.
+
+    SECURITY: `invisible_captcha :subtitle` (Slice 1) is a spam control, not markup.
+    It emits its own wrapper and its own hidden field, and the controller rejects a
+    create whose honeypot came back filled. Do not restyle it, do not move it inside a
+    field group, and do not touch how it hides itself — the hiding IS the control.
+
+    DESIGN SYSTEM (Slice 9, Task 4.6) — same treatment as the log-in screen: the panel
+    is `ui/_card` (white, SQUARE, shadowed), the fields take the field-border token
+    plus the indigo focus border instead of a bare uncoloured border resolving to body
+    ink, labels are the 14px muted label, and the submit is the `rect` solid button the
+    design system assigns to auth screens.
+
+    The password-length hint moves from a Tailwind-default grey onto the design
+    system's own muted token; the palette has no grey between those two.
+
+    The design system's `TextField` shows an "@" prefix and real placeholders on the
+    username field, but only inside the profile editor — this screen has never rendered
+    either, and adding them would be new user-visible copy rather than codification.
+%>
+<%= render layout: "ui/card", locals: {class: "max-w-md mx-auto mt-16 p-6"} do %>
   <h2 class="text-2xl font-semibold mb-6">Sign up</h2>
 
   <%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
@@ -7,38 +29,41 @@
     <%= invisible_captcha :subtitle %>
 
     <div class="mb-3">
-      <%= f.label :full_name, class: "block text-sm" %>
-      <%= f.text_field :full_name, autofocus: true, class: "w-full border rounded px-3 py-2" %>
+      <%= f.label :full_name, class: "block text-sm text-grey mb-1" %>
+      <%= f.text_field :full_name, autofocus: true,
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
     </div>
     <div class="mb-3">
-      <%= f.label :username, class: "block text-sm" %>
-      <%= f.text_field :username, class: "w-full border rounded px-3 py-2" %>
-    </div>
-
-    <div class="mb-3">
-      <%= f.label :email, class: "block text-sm" %>
-      <%= f.email_field :email, autocomplete: "email", class: "w-full border rounded px-3 py-2" %>
+      <%= f.label :username, class: "block text-sm text-grey mb-1" %>
+      <%= f.text_field :username,
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
     </div>
 
     <div class="mb-3">
-      <%= f.label :password, class: "block text-sm" %>
+      <%= f.label :email, class: "block text-sm text-grey mb-1" %>
+      <%= f.email_field :email, autocomplete: "email",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
+    </div>
+
+    <div class="mb-3">
+      <%= f.label :password, class: "block text-sm text-grey mb-1" %>
       <% if @minimum_password_length %>
-        <em class="text-xs text-gray-500">(<%= @minimum_password_length %> characters minimum)</em>
+        <em class="text-xs text-grey">(<%= @minimum_password_length %> characters minimum)</em>
       <% end %>
-      <%= f.password_field :password, autocomplete: "new-password", class: "w-full border rounded px-3 py-2" %>
+      <%= f.password_field :password, autocomplete: "new-password",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
     </div>
 
     <div class="mb-3">
-      <%= f.label :password_confirmation, class: "block text-sm" %>
-      <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "w-full border rounded px-3 py-2" %>
+      <%= f.label :password_confirmation, class: "block text-sm text-grey mb-1" %>
+      <%= f.password_field :password_confirmation, autocomplete: "new-password",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
     </div>
 
     <div class="mt-4">
-      <%= f.submit "Sign up", class: "bg-primary text-white rounded px-4 py-2" %>
+      <%= f.submit "Sign up", class: ds_button_classes(variant: :rect) %>
     </div>
   <% end %>
 
-  <div class="mt-4 text-sm">
-    <%= render "devise/shared/links" %>
-  </div>
-</div>
+  <%= render "devise/shared/links" %>
+<% end %>

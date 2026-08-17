@@ -2,15 +2,59 @@
   Read-only per-hoojah vote distribution. Local: dist (a UserAnalytics::Distribution).
 
   The bar markup is copied — NOT shared — from hujahs/_vote_bars: that partial is
-  welded to a button_to vote form, this one only reads. Below k=5 total votes the
-  split is suppressed ("fewer than 5 votes") instead of rendering the numbers.
+  welded to a button_to vote form, this one only reads. Extracting a common bar partial
+  was considered and rejected in Slice 5 and again in Slice 9 Task 4.7: the seam is four
+  lines of markup, and the shared version would have to carry a "with buttons / without
+  buttons" flag through the one widget in the product that must never sprout a control
+  it wasn't asked for. Below k=5 total votes the split is suppressed ("fewer than 5
+  votes") instead of rendering the numbers — a privacy floor from Slice 5 (UserAnalytics::K),
+  not styling. Do not soften the copy and do not make the branch conditional on anything.
+
+  DESIGN SYSTEM (Slice 9, Task 4.7) —
+  docs/design-system/components/analytics/DistributionBar.prompt.md ("read-only bars, no
+  buttons") plus readme.md VISUAL FOUNDATIONS on bars: "8px tall rounded track `#e5e7eb`,
+  stance-colored fill by %, percentage label right-aligned". The three rows already were
+  that. The TRACK AND LABEL HALF of each row — the `flex-1 mx-3 h-2` track, its inner
+  fill, and the `w-10 text-right` percentage — is byte-identical to `_vote_bars`' on
+  purpose, and that half must stay so: it is one bar living in two files.
+
+  The rest of the row is NOT identical, and a reader who "fixes" the difference would be
+  writing a regression, not closing one. Two differences, both real: the row WRAPPER here
+  is `mb-2` where `_vote_bars`' is `mb-3`, so the three stance rows sit 4px closer
+  together in this widget than in the vote widget; and the leading `w-16` stance-NAME
+  column here occupies the slot where the vote widget puts its 44px vote button, which
+  this one may not have at all (DistributionBar.prompt.md: "read-only bars, no buttons").
+  Only the middle of the row is shared, and only the middle of the row is pinned.
+
+  What changed is the surface. It was a hand-written
+  `rounded border border-gray-100 bg-white px-4 py-3`; it is now `ui/_card`, so the 4px
+  rounding and the grey edge go and the card `shadow` arrives. This one IS a card, so
+  Card.prompt.md's first line — "Never round a feed card" — is the rule for the rounding.
+  The edge is a token question, not a rounding one: readme.md's VISUAL FOUNDATIONS assign
+  the greys by job — "Tailwind grays for hairlines (`#f3f4f6`), field borders/tracks
+  (`#e5e7eb`), hover fills (`#f9fafb`)" — so `#f3f4f6` is the HAIRLINE token, which
+  `ui/_divider` spends INSIDE a surface. Drawn around the outside as a bounding edge it is
+  off-token. (Note what is NOT claimed: the design system does not forbid rounding as
+  such. It rounds dialogs `rounded-lg`, rounds menus, and ships a 4px `--radius` for small
+  chrome.) The stack gap moves 12px → `mb-2` (8px), which is the DS's
+  "Cards stack with 8px gaps on a white page" and what `hujahs/_hujah_card` already uses.
+  `last:mb-0` stays: the row of cards is the last thing on the page and the trailing
+  margin would double up against `main`'s `py-6`.
+
+  `padded:` carries the padding and `class:` carries only margin — never both padding
+  routes at once, per the same-family ordering trap documented on `ui/_card`.
+
+  Stance names are interpolated into `text-` and `bg-`, which the Tailwind scanner cannot
+  see; both prefixes over the stance trio are covered by the `@source inline(...)`
+  safelist in app/assets/tailwind/application.css. A NEW interpolated prefix here means a
+  new entry there.
 %>
 <%
   rows = [["agree", dist.agree, dist.agree_pct],
     ["neutral", dist.neutral, dist.neutral_pct],
     ["disagree", dist.disagree, dist.disagree_pct]]
 %>
-<div class="rounded border border-gray-100 bg-white px-4 py-3 mb-3 last:mb-0">
+<%= render layout: "ui/card", locals: {padded: true, class: "mb-2 last:mb-0"} do %>
   <p class="text-sm text-black mb-2 line-clamp-2"><%= strip_tags(dist.body) %></p>
   <% if dist.suppressed? %>
     <p class="text-xs text-light-grey">fewer than 5 votes</p>
@@ -25,4 +69,4 @@
       </div>
     <% end %>
   <% end %>
-</div>
+<% end %>

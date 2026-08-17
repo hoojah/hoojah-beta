@@ -10,10 +10,7 @@
     <% if @users.any? %>
       <%= render partial: "user_row", collection: @users, as: :user %>
     <% else %>
-      <div class="flex items-center text-sm text-light-grey fill-light-grey p-3 bg-white">
-        <%= lucide_icon("users", class: "w-4 h-4") %>
-        <span class="ml-1">Not following anyone yet</span>
-      </div>
+      <%= render "ui/empty_state", message: "Not following anyone yet", icon: "users" %>
     <% end %>
   </div>
 </main>

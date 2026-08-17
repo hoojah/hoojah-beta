@@ -1,35 +1,60 @@
 <%# Faithful port of the legacy SPA `Hujah.jsx` — the single-hujah screen:
     back + more-actions subnav, the full card (parent stub, body, per-stance vote
-    rows, counts), then the response-filter section wrapping threaded children. %>
+    rows, counts), then the response-filter section wrapping threaded children.
+
+    DESIGN SYSTEM (Slice 9, Task 4.3) — this is HujahCard.prompt.md's
+    `size="detail"`: the same component as a feed card, at 20px (`text-xl`) instead of
+    18px, with the share menu and the parent stub shown. Everything it shares with
+    `_hujah_card` now comes from the same places — `ui/_card` for the surface,
+    `ui/_divider` for the footer hairline (which this screen was missing outright, drift
+    rather than a decision), `hujahs/_hujah_header` for the byline.
+
+    The more-actions dropdown is `ui/_menu` + `ds_menu_item_classes`, the second of the
+    three call sites those primitives were extracted for in Task 4.1. `w-56` is passed
+    explicitly — `ui/_menu` requires a width because a baked default and a caller's
+    width are the same Tailwind family and the bundle's order, not the caller's, decides
+    which wins. The `<details class="relative">` stays here: the primitive is the panel
+    only, and `absolute` needs this element to position against. %>
 <% total_votes = @hujah.agree_count.to_i + @hujah.neutral_count.to_i + @hujah.disagree_count.to_i %>
 
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
   <nav class="flex justify-between items-center mb-2">
-    <%= link_to root_path, class: "fill-primary text-primary no-underline", aria: { label: "Back" } do %>
+    <%= link_to root_path, class: "text-primary no-underline", aria: { label: "Back" } do %>
       <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
     <% end %>
     <details class="relative">
-      <summary class="list-none cursor-pointer fill-primary text-primary" aria-label="More actions">
+      <summary class="list-none cursor-pointer text-primary" aria-label="More actions">
         <%= lucide_icon("more-horizontal", class: "w-6 h-6") %>
       </summary>
-      <div class="absolute right-0 mt-1 w-56 bg-white shadow rounded p-2 z-10">
+      <%= render layout: "ui/menu", locals: {width: "w-56"} do %>
         <% if user_signed_in? && @hujah.user_id == current_user.id %>
-          <span class="block px-3 py-1 text-grey">Delete hoojah (Slice 2)</span>
+          <%# `tone: "grey"` IS the disabled row — DropdownMenu's greyed-out state, and
+              the exact case `ds_menu_item_classes`' MENU_ITEM_TONES documents. The tone
+              also drops the hover fill, which matters here and only here: this is an
+              inert `<span>`, and a row that lights up under the cursor claims to be
+              clickable. Do not re-add `hover:bg-gray-100` at this call site. %>
+          <span class="<%= ds_menu_item_classes(tone: "grey") %>">Delete hoojah (Slice 2)</span>
         <% end %>
         <% if user_signed_in? %>
           <%= render "hujahs/flag_dialog", hujah: @hujah %>
         <% else %>
-          <%= link_to new_user_session_path, class: "flex items-center gap-1 px-3 py-1 text-neutral fill-neutral no-underline" do %>
+          <%# `tone: "neutral"` is DropdownMenu.prompt.md's rule that report rows take
+              pink. `flex items-center gap-1` overrides the helper's baked `block` — that
+              works because the bundle emits `.block` before `.flex`, which is bundle
+              order rather than call order, so it is the ONE override to make here and
+              never a second padding or width. %>
+          <%= link_to new_user_session_path,
+                class: "#{ds_menu_item_classes(tone: "neutral")} flex items-center gap-1" do %>
             <%= lucide_icon("flag", class: "w-4 h-4") %> Login to flag this hoojah
           <% end %>
         <% end %>
-      </div>
+      <% end %>
     </details>
   </nav>
 
-  <article class="shadow bg-white mb-2">
+  <%= render layout: "ui/card", locals: {as: "article", class: "mb-2"} do %>
     <%= render "hujahs/hujah_header", hujah: @hujah, parent: @hujah.parent %>
 
     <div class="px-4 pt-3 pb-1 text-black">
@@ -40,21 +65,27 @@
           hujah: @hujah,
           current_user_vote: @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) %>
 
-    <div class="px-4 py-2 flex items-center text-sm text-grey fill-grey">
+    <%= render "ui/divider" %>
+    <div class="px-4 py-2 flex items-center text-sm text-grey">
       <%= lucide_icon("bar-chart-2", class: "w-4 h-4") %>
       <span class="ml-1"><%= total_votes %></span>
       <span class="mx-2">·</span>
       <%= lucide_icon("message-circle", class: "w-4 h-4") %>
       <span class="ml-1"><%= @children.size %></span>
     </div>
-  </article>
+  <% end %>
 
   <%# Port of the legacy SPA `Layouts/button_add_hujah.js` — the respond entry.
-      Seeds the compose form with this hoojah as the parent (stance-tagged reply). %>
+      Seeds the compose form with this hoojah as the parent (stance-tagged reply).
+
+      The house pill, via `ds_button_classes`, whose `tone:` exists for exactly this:
+      "Add hoojah" on a hoojah you agreed with is agree-coloured, and falls back to
+      primary when you have not voted. Passing the stance through the helper also buys
+      the guard the hand-written `border-#{stance}` had none of — a value outside TONES
+      raises here instead of rendering a class with no rule behind it. %>
   <% stance = @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) || "primary" %>
   <div class="flex justify-center mb-2">
-    <%= link_to respond_hujah_path(@hujah.slug),
-          class: "shadow inline-flex items-center gap-1 rounded-full px-5 py-2 border-2 no-underline border-#{stance} text-#{stance} fill-#{stance}" do %>
+    <%= link_to respond_hujah_path(@hujah.slug), class: ds_button_classes(tone: stance) do %>
       <%= lucide_icon("message-square-plus", class: "w-4 h-4") %> Add hoojah
     <% end %>
   </div>
@@ -64,14 +95,23 @@
       own live ones). The container dom_id is the Turbo-Stream append target when a new
       challenge is created, so it must always be present. %>
   <section class="mb-2">
-    <h2 class="px-1 mb-1 flex items-center gap-1 text-sm font-medium text-grey fill-grey">
+    <h2 class="px-1 mb-1 flex items-center gap-1 text-sm font-medium text-grey">
       <%= lucide_icon("swords", class: "w-4 h-4") %> Debates
     </h2>
     <div id="<%= dom_id(@hujah, :debates) %>" class="flex flex-col gap-1">
       <%= render partial: "debates/debate_card", collection: @debates, as: :debate %>
     </div>
     <% if @debates.none? %>
-      <p class="px-1 text-sm text-light-grey">No debates yet — challenge a response to start one.</p>
+      <%# The house empty state — this screen is one of the six call sites `ui/_empty_state`
+          was extracted for. It gains a `bg-white` surface (EmptyState.jsx's
+          `--surface-card`; the partial's header calls that a correction, not a
+          regression) and the section's own `swords` glyph. `class: "px-1"` overrides the
+          baked `p-3` on the x axis ONLY — Tailwind emits the shorthand before the
+          longhands, so the longhand wins — keeping this row flush with the heading above
+          it while the vertical padding the surface now needs survives. %>
+      <%= render "ui/empty_state",
+            message: "No debates yet — challenge a response to start one.",
+            icon: "swords", class: "px-1" %>
     <% end %>
   </section>
 

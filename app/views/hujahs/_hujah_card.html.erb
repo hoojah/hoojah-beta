@@ -1,7 +1,31 @@
 <%# Faithful port of the legacy SPA `Hujah/card.js` — one feed card for a top-level hujah:
     header (avatar/handle/share), tappable body, the shared vote widget, and a
-    counts footer (total votes · responses). %>
-<article data-testid="hujah-card" class="shadow bg-white mb-2">
+    counts footer (total votes · responses).
+
+    DESIGN SYSTEM (Slice 9, Task 4.3) —
+    docs/design-system/components/hujah/HujahCard.prompt.md: "the primary unit of the
+    product". Three things it pins, all of which this file already had and now states
+    through the primitives rather than by hand:
+
+    - The surface is `ui/_card`: white, SQUARE, `shadow`. Rounding a feed card is the
+      one thing Card.prompt.md forbids outright, and routing through the partial means
+      there is no rounding local to reach for. `mb-2` is the 8px stack gap and rides in
+      `class:` because `ui/_card` deliberately owns no margin; `padded:` stays UNSET
+      because every section below sets its own padding, and passing both is the
+      same-family trap that partial documents.
+    - `data-testid="hujah-card"` goes through the card's `data:` local — which exists
+      for exactly this attribute. Three specs select on it (spec/requests/hujahs_index_spec,
+      spec/system/smoke_spec, spec/system/local_time_spec), so it is frozen, and
+      `content_tag`'s dasherising reproduces it byte for byte.
+    - The body is 18px `leading-snug` (`text-lg`) here and 20px (`text-xl`) on
+      `hujahs/show` — the prompt's `size="detail"`. Do not unify them.
+
+    The footer's hairline is now `ui/_divider` rather than a `border-t` on the footer
+    itself. Same pixels, but it is the design system's "hairline `#f3f4f6` internal
+    dividers" idiom, and `hujahs/show` — the same component at detail size — was
+    missing it entirely. That drift is corrected there, not reproduced here. %>
+<%= render layout: "ui/card",
+      locals: {as: "article", data: {testid: "hujah-card"}, class: "mb-2"} do %>
   <%= render "hujahs/hujah_header", hujah: hujah %>
 
   <div class="px-4 pt-3 pb-0">
@@ -14,7 +38,10 @@
         hujah: hujah,
         current_user_vote: hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) %>
 
-  <div class="px-4 py-2 flex items-center text-sm text-grey fill-grey border-t border-gray-100">
+  <%= render "ui/divider" %>
+  <%# HujahCard.prompt.md: "the footer is always bar-chart-2 + total votes ·
+      message-circle + response count". Always both, always that order. %>
+  <div class="px-4 py-2 flex items-center text-sm text-grey">
     <%= link_to hujah_path(hujah.slug), class: "flex items-center text-grey no-underline" do %>
       <%= lucide_icon("bar-chart-2", class: "w-4 h-4") %>
       <span class="ml-1"><%= hujah.agree_count.to_i + hujah.neutral_count.to_i + hujah.disagree_count.to_i %></span>
@@ -23,4 +50,4 @@
       <span class="ml-1"><%= hujah.children.size %></span>
     <% end %>
   </div>
-</article>
+<% end %>

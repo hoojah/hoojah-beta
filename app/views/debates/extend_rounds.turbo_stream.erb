@@ -1,0 +1,15 @@
+<%# Replace BOTH regions synchronously. extend_rounds! also fires
+    broadcast_state_change, but every *_later_to renders in a job — and in dev
+    there is no worker, so that broadcast never lands (the Slice 8 review catch).
+    The actor's own status label and Extend/Conclude buttons must therefore update
+    from THIS response. The async broadcast targets the same dom_ids, so when a
+    worker IS running the second replace is an idempotent no-op.
+
+    `viewer:` is passed EXPLICITLY: _debate_actions falls back to current_user only
+    for the request context, and it must render for the actor here, not blank. %>
+<%= turbo_stream.replace dom_id(@debate, :status) do %>
+  <%= render "debates/debate_status", debate: @debate %>
+<% end %>
+<%= turbo_stream.replace dom_id(@debate, :actions) do %>
+  <%= render "debates/debate_actions", debate: @debate, viewer: current_user %>
+<% end %>

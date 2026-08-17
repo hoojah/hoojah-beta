@@ -1,0 +1,45 @@
+<%# The product's one-line empty state: "faint grey, one Lucide glyph, one plain
+    sentence. Never an illustration, never an emoji."
+    (docs/design-system/components/core/EmptyState.jsx + EmptyState.prompt.md.)
+
+    Locals: `message` (REQUIRED); `icon:` a Lucide name, or nil for no glyph
+    (default "message-circle"); `tone:` :faint (default) or :muted; `align:` :left
+    (default) or :center; `class:` extra utilities.
+
+    `message` is fetched, not defaulted: it is the entire component, so a caller who
+    forgets it would otherwise get a faint glyph beside an empty span — a row that
+    looks broken but raises nothing. `local_assigns.fetch` makes that a KeyError at the
+    call site instead. (Rails strict locals would say this more directly, but `class:`
+    is not a legal Ruby parameter name, so the signature is unavailable — see `ui/_card`.)
+
+    `icon: nil` means NO glyph rather than the default one — trending's "Nothing
+    trending yet." is a bare sentence, and `lucide_icon(nil)` raises.
+
+    `tone` and `align` are two-valued, so an unrecognised value falls back rather than
+    raising: unlike a colour token there is nothing here that can render as a class with
+    no rule behind it, and `text-light-grey` vs `text-grey` is a visible difference.
+
+    Two things for Phase 4, which has six call sites to move, not five:
+
+    `p-3` is baked in because three of the six use it (`users/show`,
+    `notifications/index`, `analytics/show`). The other three want something else, and
+    `class:` handles them: Tailwind emits the shorthand before the longhands
+    (`.p-3` … `.px-4` … `.pt-0` in that order), and later wins, so `class: "px-4 pt-0"`
+    DOES override the baked-in `p-3` — only `padding-bottom` survives, which
+    `pb-0` finishes off. `class: "px-4 pt-0 pb-0"` gives full control. (This is the
+    opposite of `ui/_card`'s `padded:`, where the conflict is between two utilities of
+    the SAME family and the caller cannot win.)
+
+    `bg-white` is likewise unconditional, and three call sites
+    (`hujahs/_response_filter`, `trending/_trending`, `hujahs/show`) have no background
+    today — so moving them onto this partial changes how they look. That is a
+    correction, not a regression: EmptyState.jsx sets `background: var(--surface-card)`,
+    so the card surface is the design system's answer. Do not make it conditional.
+%><% message = local_assigns.fetch(:message)
+   icon = local_assigns.fetch(:icon, "message-circle")
+   tone = (local_assigns[:tone]&.to_sym == :muted) ? "text-grey" : "text-light-grey"
+   align = (local_assigns[:align]&.to_sym == :center) ? "justify-center" : "justify-start" %>
+<div class="flex items-center gap-1 text-sm p-3 bg-white <%= tone %> <%= align %> <%= local_assigns[:class] %>">
+  <%= lucide_icon(icon, class: "w-4 h-4") if icon.present? %>
+  <span><%= message %></span>
+</div>

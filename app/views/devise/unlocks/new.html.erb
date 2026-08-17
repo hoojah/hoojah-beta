@@ -1,16 +1,31 @@
-<h2>Resend unlock instructions</h2>
+<%# "Resend unlock instructions". POSTs `user[email]` to Devise's unlock path —
+    action, verb and field name all frozen.
 
-<%= form_for(resource, as: resource_name, url: unlock_path(resource_name), html: { method: :post }) do |f| %>
-  <%= render "devise/shared/error_messages", resource: resource %>
+    NOT REACHABLE TODAY: `User` is not `:lockable`, so this route does not exist and
+    `devise/shared/_links` never offers it. The view is kept because it is Devise's and
+    costs nothing; switching the module on must not land an unstyled screen.
 
-  <div class="field">
-    <p><%= f.label :email %></p>
-    <p><%= f.email_field :email, autofocus: true, autocomplete: "email" %></p>
-  </div>
+    DESIGN SYSTEM (Slice 9, Task 4.6) — as with the confirmation screen, this had no
+    styling at all. It now takes the shared auth treatment: `ui/_card` for the white
+    SQUARE panel, the 24px heading, a labelled field on the field-border token with the
+    indigo focus border, and the `rect` solid submit.
+%>
+<%= render layout: "ui/card", locals: {class: "max-w-md mx-auto mt-16 p-6"} do %>
+  <h2 class="text-2xl font-semibold mb-6">Resend unlock instructions</h2>
 
-  <div class="actions">
-    <%= f.submit "Resend unlock instructions" %>
-  </div>
+  <%= form_for(resource, as: resource_name, url: unlock_path(resource_name), html: { method: :post }) do |f| %>
+    <%= render "devise/shared/error_messages", resource: resource %>
+
+    <div class="mb-3">
+      <%= f.label :email, class: "block text-sm text-grey mb-1" %>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
+    </div>
+
+    <div class="mt-4">
+      <%= f.submit "Resend unlock instructions", class: ds_button_classes(variant: :rect) %>
+    </div>
+  <% end %>
+
+  <%= render "devise/shared/links" %>
 <% end %>
-
-<%= render "devise/shared/links" %>

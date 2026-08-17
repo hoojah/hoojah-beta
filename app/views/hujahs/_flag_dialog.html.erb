@@ -5,10 +5,68 @@
     menu still works with JS off (the form submits, the server redirects).
 
     Locals: hujah. The `flag_control` wrapper is the Turbo-Stream replace target
-    (create.turbo_stream.erb swaps it for a confirmation). %>
+    (create.turbo_stream.erb swaps it for a confirmation).
+
+    DESIGN SYSTEM (Slice 9, Task 4.8) —
+    docs/design-system/components/overlays/Dialog.prompt.md. The panel itself was already
+    the design system's dialog to the letter — 8px rounding, the large shadow, the 40%
+    black backdrop, 448px max width, a hairline header carrying the title and an X — so
+    the shell does not move, and neither does the header — the same markup
+    `users/_profile_edit` carries. Dialog.prompt.md names all three of these ("Flag this
+    hoojah, Challenge @user to a debate, Edit your profile") as one component, and their
+    headers really are one shape: the X in all three now comes from
+    `ds_button_classes(variant: :link, tone: "grey")`. That was true again only after a
+    follow-up: Task 4.8 moved this X and the challenge dialog's onto the helper and left
+    `users/_profile_edit` on the hand-typed string it kept in Task 4.6, so for one commit
+    two of the three headers were on the helper and one was not. A hand-typed class on any
+    of the three is a divergence to close, not a local style. What changed:
+
+    - The trigger is a row inside `hujahs/show`'s "More actions" menu, so it is a
+      DropdownMenu MenuItem and now says so via `ds_menu_item_classes`. Its two
+      Bootstrap-era class names were dead — no rule for either exists anywhere in the
+      bundle, exactly as Task 4.6 found on the profile-edit pencil — so they are replaced
+      by what they were pretending to be. Coming from the helper buys three things the
+      hand-typed string was missing: 14px UI text, the 4px rounding, and the menu-row
+      hover fill DropdownMenu.prompt.md specifies. The type size in particular closes a
+      real seam: `flags/create.turbo_stream.erb` replaces this row with a confirmation
+      that is already 14px, so flagging used to swap a 16px row for a 14px one. The
+      tone is the same `neutral` pink the signed-out "Login to flag this hoojah" row
+      beside it already takes ("destructive/report rows take tone=neutral"), and the
+      display override is the ONE override that call site may make — see the note on
+      MENU_ITEM_BASE. The pointer cursor has to be asked for: Tailwind v4 no longer
+      gives a button one.
+    - The reason list loses the 1px edge and the rounding that boxed it in. That is the
+      same correction Task 4.7 made to the two analytics surfaces, and the authority is
+      readme.md's VISUAL FOUNDATIONS assigning the greys by job: "Tailwind grays for
+      hairlines (`#f3f4f6`), field borders/tracks (`#e5e7eb`), hover fills (`#f9fafb`)".
+      `#f3f4f6` is the HAIRLINE token — what `ui/_divider` spends INSIDE a surface — so a
+      `border` in it drawn around the outside of one is off-token, and the rounding was
+      only there to soften a box that should not have been drawn. NOT because "rounding is
+      forbidden": Card.prompt.md's rule is the narrow "Never round a feed card", and this
+      design system rounds plenty else — readme.md gives dialogs `rounded-lg` and menus
+      `rounded`, and `--radius: 4px` exists for small chrome. The `<dialog>` this list
+      sits inside is itself `rounded-lg`. It does NOT become a
+      `ui/_card` the way those two did — a card nested in a dialog is the second shadow
+      the same rule rejects — so what is left is what the box was already expressing:
+      three rows separated by the shared hairline, hovering to the grey the prompt file
+      names. Row padding is untouched, so the rows sit exactly where they sat.
+    - The X and Cancel go through `ds_button_classes(variant: :link, tone: "grey")` —
+      bare, borderless, transparent, grey, no font size of its own. That is Dialog.prompt.md's
+      "bare grey Cancel" and the variant the notification rows already use. Cancel drops
+      its hand-typed padding because the variant is padding-free and passing both would be
+      a same-family coin flip; it therefore lines up with the body copy above it instead
+      of sitting 16px further in. Both controls gain the pointer cursor and the house
+      press state.
+
+    FROZEN: `dom_id(hujah, :flag_control)`, the wrapper `create.turbo_stream.erb`
+    replaces, and `dom_id(hujah, :flag_dialog)`, which the same template closes remotely;
+    every `data-*` on the wrapper, the trigger and the dialog; the POST to
+    /hoojah/:slug/flags and the three `flag[subject]` values; and every word of copy —
+    spec/system/flag_spec.rb clicks "Flag this hoojah" and "It's suspicious or spam" by
+    name. %>
 <div id="<%= dom_id(hujah, :flag_control) %>" data-controller="dialog">
   <button type="button" data-action="dialog#open"
-          class="btn btn-link flex items-center gap-1 px-3 py-1 text-neutral fill-neutral no-underline w-full text-left">
+          class="<%= ds_menu_item_classes(tone: "neutral") %> flex items-center gap-1 cursor-pointer">
     <%= lucide_icon("flag", class: "w-4 h-4") %> Flag this hoojah
   </button>
 
@@ -20,22 +78,24 @@
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
       <h5 id="dialog-title-flag" class="text-lg font-medium m-0">Flag this hoojah</h5>
       <button type="button" data-action="dialog#close" aria-label="Close"
-              class="text-grey fill-grey p-0 leading-none">
+              class="<%= ds_button_classes(variant: :link, tone: "grey") %>">
         <%= lucide_icon("x", class: "w-5 h-5") %>
       </button>
     </div>
 
     <%= form_with url: hujah_flags_path(hujah.slug), method: :post, class: "p-4" do %>
       <p class="text-sm text-grey mb-3">Why are you flagging this hoojah?</p>
-      <div class="flex flex-col divide-y divide-gray-100 border border-gray-100 rounded overflow-hidden">
+      <div class="flex flex-col">
         <button type="submit" name="flag[subject]" value="spam"
                 class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-white cursor-pointer">
           It's suspicious or spam
         </button>
+        <%= render "ui/divider" %>
         <button type="submit" name="flag[subject]" value="abusive"
                 class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-white cursor-pointer">
           It's abusive or harmful
         </button>
+        <%= render "ui/divider" %>
         <button type="submit" name="flag[subject]" value="irrelevant"
                 class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-white cursor-pointer">
           It's irrelevant to the parent hoojah
@@ -43,7 +103,7 @@
       </div>
       <div class="text-right mt-4">
         <button type="button" data-action="dialog#close"
-                class="btn btn-link text-grey no-underline px-4 py-2">Cancel</button>
+                class="<%= ds_button_classes(variant: :link, tone: "grey") %>">Cancel</button>
       </div>
     <% end %>
   </dialog>

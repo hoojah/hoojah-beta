@@ -4,7 +4,7 @@
 <turbo-stream action="close_dialog" target="<%= dom_id(@hujah, :flag_dialog) %>"></turbo-stream>
 <%= turbo_stream.replace dom_id(@hujah, :flag_control) do %>
   <div id="<%= dom_id(@hujah, :flag_control) %>"
-       class="flex items-center gap-1 px-3 py-1 text-sm text-neutral fill-neutral"
+       class="flex items-center gap-1 px-3 py-1 text-sm text-neutral"
        role="status">
     <%= lucide_icon("flag", class: "w-4 h-4") %>
     <span>Hoojah flagged. Thank you.</span>

@@ -24,10 +24,10 @@
       <% if @hujahs.any? %>
         <%= render partial: "user_hujah", collection: @hujahs, as: :hujah %>
       <% else %>
-        <div class="flex items-center text-sm text-light-grey fill-light-grey card-body p-3 bg-white">
-          <%= lucide_icon("message-circle", class: "w-4 h-4") %>
-          <span class="ml-1">No response yet</span>
-        </div>
+        <%# `ui/_empty_state`'s baked-in `p-3 bg-white` and faint tone are exactly what
+            this row spelled by hand; the only thing lost is a dead `card-body` class
+            left over from the Bootstrap SPA, which matches no rule in the bundle. %>
+        <%= render "ui/empty_state", message: "No response yet" %>
       <% end %>
     </div>
   <% end %>

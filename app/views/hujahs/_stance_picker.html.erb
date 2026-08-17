@@ -2,24 +2,67 @@
     posted as. CSS-only (no Stimulus) — hidden radios + `peer-checked` styling.
     Defaults to the replier's existing vote on the parent. Values are the Hujah
     `vote` integer column: agree=1, neutral=2, disagree=3.
-    Locals: form, parent. %>
+    Locals: form, parent.
+
+    DESIGN SYSTEM (Slice 9, Task 4.2) — docs/design-system/components/voting/StancePicker.prompt.md:
+    "three 48px stance buttons spread evenly under a small grey prompt". So the box is
+    `w-12 h-12` (48px), NOT the 44px of a vote button in `_vote_bars` — the picker is a
+    bigger target because it is the composer's primary control, and the two sizes are
+    the design system's, not a copy-paste drift to be tidied away.
+
+    The unchecked/checked pair mirrors VoteButton exactly — 2px stance border on white
+    with a stance glyph, inverting to a solid stance fill with a white glyph — except
+    that here the state is a real radio rather than a server round-trip, so the
+    inversion is spelled with `peer-checked:`. Tailwind emits variant utilities after
+    their bare counterparts, which is what lets `peer-checked:bg-<stance>` win over
+    `bg-white` on the same element.
+
+    It does not go through `ds_button_classes` for the same reason `_vote_bars` does not:
+    every variant of that helper is a padded pill with a font size, and this is a fixed
+    48px circle containing one 16px glyph. See the long note in `_vote_bars`.
+
+    WHY THE COLOURS ARE SPELLED OUT AND NOT INTERPOLATED (a bug fix, Task 4.2): this
+    partial used to build the checked fill by interpolating the stance name into
+    `peer-checked:bg-` with an ERB output tag, and that class HAS NO RULE in the bundle.
+    `@source inline(...)` safelists the BARE utilities — `bg-<stance>` exists,
+    `peer-checked:bg-<stance>` never did, because a safelist entry generates the utility
+    it names and not every variant of it, and Tailwind's scanner cannot see a class that
+    ERB assembles at render time.
+
+    NOTE the `<stance>` placeholders above and below: the scanner has no idea this is a
+    comment, it reads the file as text, so writing a real class name in this prose would
+    emit that class from the COMMENT and the spec below would pass on a partial that no
+    longer spells it out. Same defect Task 1.1 fixed with `@source not "../../../docs"`.
+    Never name a concrete utility in a comment that a nearby guard depends on. The white
+    half of the inversion is a literal, so `peer-checked:text-white` DID compile: picking
+    a stance turned the glyph white against a still-white circle and the button read as
+    empty. Written out below, the scanner reads the checked backgrounds as text and emits
+    them, and `peer-checked:text-white` is now the ONLY thing carrying the white half —
+    the glyph is a stroked Lucide svg, so `currentColor` is what reaches it.
+    `spec/requests/stance_picker_spec.rb` asserts both halves — the markup and the rule.
+    Interpolate a stance into a NEW prefix here and you are back to the same silence
+    unless you safelist it.
+%>
 <%
-  default_stance = parent.current_user_vote(logged_in: true, current_user_id: current_user.id)
-  stance_value = {"agree" => 1, "neutral" => 2, "disagree" => 3}
-  default_value = stance_value[default_stance]
+  # One mapping, used twice: to look up the replier's existing vote on the parent and
+  # to render the three radios. Two copies of "agree is 1" is one copy too many.
+  stances = {
+    "agree" => {value: 1, colours: "border-agree text-agree peer-checked:bg-agree"},
+    "neutral" => {value: 2, colours: "border-neutral text-neutral peer-checked:bg-neutral"},
+    "disagree" => {value: 3, colours: "border-disagree text-disagree peer-checked:bg-disagree"}
+  }
+  default_value = stances.dig(parent.current_user_vote(logged_in: true, current_user_id: current_user.id), :value)
 %>
 <div class="bg-white mt-2 pt-1 pb-3">
   <small class="text-grey">Post this response hoojah as:</small>
   <div class="flex justify-around mt-2" role="radiogroup" aria-label="Response stance">
-    <% [["agree", 1], ["neutral", 2], ["disagree", 3]].each do |stance, value| %>
+    <% stances.each do |stance, spec| %>
       <label class="cursor-pointer">
-        <%= form.radio_button :vote, value,
-              checked: (default_value == value),
+        <%= form.radio_button :vote, spec[:value],
+              checked: (default_value == spec[:value]),
               class: "sr-only peer",
               aria: {label: stance.capitalize} %>
-        <span class="shadow w-12 h-12 rounded-full border-2 flex items-center justify-center transition
-                     border-<%= stance %> fill-<%= stance %> text-<%= stance %>
-                     peer-checked:bg-<%= stance %> peer-checked:fill-white peer-checked:text-white">
+        <span class="w-12 h-12 rounded-full border-2 bg-white <%= spec[:colours] %> flex items-center justify-center shadow transition peer-checked:text-white">
           <%= stance_icon(stance, class: "w-4 h-4") %>
         </span>
       </label>

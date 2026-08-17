@@ -26,6 +26,28 @@ export default class extends Controller {
     )
   }
 
+  // The widget mounts its own iframe OUTSIDE this.element, so Stimulus's teardown
+  // of the element does not remove it — without this, a disconnect/reconnect cycle
+  // (Turbo cache restore reinserting the profile-edit wrapper) would leave the old
+  // widget's DOM attached and connect() would build a second one. `destroy()` closes
+  // the widget and removes it from the DOM; it returns a promise we don't await.
+  //
+  // Defensive on purpose: NOTHING in the suite reaches this branch. Cuprite
+  // blacklists the Cloudinary host and the widget <script> is skipped in test, so
+  // `window.cloudinary` is never defined and connect() always takes its early
+  // return — a typo or an upstream API change here would surface only in
+  // production, as a thrown error inside Turbo navigation.
+  disconnect() {
+    if (this.widget && typeof this.widget.destroy === "function") {
+      try {
+        this.widget.destroy({removeThumbnails: true})
+      } catch (error) {
+        // Never let third-party teardown break the Turbo visit.
+      }
+    }
+    this.widget = null
+  }
+
   open() {
     if (this.widget) this.widget.open()
   }

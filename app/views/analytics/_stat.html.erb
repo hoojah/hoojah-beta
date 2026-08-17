@@ -1,5 +1,33 @@
-<%# A single headline stat chip. Locals: label, value. %>
-<div class="flex-1 rounded border border-gray-100 bg-white px-4 py-3 text-center">
+<%# A single headline stat chip on the owner-only dashboard. Locals: label, value.
+
+    DESIGN SYSTEM (Slice 9, Task 4.7) —
+    docs/design-system/components/analytics/StatChip.prompt.md: "Only two exist in the
+    product; they sit side by side with a 12px gap." The gap belongs to the row in
+    `analytics/show`, not here, so this partial owns no margin — same rule `ui/_card`
+    states for feed cards.
+
+    The surface is now `ui/_card` rather than a hand-written
+    `rounded border border-gray-100 bg-white`. That is a real visual change and an
+    intended one: Card.prompt.md's first line is "Never round a feed card", and the
+    house surface is white + SQUARE + `shadow`, with `#f3f4f6` reserved for hairlines
+    INSIDE a card (`ui/_divider`) rather than around one. So the chip loses its 4px
+    rounding and its grey edge and gains the card shadow, which is what every other card
+    surface in the product already carries. "Card surface", not "every surface": the
+    product's other white surface is `ui/_empty_state`, which renders on THIS page a few
+    lines below these chips and carries a bare `bg-white` with NO shadow — matching
+    docs/design-system/components/core/EmptyState.jsx, which sets a background, padding, a
+    gap, a font size and a colour, and no `boxShadow` at all. So on the dashboard the chips
+    and the empty state deliberately do not match. Don't "unify" them.
+
+    `padded: true` emits exactly the `px-4 py-3` this file spelled by hand, and the
+    remaining utilities ride in `class:`. Deliberately no padding in `class:` — the two
+    locals are same-family utilities and Tailwind resolves those by bundle order rather
+    than call order, so passing both is a coin flip (see the note in `ui/_card`).
+
+    Type is unchanged: the value is the rare legitimate `font-bold` (readme.md, VISUAL
+    FOUNDATIONS: "bold rare") and the label is a 12px `text-grey` micro-label. Neither
+    is drift, so neither moves.
+%><%= render layout: "ui/card", locals: {padded: true, class: "flex-1 text-center"} do %>
   <div class="text-2xl font-bold text-primary"><%= value %></div>
   <div class="text-xs text-grey"><%= label %></div>
-</div>
+<% end %>

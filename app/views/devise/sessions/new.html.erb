@@ -1,30 +1,54 @@
-<div class="max-w-md mx-auto mt-16 p-6 bg-white rounded shadow">
+<%# The log-in screen. POSTs to Devise's own session path; nothing about the form
+    element, its verb or its field names may move — Warden authenticates on
+    `user[email]` / `user[password]` / `user[remember_me]` by exactly those names.
+
+    DESIGN SYSTEM (Slice 9, Task 4.6) —
+
+    - The panel is `ui/_card`: the design system's white `shadow` surface, which is
+      SQUARE. It was hand-typed here with a corner radius, and the radius is the one
+      thing Card.prompt.md forbids outright.
+    - Every input took a bare border utility with no colour, and Tailwind v4 resolves
+      an uncoloured border to `currentColor` — so these fields were outlined in body
+      ink rather than in the field-border token. The same defect painted an indigo rule
+      under every follower row in Task 4.4. Both the colour and the indigo focus border
+      come from TextField/TextAreaField.
+    - Labels are the 14px muted label the profile editor already used.
+    - "Remember me" is Checkbox.prompt.md exactly: a 16px NATIVE checkbox with a 14px
+      grey label. There is no switch component in Hoojah.
+    - The submit is `rect` — the squarer solid button the design system assigns to the
+      auth screens and the signup CTA, not the house pill.
+
+    No error summary here on purpose: Devise answers a bad login with a flash, not with
+    `resource.errors`, so `devise/shared/_error_messages` would never have anything to
+    say on this screen.
+%>
+<%= render layout: "ui/card", locals: {class: "max-w-md mx-auto mt-16 p-6"} do %>
   <h2 class="text-2xl font-semibold mb-6">Log in</h2>
 
   <%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
     <div class="mb-3">
-      <%= f.label :email, class: "block text-sm" %>
-      <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "w-full border rounded px-3 py-2" %>
+      <%= f.label :email, class: "block text-sm text-grey mb-1" %>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
     </div>
 
     <div class="mb-3">
-      <%= f.label :password, class: "block text-sm" %>
-      <%= f.password_field :password, autocomplete: "current-password", class: "w-full border rounded px-3 py-2" %>
+      <%= f.label :password, class: "block text-sm text-grey mb-1" %>
+      <%= f.password_field :password, autocomplete: "current-password",
+            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
     </div>
 
     <% if devise_mapping.rememberable? %>
       <div class="mb-3 flex items-center gap-2">
-        <%= f.check_box :remember_me %>
-        <%= f.label :remember_me, class: "text-sm" %>
+        <%= f.check_box :remember_me, class: "w-4 h-4" %>
+        <%= f.label :remember_me, class: "text-sm text-grey" %>
       </div>
     <% end %>
 
     <div class="mt-4">
-      <%= f.submit "Log in", class: "bg-primary text-white rounded px-4 py-2" %>
+      <%= f.submit "Log in", class: ds_button_classes(variant: :rect) %>
     </div>
   <% end %>
 
-  <div class="mt-4 text-sm">
-    <%= render "devise/shared/links" %>
-  </div>
-</div>
+  <%= render "devise/shared/links" %>
+<% end %>

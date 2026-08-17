@@ -1,7 +1,7 @@
 FactoryBot.define do
   factory :flag do
-    user { nil }
-    hoojah { nil }
-    subject { 1 }
+    association :user
+    association :hujah
+    subject { :spam }
   end
 end

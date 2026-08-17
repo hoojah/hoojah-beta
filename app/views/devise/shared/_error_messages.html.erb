@@ -1,12 +1,31 @@
+<%# The form error SUMMARY — docs/design-system/components/forms/FormError.prompt.md:
+    "the validation summary at the top of a form", and "the only place red appears in
+    Hoojah". Errors are summarised here, never annotated per field, which is why no
+    field in this family carries an error state of its own.
+
+    DESIGN SYSTEM (Slice 9, Task 4.6) — the box is the same red-tinted panel the
+    profile-edit dialog already spelled by hand; this partial had no classes at all, so
+    on every Devise form the summary rendered as bare black body text and read as part
+    of the page rather than as a failure. Red is scoped to this one partial: nothing
+    else in the product may reach for it.
+
+    The heading is Devise's own `errors.messages.not_saved` translation and the list is
+    `full_messages` — both unchanged. It inherits its size from the panel, because
+    preflight strips the browser's own heading size and weight.
+
+    FROZEN: `id` and `data-turbo-temporary`. Turbo discards the node on the next
+    visit, which is what stops a stale summary outliving the submit that produced it.
+%>
 <% if resource.errors.any? %>
-  <div id="error_explanation" data-turbo-temporary>
-    <h2>
+  <div id="error_explanation" data-turbo-temporary
+       class="mb-4 rounded bg-red-50 text-red-700 text-sm px-3 py-2">
+    <h2 class="font-medium">
       <%= I18n.t("errors.messages.not_saved",
                  count: resource.errors.count,
                  resource: resource.class.model_name.human.downcase)
        %>
     </h2>
-    <ul>
+    <ul class="list-disc pl-4 mt-1">
       <% resource.errors.full_messages.each do |message| %>
         <li><%= message %></li>
       <% end %>

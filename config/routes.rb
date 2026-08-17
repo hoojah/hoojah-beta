@@ -75,6 +75,10 @@ Rails.application.routes.draw do
   patch "/debates/:slug/decline", to: "debates#decline", as: :decline_debate
   patch "/debates/:slug/conclude", to: "debates#conclude", as: :conclude_debate
   post "/debates/:slug/turns", to: "debate_turns#create", as: :debate_turns
+  # Extend by one round at the closing-round boundary (Slice 9). The controller
+  # action is `extend_rounds`, not `extend` — `extend` would shadow Object#extend
+  # on the controller instance.
+  post "/debates/:slug/extend", to: "debates#extend_rounds", as: :extend_debate
   # Spectator verdict on a concluded debate (Slice 8). One immutable vote per
   # visible spectator; the tally is compute-on-read.
   post "/debates/:slug/verdicts", to: "debate_verdicts#create", as: :debate_verdicts

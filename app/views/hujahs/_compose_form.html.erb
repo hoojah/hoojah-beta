@@ -1,6 +1,32 @@
 <%# Port of `Hujah/form.js` render(): a fixed subnav (back + submit), the optional
     parent card + stance picker (reply only), then the avatar + textarea.
-    Posts to `hujahs#create` (POST /hoojah). `body` is stored raw. %>
+    Posts to `hujahs#create` (POST /hoojah). `body` is stored raw.
+
+    DESIGN SYSTEM (Slice 9, Task 4.3) — the composer is spec'd by the readme's CONTENT
+    and VISUAL FOUNDATIONS rather than by a component prompt of its own:
+
+    - The textarea is BARE. No border, no ring, no background — 18px `leading-snug`
+      beside the 44px avatar, so the compose screen reads as a sheet of paper and not as
+      a form field. `border-0 p-0 bg-transparent focus:ring-0` is that, stated four ways
+      because Tailwind's preflight and the browser default each supply a piece of it.
+    - The placeholder is exactly "What's your hoojah?" — the product's own voice, and it
+      is repeated as the `aria-label` because a placeholder is not an accessible name.
+    - The submit is the house pill, so it goes through `ds_button_classes` instead of
+      the hand-typed string that was here. That is the whole point of the helper: the
+      same nine utilities were spelled out in roughly 75 views and drifted every time.
+      It resolves to `px-5 py-2` (the DS `md` size) where this had `px-4 py-2`, and adds
+      `bg-white`, `transition active:scale-95` and the disabled treatment — the press
+      state the design system assigns to every button.
+    - The bar itself is the navbar idiom: fixed, 56px (`h-14`), `bg-white/90
+      backdrop-blur` over a hairline, with the spacer div beneath it. The only blur in
+      the product. The back arrow is 24px, matching the navbar's icons rather than the
+      16px used inline.
+
+    The avatar is `ui/_avatar` at `md` — the design system's 44px composer box, and the
+    same partial the navbar uses. `image_tag current_user.photo` raises when `photo` is
+    blank, which is reachable: `:photo` is permitted in `user_params` and
+    `assign_random_photo` only backfills on create. Here that would 500 the compose
+    screen for the one user who cleared their photo. %>
 <%= form_with model: hujah, url: "/hoojah", method: :post, local: true, class: "block" do |f| %>
   <% if parent.present? %>
     <%= f.hidden_field :parent_id, value: parent.id %>
@@ -9,11 +35,10 @@
   <nav class="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100">
     <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
       <%= link_to((parent.present? ? hujah_path(parent.slug) : root_path),
-            class: "fill-primary text-primary no-underline", aria: {label: "Back"}) do %>
+            class: "text-primary no-underline", aria: {label: "Back"}) do %>
         <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
       <% end %>
-      <%= f.submit "Post hoojah",
-            class: "shadow inline-flex items-center gap-1 rounded-full px-4 py-2 border-2 border-primary text-primary fill-primary no-underline cursor-pointer" %>
+      <%= f.submit "Post hoojah", class: ds_button_classes %>
     </div>
   </nav>
   <div class="h-14"></div>
@@ -25,7 +50,7 @@
     <% end %>
 
     <div class="flex mt-4">
-      <%= image_tag current_user.photo, class: "rounded-full w-11 h-11 mr-3 shrink-0", alt: current_user.username %>
+      <%= render "ui/avatar", user: current_user, size: :md, class: "mr-3" %>
       <%= f.text_area :body, rows: 10, placeholder: "What's your hoojah?",
             class: "flex-1 border-0 p-0 bg-transparent text-lg leading-snug focus:ring-0 resize-none",
             "aria-label": "What's your hoojah?" %>

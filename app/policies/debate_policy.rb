@@ -16,13 +16,23 @@ class DebatePolicy < ApplicationPolicy
 
   def conclude? = record.participant?(user) && record.active?
 
+  # Slice 9. DELIBERATELY as coarse as conclude?: "is this actor a party to a
+  # live debate", nothing finer. The closing-round window and the MAX_ROUNDS
+  # ceiling are APPLICABILITY, not authorization — Debate#extendable_by? owns
+  # them and the controller turns its `false` into 422. Pull either condition up
+  # here and a legitimate participant asking at the wrong moment is told "not
+  # allowed", which is untrue and indistinguishable from a non-participant's
+  # denial. No visibility clause is needed (unlike show?): both branches of
+  # `participant?` can always read their own debate, so there is nothing to leak.
+  def extend? = record.participant?(user) && record.active?
+
   class Scope < ApplicationPolicy::Scope
     # The Debates lens on the hoojah page. A participant sees all their own debates;
     # everyone else sees a concluded debate only when both participants are visible
     # (Slice 7b, Gate 8). Visibility depends on the accepted-follower graph, so the
     # concluded set is filtered in Ruby — the lens is one hoojah's (small) debate set.
     def resolve
-      concluded_visible = scope.where(status: :concluded).select do |d|
+      concluded_visible = scope.where(status: :concluded).includes(:challenger, :opponent).select do |d|
         d.challenger.visible_to?(user) && d.opponent.visible_to?(user)
       end
       return concluded_visible unless user

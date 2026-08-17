@@ -1,18 +1,40 @@
 <%# Port of the legacy SPA `Hujah/card_small.js` as used on the profile — a compact
     card for one of the user's hoojahs, left border colored by the poster's stance,
-    linking through to the full hoojah. Locals: hujah. %>
+    linking through to the full hoojah. Locals: hujah.
+
+    DESIGN SYSTEM (Slice 9, Task 4.4) — this is `hujahs/_child_card` wearing a profile
+    hat, so it gets the same three corrections Task 4.3 made there, for the same
+    reasons. Keep the two in step; a reader who diffs them should see only the
+    response-filter data attributes and the challenge row, which are the thread's
+    business and not the profile's.
+
+    1. The 8px stance border comes from `ui/_card`'s `stance:` instead of being
+       interpolated into `border-<...>` here. `ds_card_classes` raises on a value
+       outside CARD_STANCES; raw interpolation of a typo yields a class with no rule
+       behind it and renders as a card that merely looks unstanced, which neither
+       review nor CI sees. The `|| "primary"` fallback for an unvoted hoojah is in the
+       set for exactly that reason.
+    2. The avatar goes through `ui/_avatar` at `sm` (32px, the design system's
+       compact-card box). `image_tag user.photo` raises on a blank photo, and this
+       renders once per hoojah on a profile.
+    3. The `@handle` says `text-sm` outright. A bare `<small>` is 0.8em — 12.8px
+       against the body's 16px — and the design system's UI text is 14px.
+
+    `padded:` stays unset (the inner row owns its padding) and `pr-2 flex items-center
+    mb-1` rides in `class:`; 4px between compact cards, not the feed's 8px. %>
 <% stance = {1 => "agree", 2 => "neutral", 3 => "disagree"}[hujah.vote] || "primary" %>
 <%= link_to hujah_path(hujah.slug), class: "block no-underline" do %>
-  <div class="shadow border-l-8 border-<%= stance %> pr-2 flex items-center mb-1 bg-white">
+  <%= render layout: "ui/card",
+        locals: {stance: stance, class: "pr-2 flex items-center mb-1"} do %>
     <div class="flex py-1">
-      <%= image_tag hujah.user.photo, class: "rounded-full mx-2 w-8 h-8 shrink-0", alt: hujah.user.username %>
+      <%= render "ui/avatar", user: hujah.user, size: :sm, class: "mx-2" %>
       <div class="flex flex-col min-w-0">
         <div>
           <span class="mr-1 text-primary"><%= hujah.user.full_name %></span>
-          <small class="text-grey">@<%= hujah.user.username %></small>
+          <small class="text-sm text-grey">@<%= hujah.user.username %></small>
         </div>
         <div class="mb-0 text-black break-words"><%= format_body(hujah.body) %></div>
-        <div class="flex items-center text-sm text-light-grey fill-light-grey">
+        <div class="flex items-center text-sm text-light-grey">
           <%= stance_icon("agree", class: "w-4 h-4") %><span class="ml-1"><%= hujah.agree_count.to_i %></span>
           <span class="mx-2">·</span>
           <%= stance_icon("neutral", class: "w-4 h-4") %><span class="ml-1"><%= hujah.neutral_count.to_i %></span>
@@ -21,5 +43,5 @@
         </div>
       </div>
     </div>
-  </div>
+  <% end %>
 <% end %>

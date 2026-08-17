@@ -4,10 +4,33 @@
       root:  data-controller="response-filter"
       tabs:  role="group", data-action="response-filter#filter",
              data-response-filter-filter-param="all|agree|neutral|disagree"
-      items: data-response-filter-target="item" data-response-filter-vote="<stance>" %>
-<div data-controller="response-filter"
-     data-response-filter-active-value="all"
-     class="shadow bg-white pb-3">
+      items: data-response-filter-target="item" data-response-filter-vote="<stance>"
+
+    Those data attributes are the controller's whole API and are matched by string in
+    `_child_card` and `_challenge_dialog` (the items) — change a name here and half the
+    thread stops hiding, silently. `data:` on `ui/_card` below dasherizes exactly as the
+    hand-written attributes did.
+
+    DESIGN SYSTEM (Slice 9, Task 4.2) —
+    docs/design-system/components/voting/ResponseFilterTabs.prompt.md: "four equal cells
+    inside one light-grey-bordered, `shadow`ed, 4px-rounded group: 'All' + message-circle,
+    then the three stance glyphs in their stance colors. It filters what is already on the
+    page — it never refetches." `flex-1` is what makes the cells equal; `overflow-hidden`
+    is what lets the group's `rounded` clip the square-cornered cells inside it.
+
+    The cells are deliberately NOT `ds_button_classes`: the DS Button is a free-standing
+    pill with a 2px border, and these are square segments of one bordered group. Making
+    them pills would dissolve the segmented control into four floating buttons. And the
+    `rounded` on the group is not a contradiction of "never round a card" (ui/_card):
+    the card is the white surface underneath, this is a control sitting on it.
+
+    The surface underneath IS the card idiom, so it goes through `ui/_card` (white,
+    square, `shadow`) rather than repeating `shadow bg-white`. `pb-3` rides in `class:`
+    and `padded:` is left unset — passing both would be the same-family padding trap
+    documented in ui/_card. %>
+<%= render layout: "ui/card",
+      locals: {class: "pb-3",
+               data: {controller: "response-filter", "response-filter-active-value": "all"}} do %>
   <div class="p-4">
     <div class="flex shadow rounded overflow-hidden" role="group" aria-label="Filter responses">
       <button type="button"
@@ -15,17 +38,17 @@
               data-response-filter-filter-param="all"
               data-response-filter-target="tab"
               aria-pressed="true"
-              class="flex-1 py-2 flex items-center justify-center gap-1 border border-light-grey text-primary fill-primary">
+              class="flex-1 py-2 flex items-center justify-center gap-1 border border-light-grey text-primary">
         All <%= lucide_icon("message-circle", class: "w-4 h-4") %>
       </button>
-      <% [["agree", "agree"], ["neutral", "neutral"], ["disagree", "disagree"]].each do |stance, param| %>
+      <% %w[agree neutral disagree].each do |stance| %>
         <button type="button"
                 data-action="response-filter#filter"
-                data-response-filter-filter-param="<%= param %>"
+                data-response-filter-filter-param="<%= stance %>"
                 data-response-filter-target="tab"
                 aria-pressed="false"
                 aria-label="<%= stance.capitalize %>"
-                class="flex-1 py-2 flex items-center justify-center border border-light-grey fill-<%= stance %> text-<%= stance %>">
+                class="flex-1 py-2 flex items-center justify-center border border-light-grey text-<%= stance %>">
           <%= stance_icon(stance, class: "w-4 h-4") %>
         </button>
       <% end %>
@@ -37,9 +60,10 @@
       <%= render "hujahs/child_card", child: child, hujah: hujah %>
     <% end %>
   <% else %>
-    <div class="flex items-center text-sm text-light-grey fill-light-grey px-4 pt-0">
-      <%= lucide_icon("message-circle", class: "w-4 h-4") %>
-      <span class="ml-1">No response yet</span>
-    </div>
+    <%# The house empty state — faint grey, one Lucide glyph, one plain sentence.
+        `class:` overrides the partial's baked-in `p-3`: Tailwind emits the shorthand
+        before the longhands, so `px-4 pt-0 pb-0` wins and reproduces the padding this
+        row had when it was spelled out here. %>
+    <%= render "ui/empty_state", message: "No response yet", class: "px-4 pt-0 pb-0" %>
   <% end %>
-</div>
+<% end %>

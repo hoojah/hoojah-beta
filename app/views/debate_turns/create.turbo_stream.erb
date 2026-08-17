@@ -7,3 +7,20 @@
 <%= turbo_stream.replace dom_id(@debate, :composer) do %>
   <%= render "debates/turn_composer", debate: @debate %>
 <% end %>
+<%# Slice 9: the turn also moved the round counter and may have opened the Extend
+    window, so both regions have to be repainted for the MOVER too.
+
+    Synchronously, and not only via post_turn's broadcast_state_change, because every
+    *_later_to renders in a job — and in dev there is no worker, so that broadcast
+    never lands (the Slice 8 review catch, same as extend_rounds.turbo_stream.erb).
+    The async broadcast targets these same dom_ids, so when a worker IS running the
+    second replace is an idempotent no-op.
+
+    `viewer:` is passed EXPLICITLY: _debate_actions falls back to current_user only
+    for the request context, and it must render for the actor here, not blank. %>
+<%= turbo_stream.replace dom_id(@debate, :status) do %>
+  <%= render "debates/debate_status", debate: @debate %>
+<% end %>
+<%= turbo_stream.replace dom_id(@debate, :actions) do %>
+  <%= render "debates/debate_actions", debate: @debate, viewer: current_user %>
+<% end %>

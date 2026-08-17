@@ -4,7 +4,36 @@
     whole menu works with JavaScript disabled. The `share` controller only progressively
     enhances: on a device with the Web Share API it unhides the native-share button.
 
-    Locals: hujah. %>
+    Locals: hujah.
+
+    DESIGN SYSTEM (Slice 9, Task 4.3) —
+    docs/design-system/components/hujah/ShareMenu.prompt.md. Two halves, both frozen in
+    substance and only restated in form:
+
+    - The trigger is a 16px `share-2` in `text-light-grey` (the DS `--text-faint`),
+      pinned right of the byline. Unchanged.
+    - The share copy is `"<body> (by @handle)" Do you AGREE? NEUTRAL? DISAGREE?` — "the
+      only place Hoojah shouts in caps". Byte-frozen: it is the payload of six outbound
+      URLs and of the Web Share API values below, and spec/requests/share_spec.rb and
+      spec/system/share_spec.rb both assert it.
+
+    The PANEL is now `ui/_menu` and the six rows `ds_menu_item_classes` — the primitives
+    Task 4.1 extracted with this file as one of their three named call sites. `w-52` is
+    passed explicitly because `ui/_menu` requires it: the bundle emits `.w-52` ahead of
+    `.w-56`, so a baked default would silently win against the narrower width this menu
+    wants. The rows gain `text-sm` from the helper, which is the design system's 14px UI
+    text; they were inheriting 16px from the body, which was drift.
+
+    The `<details>` and `<summary>` stay HERE, not in the primitive. `ui/_menu` is the
+    panel only, precisely because this trigger carries `data-controller="share"` and the
+    three `data-share-*-value` attributes that the share controller reads — real-time
+    and progressive-enhancement contracts that do not move. `relative` on the `<details>`
+    is what the panel's `absolute` positions against; do not drop it.
+
+    The native-share `<button>` keeps `border-0 bg-transparent cursor-pointer` on top of
+    the helper string. Those are button-reset utilities, not a second padding or width,
+    so they compose — see the caution in `ds_menu_item_classes`. `hidden` is a bare
+    attribute the controller removes; it is not styling. %>
 <% share_url = hujah_url(hujah.slug) %>
 <% share_text = "\"#{strip_tags(hujah.body)} (by @#{hujah.user.username})\" Do you AGREE? NEUTRAL? DISAGREE?" %>
 <% share_title = "Hoojah by @#{hujah.user.username}" %>
@@ -14,25 +43,27 @@
          data-share-title-value="<%= share_title %>"
          data-share-text-value="<%= share_text %>"
          data-share-url-value="<%= share_url %>">
-  <summary class="list-none cursor-pointer fill-light-grey text-light-grey" aria-label="Share this hoojah">
+  <summary class="list-none cursor-pointer text-light-grey" aria-label="Share this hoojah">
     <%= lucide_icon("share-2", class: "w-4 h-4") %>
   </summary>
-  <div class="absolute right-0 mt-1 w-52 bg-white shadow rounded p-2 z-10">
-    <h6 class="text-xs text-grey px-2 pb-1">Share this hoojah via</h6>
+  <%= render layout: "ui/menu", locals: {width: "w-52"} do %>
+    <%# The DS's "tiny grey heading" — 12px, and indented to the rows' `px-3` rather
+        than to a `px-2` of its own, as in the navbar menu. %>
+    <h6 class="text-xs text-grey px-3 pb-1">Share this hoojah via</h6>
 
     <%# Native OS share sheet — hidden until the share controller confirms support. %>
     <button type="button" hidden
             data-share-target="button"
             data-action="share#share"
-            class="w-full text-left px-3 py-1 text-black no-underline hover:bg-gray-100 rounded border-0 bg-transparent cursor-pointer">
+            class="<%= ds_menu_item_classes %> border-0 bg-transparent cursor-pointer">
       Share…
     </button>
 
-    <%= link_to "WhatsApp", "https://wa.me/?text=#{CGI.escape("#{share_text} #{share_url}")}", target: "_blank", rel: "noopener", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
-    <%= link_to "X", "https://x.com/intent/tweet?url=#{CGI.escape(share_url)}&text=#{CGI.escape(share_text)}&via=hoojah_my", target: "_blank", rel: "noopener", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
-    <%= link_to "Telegram", "https://t.me/share/url?url=#{CGI.escape(share_url)}&text=#{CGI.escape(share_text)}", target: "_blank", rel: "noopener", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
-    <%= link_to "Reddit", "https://www.reddit.com/submit?url=#{CGI.escape(share_url)}&title=#{CGI.escape(share_text)}", target: "_blank", rel: "noopener", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
-    <%= link_to "Facebook", "https://www.facebook.com/sharer/sharer.php?u=#{CGI.escape(share_url)}", target: "_blank", rel: "noopener", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
-    <%= mail_to "hello@hoojah.my", "Email", subject: share_title, body: "#{share_text}\n\n#{share_url}", class: "block px-3 py-1 text-black no-underline hover:bg-gray-100 rounded" %>
-  </div>
+    <%= link_to "WhatsApp", "https://wa.me/?text=#{CGI.escape("#{share_text} #{share_url}")}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+    <%= link_to "X", "https://x.com/intent/tweet?url=#{CGI.escape(share_url)}&text=#{CGI.escape(share_text)}&via=hoojah_my", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+    <%= link_to "Telegram", "https://t.me/share/url?url=#{CGI.escape(share_url)}&text=#{CGI.escape(share_text)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+    <%= link_to "Reddit", "https://www.reddit.com/submit?url=#{CGI.escape(share_url)}&title=#{CGI.escape(share_text)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+    <%= link_to "Facebook", "https://www.facebook.com/sharer/sharer.php?u=#{CGI.escape(share_url)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+    <%= mail_to "hello@hoojah.my", "Email", subject: share_title, body: "#{share_text}\n\n#{share_url}", class: ds_menu_item_classes %>
+  <% end %>
 </details>

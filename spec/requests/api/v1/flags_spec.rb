@@ -26,6 +26,22 @@ RSpec.describe "Api::V1::Flags", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    # Regression for SECURITY-FINDINGS L1: `.create` + `if flag` was always truthy, so
+    # an unsaveable flag rendered 200 and reported success. `belongs_to :hujah` is
+    # required by default, so a nonexistent hujah_id fails validation before the DB.
+    it "rejects a flag against a nonexistent hoojah instead of reporting success" do
+      login_as(user)
+
+      expect {
+        post "/api/v1/flags/create",
+          params: {flag: {hujah_id: 0, subject: "spam"}}
+      }.not_to change(Flag, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response).not_to have_http_status(:ok)
+      expect(response.parsed_body).to have_key("hujah")
+    end
+
     it "ignores a spoofed user_id and records the flag under the current user" do
       other = create(:user)
       login_as(user)
