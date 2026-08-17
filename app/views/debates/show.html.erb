@@ -11,13 +11,13 @@
   <%= turbo_stream_from [@debate, current_user], channel: "DebateChannel" if @debate.participant?(current_user) %>
 
   <nav class="mb-2">
-    <%= link_to hujah_path(@debate.hujah.slug), class: "fill-primary text-primary no-underline", aria: {label: "Back"} do %>
+    <%= link_to hujah_path(@debate.hujah.slug), class: "text-primary no-underline", aria: {label: "Back"} do %>
       <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
     <% end %>
   </nav>
 
   <header class="mb-2">
-    <h1 class="flex items-center gap-2 text-xl leading-snug fill-neutral">
+    <h1 class="flex items-center gap-2 text-xl leading-snug">
       <%= lucide_icon("swords", class: "w-5 h-5 shrink-0") %>
       @<%= @debate.challenger.username %> vs @<%= @debate.opponent.username %>
     </h1>

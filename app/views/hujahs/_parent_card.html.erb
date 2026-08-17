@@ -18,10 +18,10 @@
     `padded:` stays unset so `pl-2` in `class:` cannot collide with it (the same-family
     padding trap in ui/_card's header).
 
-    The stance verb above the card keeps its raw `text-<stance> fill-<stance>`
-    interpolation. Both are BARE utilities over the stance trio, which
-    `@source inline("{bg,text,border,fill}-{agree,neutral,disagree,primary}")` covers —
-    unlike a variant such as `peer-checked:bg-<stance>`, which a safelist entry does not
+    The stance verb above the card keeps its raw `text-<stance>` interpolation. That is a
+    BARE utility over the stance trio, which the stance `@source inline(...)` line in
+    app/assets/tailwind/application.css covers — unlike a variant such as
+    `peer-checked:bg-<stance>`, which a safelist entry does not
     generate and which shipped blank in `_stance_picker` until Task 4.2. `stance` here is
     nil or one of the trio; `verb` gates the span, so nothing renders when it is nil. %>
 <%
@@ -32,7 +32,7 @@
   <small class="text-sm text-grey">
     You
     <% if verb %>
-      <span class="inline-flex items-center gap-1 text-<%= stance %> fill-<%= stance %>">
+      <span class="inline-flex items-center gap-1 text-<%= stance %>">
         <%= stance_icon(stance, class: "w-4 h-4") %><%= verb %>
       </span>
     <% end %>

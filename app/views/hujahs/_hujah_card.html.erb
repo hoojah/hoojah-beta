@@ -41,7 +41,7 @@
   <%= render "ui/divider" %>
   <%# HujahCard.prompt.md: "the footer is always bar-chart-2 + total votes ·
       message-circle + response count". Always both, always that order. %>
-  <div class="px-4 py-2 flex items-center text-sm text-grey fill-grey">
+  <div class="px-4 py-2 flex items-center text-sm text-grey">
     <%= link_to hujah_path(hujah.slug), class: "flex items-center text-grey no-underline" do %>
       <%= lucide_icon("bar-chart-2", class: "w-4 h-4") %>
       <span class="ml-1"><%= hujah.agree_count.to_i + hujah.neutral_count.to_i + hujah.disagree_count.to_i %></span>

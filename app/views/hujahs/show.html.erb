@@ -21,11 +21,11 @@
 
 <main class="max-w-xl mx-auto px-4 py-6">
   <nav class="flex justify-between items-center mb-2">
-    <%= link_to root_path, class: "fill-primary text-primary no-underline", aria: { label: "Back" } do %>
+    <%= link_to root_path, class: "text-primary no-underline", aria: { label: "Back" } do %>
       <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
     <% end %>
     <details class="relative">
-      <summary class="list-none cursor-pointer fill-primary text-primary" aria-label="More actions">
+      <summary class="list-none cursor-pointer text-primary" aria-label="More actions">
         <%= lucide_icon("more-horizontal", class: "w-6 h-6") %>
       </summary>
       <%= render layout: "ui/menu", locals: {width: "w-56"} do %>
@@ -44,11 +44,9 @@
               pink. `flex items-center gap-1` overrides the helper's baked `block` — that
               works because the bundle emits `.block` before `.flex`, which is bundle
               order rather than call order, so it is the ONE override to make here and
-              never a second padding or width. `fill-neutral` stays spelled out: the
-              helper deliberately emits no `fill-`, since ten of its eleven rows have no
-              icon and `fill-black` is in no `@source inline` line. %>
+              never a second padding or width. %>
           <%= link_to new_user_session_path,
-                class: "#{ds_menu_item_classes(tone: "neutral")} flex items-center gap-1 fill-neutral" do %>
+                class: "#{ds_menu_item_classes(tone: "neutral")} flex items-center gap-1" do %>
             <%= lucide_icon("flag", class: "w-4 h-4") %> Login to flag this hoojah
           <% end %>
         <% end %>
@@ -68,7 +66,7 @@
           current_user_vote: @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) %>
 
     <%= render "ui/divider" %>
-    <div class="px-4 py-2 flex items-center text-sm text-grey fill-grey">
+    <div class="px-4 py-2 flex items-center text-sm text-grey">
       <%= lucide_icon("bar-chart-2", class: "w-4 h-4") %>
       <span class="ml-1"><%= total_votes %></span>
       <span class="mx-2">·</span>
@@ -97,7 +95,7 @@
       own live ones). The container dom_id is the Turbo-Stream append target when a new
       challenge is created, so it must always be present. %>
   <section class="mb-2">
-    <h2 class="px-1 mb-1 flex items-center gap-1 text-sm font-medium text-grey fill-grey">
+    <h2 class="px-1 mb-1 flex items-center gap-1 text-sm font-medium text-grey">
       <%= lucide_icon("swords", class: "w-4 h-4") %> Debates
     </h2>
     <div id="<%= dom_id(@hujah, :debates) %>" class="flex flex-col gap-1">

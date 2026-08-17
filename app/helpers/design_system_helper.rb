@@ -7,7 +7,7 @@
 # into roughly 75 views, so a border width or a shadow drifted every time somebody
 # copy-pasted a button. Change it here now.
 #
-# NOTE for Tailwind: the tone is *interpolated* into `bg-`/`text-`/`border-`/`fill-`,
+# NOTE for Tailwind: the tone is *interpolated* into `bg-`/`text-`/`border-`,
 # which the source scanner cannot see. Every tone in TONES must stay covered by the
 # `@source inline(...)` safelist in app/assets/tailwind/application.css, or the class
 # lands in the markup and no rule exists for it. spec/helpers/design_system_helper_spec.rb
@@ -214,10 +214,8 @@ module DesignSystemHelper
   # Same contract as every helper above: nil is an unpassed local and takes the default,
   # anything else outside the set is a typo and says so.
   #
-  # No `fill-` is emitted even though the report row has an icon. That row already
-  # spells `fill-neutral` itself, and adding a fill here would put `fill-black` — a
-  # class no view spells and no `@source inline` line covers — into ten rows that have
-  # no icon at all.
+  # No `fill-<tone>` is emitted, and none should be added — a wrapper's fill never
+  # reached the row's Lucide glyph. See the tombstone in app/assets/tailwind/application.css.
   #
   # `grey` DROPS the hover fill, and does so from the tone rather than from a `hover:`
   # keyword. DropdownMenu.prompt.md says "rows hover to `--color-gray-100`"; it does not
@@ -267,15 +265,15 @@ module DesignSystemHelper
   # as the boundary marker it is.
   def ds_button_variant(variant, tone, sizing)
     case variant
-    when :solid then "#{sizing} rounded-full bg-#{tone} text-white fill-white shadow"
-    when :rect then "#{sizing} rounded bg-#{tone} text-white fill-white"
+    when :solid then "#{sizing} rounded-full bg-#{tone} text-white shadow"
+    when :rect then "#{sizing} rounded bg-#{tone} text-white"
     # on_primary/on_primary_outline: for the blue profile header ONLY. They are locked
     # to white-on-primary and to the small size — `tone:` and `size:` do not reach them,
     # because there is exactly one surface they may appear on.
-    when :on_primary then "px-4 py-1 text-sm rounded-full bg-white text-primary fill-primary"
-    when :on_primary_outline then "px-4 py-1 text-sm rounded-full border border-white text-white fill-white bg-transparent"
-    when :link then "border-0 bg-transparent p-0 text-#{tone} fill-#{tone}"
-    else "#{sizing} rounded-full border-2 border-#{tone} text-#{tone} fill-#{tone} bg-white shadow"
+    when :on_primary then "px-4 py-1 text-sm rounded-full bg-white text-primary"
+    when :on_primary_outline then "px-4 py-1 text-sm rounded-full border border-white text-white bg-transparent"
+    when :link then "border-0 bg-transparent p-0 text-#{tone}"
+    else "#{sizing} rounded-full border-2 border-#{tone} text-#{tone} bg-white shadow"
     end
   end
 end

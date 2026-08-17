@@ -37,7 +37,7 @@
     so the card surface is the design system's answer. Do not make it conditional.
 %><% message = local_assigns.fetch(:message)
    icon = local_assigns.fetch(:icon, "message-circle")
-   tone = (local_assigns[:tone]&.to_sym == :muted) ? "text-grey fill-grey" : "text-light-grey fill-light-grey"
+   tone = (local_assigns[:tone]&.to_sym == :muted) ? "text-grey" : "text-light-grey"
    align = (local_assigns[:align]&.to_sym == :center) ? "justify-center" : "justify-start" %>
 <div class="flex items-center gap-1 text-sm p-3 bg-white <%= tone %> <%= align %> <%= local_assigns[:class] %>">
   <%= lucide_icon(icon, class: "w-4 h-4") if icon.present? %>

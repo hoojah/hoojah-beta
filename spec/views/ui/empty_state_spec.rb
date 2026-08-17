@@ -60,16 +60,19 @@ RSpec.describe "ui/_empty_state", type: :view do
   end
 
   describe "tone" do
-    # Faint (`#bac2ca`) is the default; `fill-` matters as much as `text-` because
-    # the Lucide glyph is a stroked svg using currentColor via the fill utility.
+    # Faint (`#bac2ca`) is the default, and one `text-` utility on the wrapper colours
+    # BOTH halves: the sentence directly, and the glyph because a Lucide icon is a
+    # stroked svg whose `stroke="currentColor"` resolves against the inherited colour.
+    # No fill utility is involved or wanted — see the tombstone in
+    # app/assets/tailwind/application.css.
     it "is faint light-grey by default, glyph and sentence alike" do
-      expect(state).to have_css("div.text-light-grey.fill-light-grey")
+      expect(state).to have_css("div.text-light-grey")
     end
 
     it "steps up to muted grey on request" do
       muted = state(tone: :muted)
 
-      expect(muted).to have_css("div.text-grey.fill-grey")
+      expect(muted).to have_css("div.text-grey")
       expect(muted).to have_no_css("div.text-light-grey")
     end
 

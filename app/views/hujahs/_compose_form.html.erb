@@ -35,7 +35,7 @@
   <nav class="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100">
     <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
       <%= link_to((parent.present? ? hujah_path(parent.slug) : root_path),
-            class: "fill-primary text-primary no-underline", aria: {label: "Back"}) do %>
+            class: "text-primary no-underline", aria: {label: "Back"}) do %>
         <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
       <% end %>
       <%= f.submit "Post hoojah", class: ds_button_classes %>

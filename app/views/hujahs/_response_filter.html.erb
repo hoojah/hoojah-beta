@@ -38,7 +38,7 @@
               data-response-filter-filter-param="all"
               data-response-filter-target="tab"
               aria-pressed="true"
-              class="flex-1 py-2 flex items-center justify-center gap-1 border border-light-grey text-primary fill-primary">
+              class="flex-1 py-2 flex items-center justify-center gap-1 border border-light-grey text-primary">
         All <%= lucide_icon("message-circle", class: "w-4 h-4") %>
       </button>
       <% %w[agree neutral disagree].each do |stance| %>
@@ -48,7 +48,7 @@
                 data-response-filter-target="tab"
                 aria-pressed="false"
                 aria-label="<%= stance.capitalize %>"
-                class="flex-1 py-2 flex items-center justify-center border border-light-grey fill-<%= stance %> text-<%= stance %>">
+                class="flex-1 py-2 flex items-center justify-center border border-light-grey text-<%= stance %>">
           <%= stance_icon(stance, class: "w-4 h-4") %>
         </button>
       <% end %>

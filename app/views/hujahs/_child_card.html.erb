@@ -41,7 +41,7 @@
           <small class="text-sm text-grey">@<%= child.user.username %></small>
         </div>
         <div class="mb-0 text-black break-words"><%= format_body(child.body) %></div>
-        <div class="flex items-center text-sm text-light-grey fill-light-grey">
+        <div class="flex items-center text-sm text-light-grey">
           <%= stance_icon("agree", class: "w-4 h-4") %><span class="ml-1"><%= child.agree_count.to_i %></span>
           <span class="mx-2">·</span>
           <%= stance_icon("neutral", class: "w-4 h-4") %><span class="ml-1"><%= child.neutral_count.to_i %></span>

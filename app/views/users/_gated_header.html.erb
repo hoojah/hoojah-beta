@@ -13,7 +13,7 @@
     borrowing a row from `_profile_header` — every field absent below is absent on
     purpose, and spec/system/private_spec.rb is what notices. %>
 <div id="<%= dom_id(user, :profile_header) %>"
-     class="w-full bg-primary text-white fill-white flex flex-col items-center py-6 px-4">
+     class="w-full bg-primary text-white flex flex-col items-center py-6 px-4">
   <%= render "ui/avatar", user: user, size: :lg, class: "mb-3" %>
   <h5 class="mb-0 text-lg font-medium"><%= user.full_name %></h5>
   <div class="mb-3">@<%= user.username %></div>

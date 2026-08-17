@@ -5,7 +5,7 @@
  * `app/javascript/stylesheets/variables.scss` (the Bootstrap SCSS palette), then
  * extended in Slice 9 with the full 72-token design system extracted back out of
  * this codebase (`docs/design-system/tokens/*.css`).
- * Registering them here makes `bg-agree`, `text-disagree`, `fill-neutral`,
+ * Registering them here makes `bg-agree`, `text-disagree`,
  * `border-primary`, etc. available to the Hotwire views (feed, single-hujah,
  * vote bars, response filter).
  *
@@ -53,25 +53,42 @@
 @source not "../../../app/assets/images";
 
 /*
+ * TOMBSTONE, Slice 9 — there is no `fill-<tone>` utility anywhere in `app/` any
+ * more, and the whole family was removed here at the same time. The removal was
+ * provably pixel-identical, which is worth writing down so nobody "restores" it:
+ *
+ * Every icon in the product is `lucide_icon`, and lucide-rails puts `fill="none"`
+ * as a presentation ATTRIBUTE on the `<svg>` element itself. A presentation
+ * attribute is a specified value on that element, so it beats any fill the svg
+ * INHERITS from an ancestor's utility class — and every fill utility this repo ever
+ * spelled sat on an ancestor: a wrapping div, span, a or button, never on the
+ * `lucide_icon` call. Colour reaches an icon the other way round entirely, through
+ * `text-<tone>` → `currentColor` → the `stroke` attribute. So a fill utility on a
+ * wrapper was dead weight that MISDOCUMENTED the mechanism — it read as though fill
+ * were how a glyph gets its colour, and it never was.
+ *
+ * Reintroduce one only alongside a real inline `<svg>` that omits its own fill
+ * attribute, and safelist it here when you do — nothing below covers it now.
+ *
  * Safelist the stance color utilities. The vote widget builds class names like
- * `bg-agree` / `text-disagree` / `fill-neutral` by interpolating the stance name,
- * which Tailwind's source scanner can't see as literal strings. `@source inline`
- * forces them into the build. `_notification_card` interpolates
- * `border-<read|unread>` the same way, so it needs the same treatment.
+ * `bg-agree` / `text-disagree` by interpolating the stance name, which Tailwind's
+ * source scanner can't see as literal strings. `@source inline` forces them into
+ * the build. `_notification_card` interpolates `border-<read|unread>` the same way,
+ * so it needs the same treatment.
  */
-@source inline("{bg,text,border,fill}-{agree,neutral,disagree,primary}");
+@source inline("{bg,text,border}-{agree,neutral,disagree,primary}");
 @source inline("border-{read,unread}");
-@source inline("fill-white text-white bg-white");
+@source inline("text-white bg-white");
 
 /*
- * `DesignSystemHelper#ds_button_classes` interpolates the same four prefixes, but over
+ * `DesignSystemHelper#ds_button_classes` interpolates the same three prefixes, but over
  * a wider palette: its `tone:` also accepts `grey` and `light-grey` (secondary and
- * disabled chrome). Most of those eight combinations survive today only because some
+ * disabled chrome). Most of those six combinations survive today only because some
  * view happens to spell them out — `bg-grey` and `bg-light-grey` did not, and were
  * genuinely missing from the bundle until this line. Do not fold it into the block
  * above: the tones there are stances, these are not, and they have different owners.
  */
-@source inline("{bg,text,border,fill}-{grey,light-grey}");
+@source inline("{bg,text,border}-{grey,light-grey}");
 
 /*
  * The debate turn composer auto-grows with its content via the native CSS

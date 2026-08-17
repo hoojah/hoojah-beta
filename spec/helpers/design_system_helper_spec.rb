@@ -29,10 +29,10 @@ RSpec.describe DesignSystemHelper, type: :helper do
 
   describe "#ds_button_classes" do
     describe "the house style (outline)" do
-      it "is a white pill with a 2px border, matching text and fill, and a shadow" do
+      it "is a white pill with a 2px border, matching text, and a shadow" do
         expect(tokens).to include(
           "rounded-full", "border-2", "border-primary",
-          "text-primary", "fill-primary", "bg-white", "shadow"
+          "text-primary", "bg-white", "shadow"
         )
       end
 
@@ -42,14 +42,14 @@ RSpec.describe DesignSystemHelper, type: :helper do
     end
 
     describe "tone" do
-      it "recolours the border, text and fill of an outline button" do
+      it "recolours the border and the text of an outline button" do
         agree = tokens(tone: "agree")
 
-        expect(agree).to include("border-agree", "text-agree", "fill-agree")
-        expect(agree).not_to include("border-primary", "text-primary", "fill-primary")
+        expect(agree).to include("border-agree", "text-agree")
+        expect(agree).not_to include("border-primary", "text-primary")
       end
 
-      it "recolours the fill of a solid button" do
+      it "recolours the background of a solid button" do
         expect(tokens(variant: :solid, tone: "disagree")).to include("bg-disagree")
       end
 
@@ -73,10 +73,10 @@ RSpec.describe DesignSystemHelper, type: :helper do
     end
 
     describe "variants" do
-      it "fills solid buttons with the tone and drops the border entirely" do
+      it "backs solid buttons with the tone and drops the border entirely" do
         solid = tokens(variant: :solid)
 
-        expect(solid).to include("bg-primary", "text-white", "fill-white", "shadow", "rounded-full")
+        expect(solid).to include("bg-primary", "text-white", "shadow", "rounded-full")
         expect(borders(variant: :solid)).to be_empty
       end
 
@@ -90,7 +90,7 @@ RSpec.describe DesignSystemHelper, type: :helper do
       it "inverts on_primary for the blue profile header" do
         on_primary = tokens(variant: :on_primary)
 
-        expect(on_primary).to include("bg-white", "text-primary", "fill-primary", "rounded-full")
+        expect(on_primary).to include("bg-white", "text-primary", "rounded-full")
         expect(borders(variant: :on_primary)).to be_empty
       end
 
@@ -110,7 +110,7 @@ RSpec.describe DesignSystemHelper, type: :helper do
       it "strips link buttons back to bare coloured text" do
         link = tokens(variant: :link)
 
-        expect(link).to include("text-primary", "fill-primary", "bg-transparent")
+        expect(link).to include("text-primary", "bg-transparent")
         expect(link).not_to include("shadow")
         expect(borders(variant: :link)).to eq(["border-0"])
         expect(paddings(variant: :link)).to eq(["p-0"])
@@ -194,7 +194,11 @@ RSpec.describe DesignSystemHelper, type: :helper do
       # `text-sm` / `text-base` are font sizes and `border-0` / `border-2` are widths:
       # they share a prefix with the colour utilities but not the namespace. Subtract
       # them by name rather than allowing their suffixes as colours, or the guard would
-      # wave through `bg-sm` and `fill-2` — the very typos it exists to catch.
+      # wave through `bg-sm` and `text-2` — the very typos it exists to catch.
+      #
+      # `fill` stays in the prefix alternation below even though the helper no longer
+      # emits one: a reintroduced fill token would now have to name a design token to
+      # get past here, and the example after this one refuses it outright.
       it "never emits a colour utility with a blank or unknown token" do
         non_colour = %w[text-sm text-base border-0 border-2]
         known = DesignSystemHelper::TONES + %w[white transparent]
@@ -206,6 +210,27 @@ RSpec.describe DesignSystemHelper, type: :helper do
             value = token.split("-", 2).last
             expect(known).to include(value),
               "#{variant}/#{tone} emitted `#{token}`, whose colour is not a design token"
+          end
+        end
+      end
+
+      # The executable form of the tombstone in app/assets/tailwind/application.css.
+      # Every icon this helper's buttons contain is a Lucide svg carrying `fill="none"`
+      # as a presentation attribute, which is a specified value on the svg and therefore
+      # beats anything the svg inherits — so a fill utility on the BUTTON never reached
+      # the glyph. Colour gets there as `text-<tone>` → `currentColor` → `stroke`. The
+      # family was removed in Slice 9 as provably pixel-identical; this refuses its
+      # return, because a fill token here would be inert markup documenting a mechanism
+      # that does not exist. If a real inline `<svg>` without its own fill attribute
+      # ever arrives, delete this example and add the safelist entry in the same commit.
+      it "emits no fill utility on any variant/tone pair" do
+        DesignSystemHelper::VARIANTS.product(DesignSystemHelper::TONES).each do |variant, tone|
+          %i[md sm].each do |size|
+            offenders = tokens(variant: variant, tone: tone, size: size).grep(/\Afill-/)
+
+            expect(offenders).to be_empty,
+              "#{variant}/#{tone}/#{size} emitted #{offenders.join(", ")} — a fill utility " \
+              "on the button cannot reach a Lucide glyph; colour it with `text-` instead"
           end
         end
       end
@@ -451,10 +476,12 @@ RSpec.describe DesignSystemHelper, type: :helper do
       end
     end
 
-    # No `fill-` on any tone: ten of the eleven rows have no icon, and `fill-black` is a
-    # class no view spells and no `@source inline` line covers. The report row that does
-    # have an icon spells `fill-neutral` itself.
-    it "emits no fill colour, which would put `fill-black` on ten iconless rows" do
+    # No fill utility on any tone, and none is wanted. The one row of the eleven that has
+    # an icon has a Lucide svg in it, and a fill on the ROW cannot reach that glyph —
+    # `fill="none"` is a presentation attribute on the svg and outranks anything
+    # inherited. See the tombstone in app/assets/tailwind/application.css. This is the
+    # menu-row half of the same guard the button section carries.
+    it "emits no fill colour on any tone" do
       DesignSystemHelper::MENU_ITEM_TONES.each do |tone|
         expect(tokens(tone: tone).grep(/\Afill-/)).to be_empty
       end
@@ -485,7 +512,7 @@ RSpec.describe DesignSystemHelper, type: :helper do
   end
 end
 
-# `ds_button_classes` interpolates the tone into `bg-` / `text-` / `border-` / `fill-`,
+# `ds_button_classes` interpolates the tone into `bg-` / `text-` / `border-`,
 # so Tailwind's source scanner never sees those class names as literals and will not
 # emit them. `@source inline(...)` in app/assets/tailwind/application.css is what puts
 # them in the bundle. Nothing else proves that line is still correct — and since Task

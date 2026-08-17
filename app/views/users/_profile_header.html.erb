@@ -19,7 +19,7 @@
     FROZEN: `dom_id(user, :profile_header)` is what `users/update.turbo_stream.erb`
     replaces after a profile edit, and what `_gated_header` deliberately mirrors. %>
 <div id="<%= dom_id(user, :profile_header) %>"
-     class="w-full bg-primary text-white fill-white flex flex-col items-center py-6 px-4">
+     class="w-full bg-primary text-white flex flex-col items-center py-6 px-4">
   <%= render "ui/avatar", user: user, size: :lg, class: "mb-3" %>
   <h5 class="mb-0 text-lg font-medium"><%= user.full_name %></h5>
   <div class="mb-3">@<%= user.username %></div>

@@ -24,7 +24,7 @@
 <% state_color = ds_debate_state_color(debate.status) %>
 <%= link_to debate_path(debate.slug), id: dom_id(debate, :card),
       class: "#{ds_card_classes} debate-card no-underline px-4 py-2 flex items-center justify-between" do %>
-  <span class="flex items-center gap-1 text-black fill-neutral min-w-0">
+  <span class="flex items-center gap-1 text-black min-w-0">
     <%= lucide_icon("swords", class: "w-4 h-4 shrink-0") %>
     <span class="truncate">@<%= debate.challenger.username %> vs @<%= debate.opponent.username %></span>
   </span>

@@ -33,10 +33,12 @@
     comment, it reads the file as text, so writing a real class name in this prose would
     emit that class from the COMMENT and the spec below would pass on a partial that no
     longer spells it out. Same defect Task 1.1 fixed with `@source not "../../../docs"`.
-    Never name a concrete utility in a comment that a nearby guard depends on. The two white halves of the inversion are literals, so
-    `peer-checked:fill-white` and `peer-checked:text-white` DID compile: picking a stance
-    turned the glyph white against a still-white circle and the button read as empty.
-    Written out below, the scanner reads them as text and emits them.
+    Never name a concrete utility in a comment that a nearby guard depends on. The white
+    half of the inversion is a literal, so `peer-checked:text-white` DID compile: picking
+    a stance turned the glyph white against a still-white circle and the button read as
+    empty. Written out below, the scanner reads the checked backgrounds as text and emits
+    them, and `peer-checked:text-white` is now the ONLY thing carrying the white half —
+    the glyph is a stroked Lucide svg, so `currentColor` is what reaches it.
     `spec/requests/stance_picker_spec.rb` asserts both halves — the markup and the rule.
     Interpolate a stance into a NEW prefix here and you are back to the same silence
     unless you safelist it.
@@ -45,9 +47,9 @@
   # One mapping, used twice: to look up the replier's existing vote on the parent and
   # to render the three radios. Two copies of "agree is 1" is one copy too many.
   stances = {
-    "agree" => {value: 1, colours: "border-agree fill-agree text-agree peer-checked:bg-agree"},
-    "neutral" => {value: 2, colours: "border-neutral fill-neutral text-neutral peer-checked:bg-neutral"},
-    "disagree" => {value: 3, colours: "border-disagree fill-disagree text-disagree peer-checked:bg-disagree"}
+    "agree" => {value: 1, colours: "border-agree text-agree peer-checked:bg-agree"},
+    "neutral" => {value: 2, colours: "border-neutral text-neutral peer-checked:bg-neutral"},
+    "disagree" => {value: 3, colours: "border-disagree text-disagree peer-checked:bg-disagree"}
   }
   default_value = stances.dig(parent.current_user_vote(logged_in: true, current_user_id: current_user.id), :value)
 %>
@@ -60,7 +62,7 @@
               checked: (default_value == spec[:value]),
               class: "sr-only peer",
               aria: {label: stance.capitalize} %>
-        <span class="w-12 h-12 rounded-full border-2 bg-white <%= spec[:colours] %> flex items-center justify-center shadow transition peer-checked:fill-white peer-checked:text-white">
+        <span class="w-12 h-12 rounded-full border-2 bg-white <%= spec[:colours] %> flex items-center justify-center shadow transition peer-checked:text-white">
           <%= stance_icon(stance, class: "w-4 h-4") %>
         </span>
       </label>
