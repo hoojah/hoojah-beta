@@ -1,9 +1,28 @@
 <%# Owner-only analytics dashboard (Slice 5, Part B). Aggregates only, off the
-    denormalized hujahs counters — no per-voter data anywhere. %>
+    denormalized hujahs counters — no per-voter data anywhere.
+
+    DESIGN SYSTEM (Slice 9, Task 4.7) — docs/design-system/components/analytics/*.prompt.md
+    for the two chips and the bars; readme.md VISUAL FOUNDATIONS for everything else.
+
+    The page title takes the product's page-title idiom, `text-lg font-medium mb-3`, the
+    same string `blocks/index`, `users/followers` and `users/following` already use. It
+    was `text-xl font-bold`: 20px is the token scale's single-hujah BODY size, and
+    VISUAL FOUNDATIONS puts weights at "medium for names/CTAs, semibold section heads,
+    bold rare" — a page title is neither of the rare cases. `text-black` came off with it
+    because `@layer base` already paints the body `--fg-body`, which IS `--color-black`.
+
+    The `gap-3` on the chip row is StatChip.prompt.md's "12px gap", stated once here
+    because `ui/_card` (and therefore `_stat`) owns no margin of its own.
+
+    The empty state is `ui/_empty_state` rather than the icon + sentence this file used to
+    hand-roll — the sixth and last of the six copies that partial was extracted from. Its
+    baked-in `p-3 bg-white` and `gap-1` reproduce what was here; what it drops is
+    `rounded`, per Card.prompt.md's "Never round a feed card". The sentence is unchanged
+    to the byte, and EmptyState.prompt.md quotes it as real product copy. %>
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
-  <h1 class="text-xl font-bold text-black mb-4">Your dashboard</h1>
+  <h1 class="text-lg font-medium mb-3">Your dashboard</h1>
 
   <div class="flex gap-3 mb-6">
     <%= render "stat", label: "Votes received", value: @analytics.total_votes_received %>
@@ -14,9 +33,6 @@
   <% if @analytics.distributions.any? %>
     <%= render partial: "distribution_bar", collection: @analytics.distributions, as: :dist %>
   <% else %>
-    <div class="flex items-center text-sm text-light-grey fill-light-grey p-3 bg-white rounded">
-      <%= lucide_icon("bar-chart-3", class: "w-4 h-4") %>
-      <span class="ml-1">You haven't posted any hoojahs yet</span>
-    </div>
+    <%= render "ui/empty_state", message: "You haven't posted any hoojahs yet", icon: "bar-chart-3" %>
   <% end %>
 </main>
