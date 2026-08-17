@@ -8,7 +8,7 @@
 ![Devise](https://img.shields.io/badge/Devise-auth-E9573F)
 ![Pundit](https://img.shields.io/badge/Pundit-authorization-4B7BEC)
 ![Action Cable](https://img.shields.io/badge/Action%20Cable-Solid%20Cable-9B59B6)
-![Tests](https://img.shields.io/badge/tests-273%20passing-brightgreen?logo=rspec&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-513%20passing-brightgreen?logo=rspec&logoColor=white)
 ![Code style](https://img.shields.io/badge/code_style-standard-brightgreen)
 ![Deploy](https://img.shields.io/badge/deploy-Kamal-663399)
 
@@ -21,11 +21,13 @@ on **Rails 8.1 / Ruby 3.4**, with **Devise** auth, **Pundit** authorization, **A
 https://beta.hoojah.my
 
 > **Status.** The "land everything" feature roadmap is **complete** — Social (follow /
-> Following feed / @mentions), Debate (MVP + spectator verdict + real-time + timeout),
-> Privacy + Analytics, Badges + Trending, Block, and Private accounts have all shipped.
-> Suite: **273 examples / 0 failures / 2 pending** (request + headless-Chrome system specs);
-> brakeman **0**; bundler-audit clean; StandardRB clean. Next up: **Project 3 — Hotwire
-> Native**. See `docs/superpowers/HANDOVER.md` for full project status.
+> Following feed / @mentions), Debate (MVP + spectator verdict + real-time + timeout +
+> named Opening/Counter/Response/Closing phases), Privacy + Analytics, Badges + Trending,
+> Block, and Private accounts have all shipped, and the **Hoojah Design System** is adopted
+> across all eight view families. Suite: **513 examples / 0 failures / 2 pending** (request +
+> headless-Chrome system specs); brakeman **0**; bundler-audit clean; StandardRB clean.
+> Next up: **Project 3 — Hotwire Native**. See `docs/superpowers/HANDOVER.md` for full
+> project status.
 
 ## Stack
 
@@ -85,7 +87,7 @@ alone will not rebuild CSS on change.
 ## Tests
 
 ```bash
-# full suite (request + system specs) — 273 examples, 0 failures, 2 pending
+# full suite (request + system specs) — 513 examples, 0 failures, 2 pending
 RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec
 
 # skip the headless-Chrome system specs for a faster inner loop
@@ -102,6 +104,8 @@ Quality gates (all green): **StandardRB** (`bundle exec standardrb`), **brakeman
 
 - **[`docs/FEATURES.md`](docs/FEATURES.md)** — screen-by-screen feature reference + privacy model.
 - `docs/superpowers/HANDOVER.md` — full project status/history + the deferred backlog (read first).
+- `docs/design-system/` — the design system, extracted from this codebase. Start at its `readme.md`,
+  then `MIRROR-NOTES.md`.
 - `docs/superpowers/ROADMAP-future-features.md` — the source feature roadmap.
 - `docs/superpowers/UPGRADE-LOG.md` — the Rails 6.0 → 8.1 upgrade record (per-hop).
 - `docs/superpowers/SECURITY-FINDINGS.md` — audit results and open security items.
@@ -109,7 +113,8 @@ Quality gates (all green): **StandardRB** (`bundle exec standardrb`), **brakeman
 
 ## Project status
 
-Project 2 (Hotwire) is **complete** — all 8 slices shipped (the full "land everything" roadmap).
-Next up is **Project 3 — Hotwire Native**. The per-slice record, deferred backlog, and carried-forward
+Project 2 (Hotwire) is **complete** — all 8 slices shipped (the full "land everything" roadmap),
+plus Slice 9 (design-system adoption + structured debate phases). Next up is **Project 3 — Hotwire
+Native**. The per-slice record, deferred backlog, and carried-forward
 tech debt live in [`docs/superpowers/HANDOVER.md`](docs/superpowers/HANDOVER.md); open security items in
 [`docs/superpowers/SECURITY-FINDINGS.md`](docs/superpowers/SECURITY-FINDINGS.md).

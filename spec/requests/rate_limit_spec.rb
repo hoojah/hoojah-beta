@@ -1,6 +1,20 @@
 require "rails_helper"
 
 RSpec.describe "Rate limiting", type: :request do
+  # Rack::Attack counts into a FIXED window, not a sliding one: the cache key is
+  # `name:discriminator:(Time.now.to_i / period)`. Every example here fires
+  # limit+1 requests in a loop and asserts the last one is throttled — so if the
+  # loop straddles a window boundary the counter resets mid-loop, the final
+  # request lands in a fresh window well under the limit, and the example fails
+  # with a 200/302. That is a real flake, observed once on the compose example
+  # (21 requests, each creating a Hujah and running its after_create_commit
+  # callbacks — the slowest loop in the file, so the widest straddle).
+  #
+  # Freezing time pins every request in one example to a single window, which is
+  # what these examples actually mean to assert. `freeze_time` with a block
+  # travels back on its own, so there is nothing to clean up.
+  around { |example| freeze_time { example.run } }
+
   before {
     Rack::Attack.enabled = true
     Rack::Attack.reset!

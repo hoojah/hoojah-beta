@@ -136,10 +136,26 @@ dark mode, essentially no animation.
 
 ## Tailwind gotchas — these have each caused a real bug here
 
-1. **Tailwind v4 scans the whole repo as text.** `docs/` and `spec/` were silently acting as
-   safelists until `@source not` excluded them (`app/assets/tailwind/application.css`). In prose and
-   comments write `bg-<stance>`, never a concrete class. Cheap check: md5 the built bundle before
-   and after a comment-only edit — it must not change.
+1. **Tailwind v4 scans the whole repo as text**, but **not uniformly — the extractors differ by file
+   type**, which Slice 9 established by experiment:
+   - **ERB `<%# … %>` comments ARE scanned.** A concrete class name in ERB prose compiles a real
+     rule. So does one in JS, YAML, SVG or Markdown.
+   - **Ruby `#` comments are NOT.** In `.rb` files it is specifically *string literals* that are
+     extracted — bare words and symbols are not, which is why `variant: :outline` never shipped a
+     rule despite appearing a dozen times.
+   - **The input CSS file is not scanned as a source at all**, so its own comments are safe.
+
+   So the "write `bg-<stance>`, never a concrete class" discipline is load-bearing **in ERB**, and
+   optional in Ruby comments. `docs/`, `spec/` and `app/assets/images` are `@source not`-excluded;
+   `README.md`, `CLAUDE.md` and `.yarn/releases/*.js` are **not**, and do contribute rules.
+
+   Two traps: **`@source not` paths resolve relative to the working directory, not the CSS file** —
+   build from the repo root or `docs/`/`spec/` are silently re-admitted. And **a comment describing a
+   class you just deleted will resurrect it**.
+
+   Cheap check: md5 the built bundle before and after a comment-only edit — it must not change. Pair
+   it with a **positive control** (append a comment naming an unused class, confirm the hash *moves*),
+   or a broken harness is indistinguishable from a clean result.
 2. **Interpolated classes must be safelisted.** Anything built by string interpolation
    (`bg-#{stance}`, `border-#{read_state}`, every `ds_button_classes` tone) needs an
    `@source inline(...)` entry, and the safelist covers the **bare** utility only —
