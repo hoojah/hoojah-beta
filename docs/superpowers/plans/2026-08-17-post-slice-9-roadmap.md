@@ -10,11 +10,12 @@ there and in `SECURITY-FINDINGS.md`.
 
 ## Do this first
 
-**Slice 10 (CI) starts immediately**, and two owner decisions get asked in parallel while it runs:
+**Slice 10 (CI) starts immediately.** Both gating owner decisions are now **answered** (2026-08-19),
+so nothing in this plan is blocked:
 
-1. **The secret-ballot public-counts question** (Slice 13 below). It gates that slice's shape and
-   nothing else, but it must be *decided* before real traffic — votes cast under one privacy regime
-   cannot be retroactively re-anonymized in users' minds.
+1. ~~**The secret-ballot public-counts question**~~ — **ANSWERED: option C**, the middle path. Below
+   k=5, show the total and the viewer's own stance but no breakdown; at ≥5 show the full split.
+   Applies to the HTML surfaces **and** `HujahSerializer`. Full shape in Slice 13 below.
 2. ~~**Does any legacy native/mobile client still hit `Api::V1` in production?**~~
    **ANSWERED 2026-08-19 by the owner: no legacy client hits `Api::V1` in production.**
    So the API-contract changes in this plan proceed as **breaking, not additive** — Slice 12's
@@ -128,31 +129,46 @@ rule, CI from Slice 10, and a pre-flight spec asserting no cross-model raw-integ
 
 ---
 
-## Slice 13 — Secret-ballot public counts (finding 2a) — **S**, gated on an owner decision
+## Slice 13 — Secret-ballot public counts (finding 2a) — **S** — ✅ DECIDED: **option C**
 
-**Goal:** close, or explicitly accept, the largest recorded secret-ballot gap — per-hoojah
-agree/neutral/disagree counts are public and unsuppressed at any N, which `/dashboard`'s k=5
-suppression does not touch.
+**Goal:** close the largest recorded secret-ballot gap — per-hoojah agree/neutral/disagree counts are
+public and unsuppressed at any N, which `/dashboard`'s k=5 suppression does not touch.
 
-This is a **product decision first.** Three options, framed rather than assumed:
+**Owner decision, 2026-08-19: option C, the middle path.** (A was accept-and-document; B was blanket
+k=5 suppression mirroring `/dashboard`.)
 
-- **A — accept and document.** Public results are arguably the product: Hoojah is a poll plus the
-  arguments behind it. The real leak is only at low N (one vote, plus the `new_vote` notification
-  timestamp, lets an owner infer an individual's stance). At beta scale, blanket k=5 suppression
-  would blank most cards and kill the feedback loop that makes a young platform feel alive.
-- **B — k=5 suppression on public surfaces**, mirroring `/dashboard`: below 5 votes show the total and
-  "not enough votes yet", no per-stance split. Consistent, small, strongest privacy posture.
-- **C — the middle path (recommended).** Below k=5 show the total *and the viewer's own stance* but no
-  breakdown; at ≥5 show the full split. Preserves the voting feedback loop while closing the low-N
-  inference vector, at the same size as B.
+### What C means concretely
 
-**Why here:** must be decided before real traffic; the implementation is small and independent, so it
-slots after the two contract-freezing slices and before native bakes the vote-display contract into a
-shell. **If the owner picks A, this slice collapses to a paragraph in `FEATURES.md` — that is a fine
-outcome; the deliverable is the decision on the record.**
+- **Below k=5 total votes:** show the **total vote count** and, for a signed-in viewer who has voted,
+  **their own stance** — but **no per-stance breakdown and no percentages**. An anonymous viewer, or a
+  signed-in one who has not voted, sees the total only.
+- **At ≥ k=5:** unchanged from today — the full agree/neutral/disagree split with percentages.
+- **k is `UserAnalytics::K` (5).** Share the existing constant; do **not** introduce a second one.
+  A future change to the privacy floor must move both surfaces together or neither.
 
-**Main risk:** none technical. The risk is *skipping* the decision and letting Project 3 encode
-today's behaviour by default.
+### Why C over A and B
+
+It closes the actual inference vector rather than the whole display. The vector is low-N attribution:
+at N=1 today, the hoojah owner sees a 100% single-stance breakdown, and pairing that with the
+`new_vote` notification's timestamp (an accepted residual since Slice 5 — it reveals *that* a vote
+landed and *when*, never *who*) narrows the voter to whoever was active. **C removes the breakdown at
+low N, so the owner learns a vote happened but not which way it went** — which is the part that
+matters. B closes the same vector but also blanks the total, so a fresh hoojah shows nothing useful at
+exactly the moment a voter most wants to see their vote register.
+
+### Scope — HTML *and* `Api::V1`, in the same slice
+
+The suppression must apply to **both** surfaces or the API becomes the bypass: `HujahSerializer`
+exposing raw `agree_count`/`neutral_count`/`disagree_count` would hand back precisely what the HTML
+view just withheld. Files: the `_vote_bars` family, the hoojah card and show surfaces, and
+`HujahSerializer`. Since there is no legacy API client (resolved above), the serializer's shape can
+change outright.
+
+**Main risk:** an inconsistent floor between the two surfaces. A request spec asserting that the API
+and the HTML agree at N=4 and N=5 is the guard, and it is the spec to write first.
+
+**Note:** `_distribution_bar` on `/dashboard` is **already** k=5-suppressed and is owner-only — do not
+touch it. This slice is about the *public* surfaces it was contrasted with.
 
 ---
 
