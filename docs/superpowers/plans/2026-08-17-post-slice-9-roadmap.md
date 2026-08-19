@@ -15,9 +15,13 @@ there and in `SECURITY-FINDINGS.md`.
 1. **The secret-ballot public-counts question** (Slice 13 below). It gates that slice's shape and
    nothing else, but it must be *decided* before real traffic — votes cast under one privacy regime
    cannot be retroactively re-anonymized in users' minds.
-2. **Does any legacy native/mobile client still hit `Api::V1` in production?** Every API-contract call
-   below assumes **no**. If the answer is yes, Slice 12's wire-format change becomes additive behind a
-   serializer shim; the ordering still holds.
+2. ~~**Does any legacy native/mobile client still hit `Api::V1` in production?**~~
+   **ANSWERED 2026-08-19 by the owner: no legacy client hits `Api::V1` in production.**
+   So the API-contract changes in this plan proceed as **breaking, not additive** — Slice 12's
+   stance enum may change the wire format from `1` to `"agree"` outright, and Slice 11's
+   `flag_params` `require` may change a malformed request's answer from 500 to 400, with no
+   serializer shim and no deprecation window. This is the cheap moment to spend that budget: the
+   React SPA is retired and no native client exists yet. **After Project 3 ships, it is gone.**
 
 **Project 3 (Hotwire Native) is NOT next. It is fourth.** The HANDOVER has said "before Project 3"
 about the same three items since Slice 1 (`rack-cors`, `require_master_key`, `Api::V1` parity), and
@@ -204,8 +208,8 @@ Slices 10–11.
 
 ## What would change this ordering
 
-- **A confirmed live legacy API client** → Slice 12's wire-format change becomes shimmed/additive
-  rather than breaking.
+- ~~**A confirmed live legacy API client**~~ — **resolved 2026-08-19: there is none.** The
+  wire-format change stays breaking. This is no longer an open variable.
 - **Real traffic arriving before CI lands** → swap 10 ↔ 11; the private-content API leak outranks
   enforcement.
 - **The owner declaring native the business priority regardless** → Slices 11 and 12 compress into one
