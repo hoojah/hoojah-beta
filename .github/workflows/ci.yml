@@ -163,10 +163,16 @@ jobs:
           # macOS fallbacks and already passes --no-sandbox, so this one variable is
           # the whole of the CI-specific browser wiring.
           CUPRITE_CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
-          # Documentation format so a hang names the example it hung ON. With the
-          # default progress dots the log ends in an anonymous row of periods and
-          # tells us nothing about where it stopped.
-          SPEC_OPTS: "--format documentation"
+          # Documentation format so a failure names the example. --fail-fast because
+          # the second CI attempt showed every example failing after ~50s each: 30 of
+          # those overran the job timeout, which killed RSpec before it could print
+          # its Failures section, so the log showed WHICH examples broke but never
+          # WHY. Stopping at the first one trades coverage for the error message,
+          # which is the thing we currently lack.
+          #
+          # TODO: drop --fail-fast once the CI browser failure is understood; it
+          # hides the 2nd..30th failures, which may not share a cause.
+          SPEC_OPTS: "--format documentation --fail-fast"
         run: bin/ci --only-system-specs
 
       - name: Upload Capybara failure screenshots
