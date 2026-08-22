@@ -25,27 +25,55 @@ All above are production/tooling only; test+dev suite stays green (24/0/2).
 
 ---
 
-## ⚠️ Deferred — owner decision required (pre-existing app-logic vulns, change API contract)
+## ⚠️ OPEN — the whole of it
 
-Ranked from the auditor. Each would alter behavior the React SPA currently relies on and/or the characterization specs.
+**Five items. Nothing else on this page is open.** Everything the 2026-08-04 audit deferred
+is closed and moved to the section below; the two later findings (L1, the rack-attack
+throttle bypass) are closed too. Read this table and stop.
 
-| ID | Severity | Issue | File | Recommended fix |
-|----|----------|-------|------|-----------------|
-| C1 | Critical | `render json: @user` leaks `password_digest` + `email` on every login/`is_logged_in?`/signup | `sessions_controller.rb:9,24`, `users_controller.rb:37` | Route all user responses through `UserSerializer`/`as_json(only:[…])` |
-| C2 | Critical | `Api::V1::VotesController` has no auth; trusts `params[:user_id]` — vote as anyone | `api/v1/votes_controller.rb` | `before_action :require_login`; use `current_user.id` |
-| C3 | Critical | Notifications `update`/`destroy` IDOR (no auth, `find(params[:id])`) | `api/v1/notifications_controller.rb:36-38` | Scope to `current_user.notifications`; require login |
-| C4 | Critical | `hujahs#destroy` unauthenticated + no ownership check | `api/v1/hujahs_controller.rb:31-34` | Require login + `hujah.user_id == current_user.id` |
-| C5 | Critical | Legacy non-namespaced `VotesController` + `resources :votes` — unauth CRUD (dead scaffold) | `votes_controller.rb`, `routes.rb:2` | Delete controller + route |
-| H1 | High | CSRF disabled app-wide (`skip_before_action :verify_authenticity_token`) | `application_controller.rb:3` | `protect_from_forgery with: :null_session` + explicit `same_site` |
-| H4 | High | No shared auth enforcement; `current_user` truthiness by accident (500 not 401) | API controllers | Shared `require_login` + Pundit/CanCanCan |
-| H6 | High | `:id` permitted in `user_params` (PK mass-assignment) | `api/v1/users_controller.rb:19` | Drop `:id`, `:user` from permit |
-| M1 | ~~Med~~ **Low** | CORS origin hardcoded `localhost:3000` with `credentials:true` | `initializers/cors.rb:3` | Drive from `ENV["FRONTEND_ORIGIN"]`, or delete — **re-triaged 2026-08-17, see below** |
-| M4 | Med | No CSP (app serves SPA shell) | `content_security_policy.rb` | Define policy — **do in Project 2** (front-end rework) |
-| M6 | Med | No min password length | `models/user.rb` | `validates :password, length: {minimum: 8}, allow_nil: true` |
-| M7 | Med | `link` field unsanitized (stored-XSS risk if rendered as href) | `users_controller.rb`, `user.rb` | `validates :link, format: {with: %r{\Ahttps?://}}, allow_blank: true` |
-| L1 | ~~Low~~ **✅ FIXED** | create actions use `.create` + `if record` (always truthy) → failures reported as success | ~~`hujahs`/`flags` controllers~~ → last holdout was `api/v1/flags_controller.rb:6` | Fixed 2026-08-17 in `fc3afa7`: `.new` + `if flag.save`, failure now `:unprocessable_content`. **See below** |
-| L3 | Low | Invalid login returns HTTP 200 w/ `{status:401}` in body | `sessions_controller.rb:13-16` | Return real `status: :unauthorized` |
-| L4 | Low | `config.require_master_key` commented in production | `production.rb:19` | Enable once the deploy provides `RAILS_MASTER_KEY` |
+| ID | Severity | Issue | Where it lands | State |
+|----|----------|-------|----------------|-------|
+| **`Api::V1` read parity** | High-impact, live traffic | Feed / children / user endpoints do not filter `hidden_user_ids`, and `HujahSerializer#children`/`parent` plus the notifications endpoint do not enforce private-account visibility. **A private author's reply is reachable today through a public hujah's API children.** Slice 7b hardened the top-level index/show/user endpoints and explicitly deferred serializer-nested content. | **Slice 11** | Open. The only item here with live-traffic exposure rather than pre-native-prep exposure. |
+| M1 | ~~Med~~ **Low** | CORS origin hardcoded `localhost:3000` with `credentials: true` (`initializers/cors.rb:3`) | **Slice 11** | Open, **decided: delete the file outright.** Re-triaged Med → Low on 2026-08-17 — see the reasoning further down; it is dead config from the retired React dev server, and native clients are not CORS-gated either way. |
+| **`flag_params`** | Contract decision | `Api::V1::FlagsController#flag_params` is `params[:flag].permit(...)` with **no `require`**, so a POST with no `flag` key raises `NoMethodError` on nil → 500, before `authorize` runs. The HTML sibling already uses `require`. | **Slice 11** | Open, **decided 2026-08-19: adopt `require`** (→ 400, not 500), as a breaking change. The owner confirmed no legacy native client hits `Api::V1`, so there is no deprecation window to honour. |
+| **2a** | Product/privacy | Public vote counts vs the secret ballot — a small enough electorate lets an observer infer individual votes from the published breakdown. | **Slice 13** | Open, **decided 2026-08-19: option C.** Below k=5, show the total and the viewer's own stance but no breakdown; at ≥5 show the full split. Applies to the HTML surfaces **and** `HujahSerializer`. |
+| L4 | Low | `config.require_master_key` commented out in `production.rb:19` | Deploy track, **not a slice** | Open by design. Gated on the deploy providing `RAILS_MASTER_KEY`, not on any code change here. Enabling it before the key exists turns a boot into a crash. |
+
+---
+
+## ✅ Closed — the 2026-08-04 deferrals, reconciled in Slice 10
+
+Twelve of the rows this page listed as "deferred — owner decision required" were fixed during
+Project 2, mostly as a side effect of the Devise and Pundit migrations rather than as a
+dedicated security pass. They stayed *listed* as open for months, which defeats the purpose of
+a ledger: the genuinely-open set above was unreadable underneath them.
+
+The independent confirmation is the **2026-08-17 audit below: no findings at Critical or High,
+anywhere.** Every row here was Critical, High or Medium. The `Closed by` column is the primary
+evidence — each SHA was traced with `git log -S` against the exact file and line the original
+auditor cited, not inferred from a commit subject.
+
+| ID | Severity | Issue | Closed by | What actually changed |
+|----|----------|-------|-----------|------------------------|
+| C1 | Critical | `render json: @user` leaks `password_digest` + `email` on every login / `is_logged_in?` / signup (`sessions_controller.rb:9,24`, `users_controller.rb:37`) | `691cbb4` + `28c30d4` | Both leaking controllers were **deleted, not patched**. `691cbb4` removed `SessionsController` when `devise_for` took over `/login`; `28c30d4` removed the orphaned top-level `UsersController`. `Api::V1::UsersController` was never part of C1 — it has gone through `UserSerializer` since 2020. Locked by `b703896`, whose sessions spec asserts no digest reaches the response. |
+| C2 | Critical | `Api::V1::VotesController` has no auth; trusts `params[:user_id]` — vote as anyone | `9db1f07` | Adds `before_action :authenticate_user!`, drops `:user_id` from `vote_params`, derives the voter from `current_user`. |
+| C3 | Critical | Notifications `update`/`destroy` IDOR — no auth, unscoped `find(params[:id])` | `e53f945` | Closed via Pundit rather than by rescoping the finder: `authenticate_user!` + `authorize notification` on both actions, `policy_scope(Notification)` on index, and the by-username `find_user` lookup removed. Spec: `971c649`. |
+| C4 | Critical | `hujahs#destroy` unauthenticated + no ownership check | `74d8fc2` | `authenticate_user!` plus `require_owner!` (`head :forbidden unless hujah&.user_id == current_user.id`). |
+| C5 | Critical | Legacy non-namespaced `VotesController` + `resources :votes` — unauthenticated CRUD (dead scaffold) | `691cbb4` | The 74-line scaffold deleted and `resources :votes` replaced by `devise_for :users` in the same commit that killed `SessionsController`. |
+| H1 | High | CSRF disabled app-wide (`skip_before_action :verify_authenticity_token`) | `691cbb4` | Strips the skip and the hand-rolled session helpers from `ApplicationController`. The paired JSON strategy landed one commit later in `d39d9a3` (`Api::V1::BaseController` with `null_session`) — which is the CSRF split the 2026-08-17 audit re-verified as invariant 1. |
+| H4 | High | No shared auth enforcement; `current_user` truthiness by accident (500, not 401) | `d20ea6e` + `e53f945` | `d20ea6e` adds `include Pundit::Authorization`, `after_action :verify_authorized` (Devise-exempt) and `ApplicationPolicy`; `e53f945` applies `authorize`/`skip_authorization` across every controller. This is why the codebase now *cannot* ship an unauthorized action — it raises. |
+| H6 | High | `:id` permitted in `user_params` (PK mass-assignment) | `28c30d4` | `permit(:username, …, :id, :user)` → an explicit attribute list, plus a regression spec asserting an injected `:id` cannot reassign the primary key. |
+| M4 | Med | No CSP | `581d9ac` | Replaces the fully-commented-out default initializer with a real policy (default/script/style/img/connect/frame-src) and a nonce generator. Follow-up `dcc9303` fixed the nonce (`SecureRandom`, not `session.id`, which was blank for first-time anonymous visitors). |
+| M6 | Med | No minimum password length | `4e5fd96` (+ `a1ed040`) | `config.password_length = 8..128` in the Devise initializer. Enforcement needs `:validatable`, which arrives with the User model's Devise migration in `a1ed040`. |
+| M7 | Med | `link` field unsanitized (stored-XSS risk if rendered as an href) | `f060284` → `a262f26` | `f060284` adds `validates :link, format: {with: %r{\Ahttps?://}i}, allow_blank: true`; `a262f26` anchors it end-to-end (`%r{\Ahttps?://\S+\z}i`) so a trailing newline cannot smuggle a second line past the matcher. `a262f26` is the commit that took brakeman to 0. |
+| L3 | Low | Invalid login returns HTTP 200 with `{status: 401}` in the body | `691cbb4` | Died with `SessionsController`; Devise's `sessions#create` returns a real 401. `b703896` rewrote the spec to assert it. |
+
+Two later findings, both closed, kept here for the same reason:
+
+| ID | Severity | Issue | Closed by |
+|----|----------|-------|-----------|
+| L1 | Low | create actions use `.create` + `if record` (always truthy) → failures reported as success. Last holdout `api/v1/flags_controller.rb:6` | `fc3afa7` — `.new` + `if flag.save`; failure is now `:unprocessable_content`. Detail below. |
+| — | High | Every rack-attack throttle bypassable via a `.format` suffix; `signup/ip` never fired at all | `99f7898` — one shared `throttled_path` helper. Detail below. |
 
 ---
 
@@ -182,7 +210,28 @@ HTML sibling (`app/controllers/flags_controller.rb`) already uses `require`. Lef
 changing it (`require` → 400, or `fetch(:flag, {})` → 422) alters the API's answer to a malformed
 request, which is a contract decision for the native-client surface rather than a bug fix.
 
-### Process gap — no CI
+> **Decided 2026-08-19 — adopt `require`.** The owner confirmed no legacy native client hits
+> `Api::V1` in production, so the contract can change as a **breaking** change with no serializer
+> shim and no deprecation window. Implementation rides Slice 11. Still listed in the OPEN table at
+> the top until it ships.
 
-There is no `.github/workflows/` and no `bin/ci`. brakeman, bundler-audit and standardrb are run
-manually per `CLAUDE.md`. Every gate is green by convention, not by enforcement. Worth a decision.
+### Process gap — no CI — ✅ CLOSED in Slice 10 (2026-08-22)
+
+**Was:** no `.github/workflows/` and no `bin/ci`; brakeman, bundler-audit and standardrb run by
+hand per `CLAUDE.md`. Every gate green by convention, not enforcement — and the cost was
+demonstrated, not theoretical: a wall-clock-dependent spec flake survived **three consecutive green
+full-suite runs** before being caught by chance.
+
+**Now:** `bin/ci` runs standardrb → brakeman → bundler-audit → `db:test:prepare` →
+`tailwindcss:build` → RSpec, fail-fast, and is the definition of record.
+`.github/workflows/ci.yml` calls it on every push to `master` and every pull request, so the two
+cannot drift. Two jobs: `gates` (blocking) and `system` (headless-Chrome examples,
+**`continue-on-error: true` for one week only** — the workflow carries a dated TODO to remove it,
+because a permanently non-blocking check is worse than no check, it merely looks like one).
+
+**Related, found while building it:** the suite could not pass on a clean checkout at all.
+`app/assets/builds/tailwind.css` is gitignored and nothing regenerated it before RSpec, so the
+layout's `stylesheet_link_tag "tailwind"` raised `Propshaft::MissingAssetError` and every
+page-rendering system spec failed. Invisible locally, where `bin/dev` leaves the file behind.
+`bin/ci` now builds it. Not a security finding, but exactly the class of thing only a
+build-from-empty-tree catches.

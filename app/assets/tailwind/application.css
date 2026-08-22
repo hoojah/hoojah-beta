@@ -53,6 +53,28 @@
 @source not "../../../app/assets/images";
 
 /*
+ * Keep the build plumbing out of the scanner. Added in Slice 10, when adding
+ * `.github/workflows/ci.yml` and `bin/ci` moved the compiled bundle's md5 — measured,
+ * not assumed. Two phantom rules appeared:
+ *
+ *   - `.contents` (display:contents), from the workflow's `permissions: contents: read`
+ *     — a *structurally required* YAML key, so there is no prose to reword away. It is
+ *     also the exact rule the `@source not spec` comment above records as having had no
+ *     source in `app/` either.
+ *   - `.invisible` (visibility:hidden), from the English word "invisible" in a bin/ci
+ *     comment. Extensionless shell scripts are scanned like any other text file, which
+ *     is not obvious from anywhere.
+ *
+ * A dot-directory is NOT excluded automatically — that was the assumption that had to
+ * be tested. Same principle as the three lines above: CI configuration and executable
+ * stubs are not markup, nobody renders them, and they must not decide what CSS every
+ * visitor downloads. This also means a future workflow or bin/ script cannot silently
+ * reintroduce the problem.
+ */
+@source not "../../../.github";
+@source not "../../../bin";
+
+/*
  * TOMBSTONE, Slice 9 — there is no `fill-<tone>` utility anywhere in `app/` any
  * more, and the whole family was removed here at the same time. The removal was
  * provably pixel-identical, which is worth writing down so nobody "restores" it:

@@ -1,0 +1,183 @@
+# CI for Hoojah — the enforcement half of `bin/ci`.
+#
+# The gate list is deliberately NOT repeated here. `bin/ci` is the definition of
+# record and this workflow just calls it, so a gate cannot be added locally and
+# forgotten on CI, or tightened on CI and left loose locally. Read bin/ci's header
+# for what each gate is and why it sits where it does.
+#
+# ---------------------------------------------------------------------------
+# WORKING DIRECTORY — do not add a `working-directory:` to any step in this file.
+#
+# Tailwind v4 resolves the `@source not` exclusions in
+# app/assets/tailwind/application.css relative to the PROCESS WORKING DIRECTORY, not
+# relative to the CSS file. Slice 9 established this by experiment: build from
+# anywhere other than the repository root and `docs/` and `spec/` are silently
+# re-admitted to the scan, adding ~14 phantom rules to the bundle — rules the
+# design-token specs would then assert against and pass. Every step below runs at the
+# checkout root ($GITHUB_WORKSPACE), and bin/ci `cd`s there itself as a second guard.
+# ---------------------------------------------------------------------------
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  # A newer push to the same ref makes the older run's answer irrelevant.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # =========================================================================
+  # Blocking. Everything except the headless-Chrome examples.
+  # =========================================================================
+  gates:
+    name: Gates — standardrb, brakeman, bundler-audit, specs
+    runs-on: ubuntu-latest
+    # A hung job otherwise runs to GitHub's 6-hour default, burning minutes and
+    # reading as "still running" rather than "broken". Local full run is ~5min.
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        # Matches the local major version (Postgres 18), so a CI-only failure is a
+        # real difference and not version skew. `18` is a live tag on Docker Hub.
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hoojah_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      RAILS_ENV: test
+      # config/database.yml's `test:` entry carries no host, username or password on
+      # purpose — locally it connects as the OS user. Rails merges DATABASE_URL over
+      # that entry (the URL wins), so pointing at the service container is an env var
+      # here and NOT a change to the yml, which would alter every developer's local
+      # connection to get at a CI-only need.
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/hoojah_test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          # Reads the pin from .ruby-version — the same file mise.toml agrees with, so
+          # there is one place to bump Ruby. bundler-cache runs bundle install and
+          # caches the result keyed on Gemfile.lock.
+          #
+          # Gemfile.lock carries an explicit `x86_64-linux` platform (added in Slice 10
+          # via `bundle lock --add-platform`). Without it, bundler cannot resolve the
+          # precompiled linux variants of nokogiri / pg / google-protobuf /
+          # tailwindcss-ruby on this runner. If you ever move to an arm64 runner, add
+          # `aarch64-linux` the same way.
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: bin/ci --skip-system-specs
+        run: bin/ci --skip-system-specs
+
+  # =========================================================================
+  # NON-BLOCKING FOR NOW. Read this before deleting anything.
+  #
+  # These are ~30 Cuprite/headless-Chrome examples. Their timing on CI hardware is
+  # not the timing on the machine they were written on, and a flake here would block
+  # every merge on day one — which historically ends with someone disabling the whole
+  # workflow rather than the one job. So they run, they report, and they do not gate.
+  #
+  # >>> TODO(remove after a week of green runs — target 2026-08-29): delete the
+  # >>> `continue-on-error: true` line below and this comment block. If nobody does,
+  # >>> this job is decorative: a permanently non-blocking check is the same as no
+  # >>> check at all, and worse, it looks like one. If it is still flaking on that
+  # >>> date, fix the flake or delete the job — do not leave it in this state.
+  # =========================================================================
+  system:
+    name: System specs (headless Chrome) — non-blocking, see comment
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    # These take ~42s locally. The first CI attempt hung inside the spec run and
+    # sat for 21 minutes before being cancelled by hand — with no timeout it would
+    # have run for six hours. 15 minutes is generous for a 42-second suite and
+    # turns a hang into a log we can read.
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hoojah_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/hoojah_test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - id: chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+          install-dependencies: true
+
+      # Diagnostics, not ceremony. The first CI attempt hung inside the spec run
+      # with Chrome installed successfully, so the next question is whether the
+      # binary this action resolved is actually launchable and what shared memory
+      # it has to work with — /dev/shm is the classic headless-Chrome hang.
+      - name: Chrome diagnostics
+        run: |
+          echo "resolved path: ${{ steps.chrome.outputs.chrome-path }}"
+          "${{ steps.chrome.outputs.chrome-path }}" --version || echo "!! binary would not report a version"
+          echo "nproc: $(nproc)"
+          df -h /dev/shm || true
+
+      - name: bin/ci --only-system-specs
+        env:
+          # spec/support/capybara.rb prefers CUPRITE_CHROME_PATH over its macOS
+          # fallbacks and passes --no-sandbox, so this one variable is the whole of
+          # the CI-specific browser wiring. Note "passes --no-sandbox" only became
+          # TRUE in this slice: `driven_by :cuprite` had been discarding it, which
+          # is exactly why the first CI run could not start Chrome. See the header
+          # of spec/support/capybara.rb and spec/system/cuprite_driver_spec.rb.
+          CUPRITE_CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          # Documentation format so a failure names the example rather than leaving
+          # the log ending in an anonymous row of progress dots. (--fail-fast was
+          # here while the browser failure was being diagnosed; the cause is now
+          # understood and fixed in spec/support/capybara.rb, so all 30 run again.)
+          SPEC_OPTS: "--format documentation"
+        run: bin/ci --only-system-specs
+
+      - name: Upload Capybara failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: capybara-failures
+          path: tmp/capybara
+          if-no-files-found: ignore
+          retention-days: 7
