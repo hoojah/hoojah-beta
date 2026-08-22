@@ -13,8 +13,11 @@ there and in `SECURITY-FINDINGS.md`.
 **Slice 10 (CI) is ✅ DONE** — merged as PR #1 (`7e3a99f`) on 2026-08-22. Both jobs green: gates in
 4m40s, system specs 33/0 in 1m30s. Its first act was to find a real latent defect (see that section).
 
-**Next up is Slice 10b (Coolify deploy readiness)**, added 2026-08-22 when the owner confirmed the
-deploy target. It leads with a **P0: the app cannot boot in production at all today.**
+**Slice 10b (Coolify deploy readiness) is ✅ DONE** — merged as PR #2 (`daeab4a`) on 2026-08-22, CI
+green. It led with a P0 (the app could not boot in production at all) and turned up two more real
+problems on the way; see that section.
+
+**Next up is Slice 11 (API hardening).** The one open item with live-traffic exposure is there.
 
 Both gating owner decisions are **answered** (2026-08-19), so nothing in this plan is blocked:
 
@@ -89,10 +92,62 @@ run system specs as a separate non-blocking job for the first week, promote once
 
 ---
 
-## Slice 10b — Coolify deploy readiness — **M**
+## Slice 10b — Coolify deploy readiness — **M** — ✅ DONE (PR #2, `daeab4a`)
 
 **Goal:** the app builds, boots and serves on Coolify. Supersedes the "parallel owner track" below,
 which was written around Kamal.
+
+> ### What shipped, and two problems found on the way
+>
+> All seven items below landed. `bin/ci` → **536 / 0 / 0**, brakeman 0, and the image **built and ran**
+> locally: container reports `healthy`, `/` returns 200 with a real DB round-trip, `bin/jobs` starts
+> the Solid Queue supervisor from the same image. The `/up` host-authorization exclusion was proved
+> with a control — `Host: 10.42.0.7` gets **200 on `/up` and 403 on `/`** with the exclusion, and
+> **403 on `/up`** without it. `force_ssl` turned out **not** to need an `ssl_options` exclusion:
+> `assume_ssl` marks every request HTTPS unconditionally, so it never redirects in this deployment,
+> and adding one would have been dead config.
+>
+> **The database collapse needed far more than repointing URLs, and the failure mode was silent.**
+> `db/{cache,queue,cable}_migrate` did not exist — only schema *dumps*. Rails loads a config's dump
+> only when `schema_migrations` is absent from the target database, so once all four share one
+> database the primary creates that table first and the other three are **skipped without error** —
+> the app would have deployed with **zero `solid_*` tables**. The dumps are now real migrations at the
+> paths `database.yml` already declared, with `force: :cascade` removed: that is a dump artifact which
+> would drop populated tables, **including enqueued jobs**, on any re-run.
+>
+> **`db/seeds.rb` would have created live accounts with a published password.** It creates
+> login-capable users sharing `PASSWORD = "1234567890"`, including the official `@hoojahhq` handle —
+> and `db:prepare` runs seeds whenever it initializes a database, which is the most obvious first
+> command on a fresh deploy. Now guarded with an `abort` in production, with a seed-free bootstrap
+> (`db:schema:load:primary` + `db:migrate`) documented in the README. This is why
+> `bin/docker-entrypoint` deliberately does **not** run `db:prepare`, unlike Rails 8's generated
+> entrypoint.
+>
+> **Thruster over plain Puma**, but not for the reason first assumed. The initial rationale — "Thruster
+> serves `public/` so `RAILS_SERVE_STATIC_FILES` can't be forgotten" — was measured and found false:
+> Thruster proxies *then* caches, so with `public_file_server.enabled` false it faithfully cached a
+> **404** for the stylesheet. It stays for gzip, an HTTP cache and X-Sendfile off Puma's threads, and
+> the env var is baked into the image instead.
+>
+> ### ⚠️ Still blocking the first real deploy — owner actions
+>
+> - **`config/master.key` does not exist** anywhere — not locally. `credentials.yml.enc` is committed
+>   and useless without it, so the key must be recovered or the credentials regenerated.
+>   `RAILS_MASTER_KEY` is required env, so this blocks deploy. Enabling
+>   `config.require_master_key` (**ledger L4**) is the last step of the first successful deploy.
+> - **`Gemfile.lock` has `x86_64-linux` but not `aarch64-linux`.** The image was built under QEMU on
+>   Apple Silicon. If Coolify runs on ARM the build cannot resolve platform gems — fix with a
+>   committed `bundle lock --add-platform aarch64-linux`.
+>
+> ### What remains unproven until a real instance exists
+>
+> A Dockerfile that builds locally is not evidence Coolify runs it. Untested: that Coolify picks the
+> Dockerfile over Nixpacks and maps `PORT` as assumed; a managed-Postgres `DATABASE_URL` with TLS
+> params and role permissions (the collapsed layout needs CREATE TABLE on the one database); the
+> amd64 image on real amd64 hardware; the worker as a separate managed service; and — **watch this
+> one first** — **Action Cable's WebSocket upgrade through Coolify's proxy**, which is untested
+> entirely and drives real-time debate turns. It is the most likely first-deploy surprise now that
+> CSS is covered.
 
 **The deploy target is Coolify**, not Kamal (owner, 2026-08-22). That changes the work: Coolify builds
 from git (Dockerfile or Nixpacks) and fronts containers with its own proxy, so `config/deploy.yml` is

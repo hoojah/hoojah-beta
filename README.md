@@ -26,8 +26,13 @@ https://beta.hoojah.my
 > Block, and Private accounts have all shipped, and the **Hoojah Design System** is adopted
 > across all eight view families. Suite: **536 examples / 0 failures / 0 pending** (request +
 > headless-Chrome system specs); brakeman **0**; bundler-audit clean; StandardRB clean.
-> Next up: **Project 3 — Hotwire Native**. See `docs/superpowers/HANDOVER.md` for full
-> project status.
+> CI enforces every gate on each PR (Slice 10), and the app is deployable to Coolify
+> (Slice 10b). Next up: **Slice 11 — API hardening**, then the stance-domain unification
+> and the secret-ballot decision. **Project 3 (Hotwire Native) is deliberately fourth** —
+> everything that changes the API contract or hardens its surface goes first, because
+> native clients bake contracts in. See
+> [`docs/superpowers/plans/2026-08-17-post-slice-9-roadmap.md`](docs/superpowers/plans/2026-08-17-post-slice-9-roadmap.md)
+> for the sequence and `docs/superpowers/HANDOVER.md` for full project status.
 
 ## Stack
 
@@ -194,7 +199,17 @@ Quality gates (all green): **StandardRB** (`bundle exec standardrb`), **brakeman
 ## Project status
 
 Project 2 (Hotwire) is **complete** — all 8 slices shipped (the full "land everything" roadmap),
-plus Slice 9 (design-system adoption + structured debate phases). Next up is **Project 3 — Hotwire
-Native**. The per-slice record, deferred backlog, and carried-forward
-tech debt live in [`docs/superpowers/HANDOVER.md`](docs/superpowers/HANDOVER.md); open security items in
+plus Slice 9 (design system + structured debate phases), Slice 10 (CI) and Slice 10b (Coolify deploy
+readiness).
+
+The sequence from here is in
+[`docs/superpowers/plans/2026-08-17-post-slice-9-roadmap.md`](docs/superpowers/plans/2026-08-17-post-slice-9-roadmap.md):
+**11 — API hardening**, **12 — stance-domain unification** (array→scalar then enum, one slice),
+**13 — the secret-ballot decision** (option C, decided), then **Project 3 — Hotwire Native**. Project 3
+is fourth on purpose: the items the HANDOVER has flagged as "before Project 3" since Slice 1 are still
+open, and the API's stance wire format is about to change — native clients bake contracts in, so
+everything that changes or hardens the contract goes first.
+
+The per-slice record, deferred backlog, and carried-forward tech debt live in
+[`docs/superpowers/HANDOVER.md`](docs/superpowers/HANDOVER.md); open security items in
 [`docs/superpowers/SECURITY-FINDINGS.md`](docs/superpowers/SECURITY-FINDINGS.md).
