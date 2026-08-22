@@ -10,8 +10,13 @@ there and in `SECURITY-FINDINGS.md`.
 
 ## Do this first
 
-**Slice 10 (CI) starts immediately.** Both gating owner decisions are now **answered** (2026-08-19),
-so nothing in this plan is blocked:
+**Slice 10 (CI) is ✅ DONE** — merged as PR #1 (`7e3a99f`) on 2026-08-22. Both jobs green: gates in
+4m40s, system specs 33/0 in 1m30s. Its first act was to find a real latent defect (see that section).
+
+**Next up is Slice 10b (Coolify deploy readiness)**, added 2026-08-22 when the owner confirmed the
+deploy target. It leads with a **P0: the app cannot boot in production at all today.**
+
+Both gating owner decisions are **answered** (2026-08-19), so nothing in this plan is blocked:
 
 1. ~~**The secret-ballot public-counts question**~~ — **ANSWERED: option C**, the middle path. Below
    k=5, show the total and the viewer's own stance but no breakdown; at ≥5 show the full split.
@@ -33,9 +38,28 @@ ships standalone value rather than merely clearing the runway.
 
 ---
 
-## Slice 10 — CI: green by enforcement, not convention — **S**
+## Slice 10 — CI: green by enforcement, not convention — **S** — ✅ DONE (PR #1, `7e3a99f`)
 
 **Goal:** every gate that has been green by hand becomes a merge-blocking check.
+
+> **What it found on day one.** CI's first run failed the system-spec job, and the cause was not CI.
+> `driven_by :cuprite` does not merely select a registered driver — Rails'
+> `ActionDispatch::SystemTesting::Driver` lists `:cuprite` as registerable alongside `:selenium`, so it
+> **re-registers** the name with its own options and discards everything
+> `Capybara.register_driver(:cuprite)` set. Measured before/after by reading the live driver's options
+> inside a `js: true` example: `process_timeout` nil→20, `timeout` nil→15, `url_blacklist` 0→5 entries,
+> and `--no-sandbox` absent→present. So the browser path, both timeouts, the window size and the whole
+> Drift/Cloudinary blacklist had been **dead for the life of the suite** — invisible on macOS, fatal on
+> Linux, where Chrome cannot start without the sandbox flag. `spec/system/cuprite_driver_spec.rb` now
+> guards it. Two corollaries worth remembering: the `url_blacklist` that Slice 2's comments credit with
+> fixing intermittent `Ferrum::PendingConnectionsError` **has never been in effect** (the layout guard
+> skipping those scripts in test was doing all the work), and the suite **could not pass on a clean
+> checkout** because nothing rebuilt the gitignored Tailwind bundle before RSpec.
+>
+> Two things now on a clock, both dated in the YAML: the system job's `continue-on-error: true`
+> (target 2026-08-29 — a permanently non-blocking check is worse than none because it looks like one),
+> and prosopite's **146 N+1 reports**, concentrated in `debate.rb:213/220/221`, `debate_policy.rb:8`,
+> `hujahs_controller.rb:66`.
 
 - `bin/ci` — one script running the canonical gates in order: `standardrb`, `brakeman -q`,
   `bundler-audit check --update`, `bin/rails db:test:prepare`, then the full suite with
@@ -62,6 +86,91 @@ constraint has been missing.
 
 **Main risk:** system specs flaking on CI hardware — Chrome timing differs from this Mac. Mitigation:
 run system specs as a separate non-blocking job for the first week, promote once stable.
+
+---
+
+## Slice 10b — Coolify deploy readiness — **M**
+
+**Goal:** the app builds, boots and serves on Coolify. Supersedes the "parallel owner track" below,
+which was written around Kamal.
+
+**The deploy target is Coolify**, not Kamal (owner, 2026-08-22). That changes the work: Coolify builds
+from git (Dockerfile or Nixpacks) and fronts containers with its own proxy, so `config/deploy.yml` is
+now **dead config, not placeholders to fill in**.
+
+### ⚠️ P0 — the app cannot boot in production today
+
+Found 2026-08-22 while probing this slice, and it is not a Coolify problem — it is a repo problem
+Coolify will hit on its first build:
+
+```
+$ RAILS_ENV=production SECRET_KEY_BASE_DUMMY=1 bin/rails assets:precompile
+NameError: uninitialized constant StrongMigrations
+  config/initializers/strong_migrations.rb:2
+```
+
+`strong_migrations` is in `group :development, :test` in the Gemfile, but its initializer references
+the constant **unconditionally**. In production the gem is absent, so `config/environment.rb` raises
+and **nothing boots** — not the server, not `assets:precompile`, not `db:migrate`. The app has almost
+certainly never booted in production from this repo, which is consistent with `deploy.yml` having
+stayed placeholders.
+
+Fix: wrap the initializer body in `if defined?(StrongMigrations)`. **Verified** — with that guard,
+`bin/rails runner` prints BOOT OK in production and `assets:precompile` completes, emitting the
+23,767-byte Tailwind bundle. Do this first; every other item here is untestable until it lands.
+
+### The rest, in build order
+
+1. **A `Dockerfile`.** There isn't one — this app was upgraded from Rails 6 and never got the one
+   `rails new` generates on Rails 8. Write it rather than relying on Nixpacks autodetection, because
+   the build must run `assets:precompile` and Nixpacks has no reason to know that. **Verified good
+   news:** the `tailwindcss:build` hook into `assets:precompile` works, so a correct Dockerfile gets
+   the CSS for free. Use `SECRET_KEY_BASE_DUMMY=1` for the build step (the real key is a runtime
+   secret). `bootsnap` is already in the Gemfile, so precompile it. Multi-stage, non-root runtime user.
+   > **If this is skipped, the app deploys with no CSS at all.** `app/assets/builds/tailwind.css` is
+   > gitignored and nothing rebuilds it at boot — that is the single most likely way the first deploy
+   > looks broken while appearing to succeed.
+2. **A health endpoint.** `config/routes.rb` has **no `/up`** — Rails 8 ships
+   `get "up" => "rails/health#show"` but this app predates it. Coolify uses a health check to decide a
+   container is live; without one it either never marks the deploy healthy or marks it healthy
+   instantly and wrongly. Add the route. Note it must be reachable **before** the `config.hosts`
+   allowlist and `force_ssl` interfere — test it, do not assume.
+3. **Decide the Solid\* database layout.** `config/database.yml` production declares **four** DBs —
+   `hoojah_production` plus `_cache`, `_queue`, `_cable` — each with `username: hoojah` and
+   `HOOJAH_DATABASE_PASSWORD`. Coolify typically provisions **one** Postgres and hands you a
+   `DATABASE_URL`. Two options: provision four databases on the one server, or collapse Solid
+   Cache/Queue/Cable onto the primary. **Recommend collapsing at beta scale** — one connection string,
+   one backup, and `solid_cable`'s `polling_interval: 0.1.seconds` is a small load. Whichever is
+   chosen, the `migrations_paths` (`db/cache_migrate` etc.) must still be run.
+4. **Env inventory.** Required: `RAILS_ENV=production`, `RAILS_MASTER_KEY`, `DATABASE_URL` (or the
+   four), `APP_HOST` (feeds `config.hosts <<`, otherwise every request is blocked), and
+   `RAILS_LOG_TO_STDOUT=1` so Coolify captures logs. Optional: `RAILS_LOG_LEVEL`,
+   `RAILS_SERVE_STATIC_FILES` (needed **unless** the Dockerfile fronts with Thruster).
+   **`config.force_ssl = true` + `config.assume_ssl = true` are already correct for Coolify** — its
+   proxy terminates TLS, which is the same shape as the Kamal/Thruster assumption they were written
+   for. Do not change them.
+5. **Enable `config.require_master_key = true`** once `RAILS_MASTER_KEY` is set in Coolify. **This
+   closes ledger item L4.** Note `config/master.key` does not exist locally either, so it must be
+   generated or recovered — `credentials.yml.enc` is committed and useless without it.
+6. **The Solid Queue worker is a second process.** `bin/jobs`. `config/recurring.yml` schedules
+   `ConcludeStaleDebatesJob` daily at 3am, so without a worker, debates idle >7 days are never
+   auto-concluded. Either a second Coolify service off the same image, or accept that the recurring
+   job does not run and record it.
+7. **`Procfile` says `-e ${RACK_ENV:-development}`.** If Coolify uses the Procfile and neither
+   `RACK_ENV` nor `RAILS_ENV` is set, you get a **development-mode production app**. Fix the default
+   or delete the Procfile in favour of the Dockerfile `CMD`.
+8. **Delete `config/deploy.yml`** (and the `kamal` gem if nothing else wants it) — dead config now,
+   and leaving it invites someone to "fix" the placeholders for a deploy path that is not used.
+9. **One-time logout on first deploy** — the Rails 7.0 session key-generator change (SHA1→SHA256)
+   invalidates existing sessions. Communicate it; it is expected, not a bug.
+
+**Why here:** CI proves the suite is green, and a green suite that cannot deploy is worth much less.
+Everything above is either a P0 boot bug or a first-deploy blocker, and none of it depends on the API
+or stance work that follows.
+
+**Main risk:** items 1–3 cannot be fully verified without an actual Coolify instance. Get a deploy
+working end-to-end before declaring this done — a Dockerfile that builds locally is not evidence the
+platform will run it.
 
 ---
 
@@ -190,7 +299,10 @@ house method.
 
 ---
 
-## Parallel owner track — deploy readiness (mostly not code)
+## ~~Parallel owner track — deploy readiness~~ — SUPERSEDED by Slice 10b
+
+_Kept for the record. Written when Kamal was the assumed target; the owner confirmed **Coolify** on
+2026-08-22, and probing it turned up a P0 production-boot bug this section did not know about._
 
 `config/deploy.yml` is still placeholders (`my-user/hoojah`, `app.example.com`), so whatever serves
 beta.hoojah.my today is **not** deployed from this repo's Kamal config. Before "real traffic" means
