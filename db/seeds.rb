@@ -1,3 +1,20 @@
+# Refuse to run in production. Added in Slice 10b, when this app became deployable for
+# the first time.
+#
+# Everything below creates REAL, LOGIN-CAPABLE User records sharing one hardcoded
+# password, on plausible-looking addresses. Harmless in development; in production it
+# publishes working credentials for accounts named after actual people, one of which is
+# the official @hoojahhq handle.
+#
+# The reason this is a guard and not a code comment: `bin/rails db:prepare` runs seeds
+# automatically whenever it initializes a database, and db:prepare is the most obvious
+# command to type at a fresh deploy. See README's deploy section for the seed-free
+# bootstrap (db:schema:load:primary + db:migrate) that replaces it.
+if Rails.env.production?
+  abort("db/seeds.rb refuses to run in production: it would create login-capable " \
+        "accounts with a hardcoded password. See the deploy section of README.md.")
+end
+
 # SEED_DATA = JSON.load File.read('config/seed_data.json')
 PASSWORD = "1234567890"
 

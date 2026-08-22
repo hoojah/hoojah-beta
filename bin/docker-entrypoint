@@ -1,0 +1,21 @@
+#!/bin/bash -e
+#
+# Container entrypoint (Slice 10b). Deliberately thin.
+#
+# NOTE WHAT THIS DOES NOT DO: it does not run `db:prepare`, which the Rails 8 generated
+# entrypoint does. db:prepare runs db/seeds.rb whenever it initializes a database, and
+# this app's seeds create login-capable accounts sharing a hardcoded password. seeds.rb
+# now refuses to run in production, so db:prepare would abort partway — after loading
+# the schema, before the container starts. Running migrations on every container start
+# is also a race once there is more than one replica. The database bootstrap is a
+# one-time operator step; README's deploy section has the exact commands.
+
+# Which port Thruster listens on. Precedence, most explicit first:
+#   HTTP_PORT  — the operator said so directly
+#   PORT       — the platform said so (Coolify and most PaaS layers inject this)
+#   3000       — matches EXPOSE in the Dockerfile
+# Not baked in as a Dockerfile ENV precisely so that this precedence is expressible: a
+# baked HTTP_PORT is indistinguishable from an operator-set one.
+export HTTP_PORT="${HTTP_PORT:-${PORT:-3000}}"
+
+exec "$@"

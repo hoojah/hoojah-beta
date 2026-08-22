@@ -18,9 +18,17 @@ Rails.application.configure do
   # or in config/master.key. This key is used to decrypt credentials (and other encrypted files).
   # config.require_master_key = true
 
-  # Disable serving static files from the `/public` folder by default since
-  # Apache or NGINX already handles this.
+  # Serve /public (and therefore /assets) from this process when RAILS_SERVE_STATIC_FILES
+  # is set. The Dockerfile bakes it in, because nothing else in the Coolify deployment
+  # can serve these files: the platform's proxy has no access to the container's
+  # filesystem, and Thruster proxies-then-caches rather than serving public/ itself — so
+  # with this off, every stylesheet 404s and the app renders unstyled.
   config.public_file_server.enabled = ENV["RAILS_SERVE_STATIC_FILES"].present?
+  # Propshaft digests every asset filename, so a given URL's contents can never change:
+  # cache it for a year. Without this header Rails sends no Cache-Control for static
+  # files at all, which means browsers revalidate on every page view AND Thruster's HTTP
+  # cache refuses to store them (measured: `X-Cache: miss` on every repeat request).
+  config.public_file_server.headers = {"cache-control" => "public, max-age=#{1.year.to_i}"}
 
   # Compress CSS using a preprocessor.
   # config.assets.css_compressor = :sass
@@ -45,7 +53,13 @@ Rails.application.configure do
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   config.force_ssl = true
-  # TLS is terminated at the Kamal/Thruster proxy; trust the forwarded scheme.
+  # TLS is terminated at Coolify's reverse proxy, which then talks plain HTTP to this
+  # container; trust the forwarded scheme. `assume_ssl` inserts ActionDispatch::AssumeSSL
+  # at the bottom of the stack, which marks EVERY request as HTTPS unconditionally — so
+  # force_ssl never issues a redirect in this deployment, including for the plain-HTTP
+  # health probe on the internal Docker network. That is why there is no `ssl_options`
+  # `:exclude` for /up here: it would be dead config. If `assume_ssl` is ever turned off,
+  # /up starts 301-ing and the health check breaks — add the exclude then.
   config.assume_ssl = true
 
   # Use the lowest log level to ensure availability of diagnostic information
@@ -53,7 +67,18 @@ Rails.application.configure do
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
 
   # Only accept requests for the configured host(s) (set APP_HOST at deploy).
+  # NOTE: `config.hosts` is empty by default in production, so host authorization is
+  # OFF until APP_HOST is set — and every request is blocked with 403 the moment it is
+  # set to the wrong value.
   config.hosts << ENV["APP_HOST"] if ENV["APP_HOST"].present?
+  # ...but the health probe is the one request that legitimately arrives with the WRONG
+  # Host. Coolify polls the container over the internal Docker network by container IP
+  # or internal hostname, never by APP_HOST, so host authorization answers it with 403
+  # and the deploy never goes healthy. Excluding the path (not a host) keeps the
+  # allowlist strict for everything that can actually leak data: /up renders a fixed
+  # "green" page with no request-derived content, so it cannot be used for a DNS-rebind
+  # or cache-poisoning attack the way an absolute-URL-generating page could.
+  config.host_authorization = {exclude: ->(request) { request.path == "/up" }}
 
   # Prepend all log lines with the following tags.
   config.log_tags = [:request_id]

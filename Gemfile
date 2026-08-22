@@ -31,7 +31,14 @@ gem "bootsnap", ">= 1.4.2", require: false
 gem "solid_queue"
 gem "solid_cache"
 gem "solid_cable"
-gem "kamal", require: false
+# Kamal was removed in Slice 10b: the deploy target is Coolify, which builds from the
+# Dockerfile in this repo and fronts the container with its own TLS-terminating proxy.
+# config/deploy.yml and .kamal/ went with it — they were never filled in past the
+# generated placeholders, so nothing was ever deployed through them.
+#
+# Thruster STAYS, and is not vestigial Kamal tooling: the Dockerfile's CMD runs Puma
+# inside it for gzip, HTTP caching of digest-stamped assets, and X-Sendfile. Its TLS
+# half is unused (TLS_DOMAIN unset) because Coolify terminates TLS.
 gem "thruster", require: false
 
 group :development, :test do

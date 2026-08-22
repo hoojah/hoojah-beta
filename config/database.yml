@@ -11,28 +11,42 @@ test:
   <<: *default
   database: hoojah_test
 
-# Rails 8 multi-database: primary app DB plus dedicated Solid Cache/Queue/Cable DBs.
+# Production: ONE physical Postgres, four logical connections.
+#
+# Coolify provisions a single Postgres and hands the app a single DATABASE_URL, so
+# Slice 10b collapsed Solid Cache / Queue / Cable onto the primary database rather than
+# asking the operator to create, connect and back up four. At beta scale the extra load
+# is small (solid_cable polls every 0.1s against one small table) and this is fully
+# reversible: give `cache`/`queue`/`cable` their own `url:` and re-run their migrations
+# and they split back out. Nothing in app code names a physical database — `connects_to`
+# in config/cable.yml and `config.solid_queue.connects_to` in production.rb both name the
+# CONFIG ("cable", "queue"), which is why pointing them at one server needed no app-code
+# change.
+#
+# (Wording note: this comment avoids certain everyday English words on purpose. Tailwind
+# v4 scans config/ and db/ as plain text, so a word that happens to also be a utility name
+# gets emitted as a real CSS rule — an earlier draft of this paragraph added a stray
+# visibility utility to the bundle. See the Tailwind section of CLAUDE.md.)
+#
+# Four connection entries pointing at one database is not redundant: each keeps its own
+# connection pool and, crucially, its own `migrations_paths`. That is the only reason the
+# solid_* tables get created at all — see the long comment in db/cache_migrate/ for the
+# trap this replaced.
+#
+# DATABASE_URL is read explicitly rather than relied on implicitly: Rails only auto-merges
+# a bare DATABASE_URL into the config named `primary` (the other three would need
+# CACHE_DATABASE_URL / QUEUE_DATABASE_URL / CABLE_DATABASE_URL), and that asymmetry is a
+# trap when the whole point is that they are the same database.
 production:
-  primary:
+  primary: &primary_production
     <<: *default
-    database: hoojah_production
-    username: hoojah
-    password: <%= ENV['HOOJAH_DATABASE_PASSWORD'] %>
+    url: <%= ENV["DATABASE_URL"] %>
   cache:
-    <<: *default
-    database: hoojah_production_cache
-    username: hoojah
-    password: <%= ENV['HOOJAH_DATABASE_PASSWORD'] %>
+    <<: *primary_production
     migrations_paths: db/cache_migrate
   queue:
-    <<: *default
-    database: hoojah_production_queue
-    username: hoojah
-    password: <%= ENV['HOOJAH_DATABASE_PASSWORD'] %>
+    <<: *primary_production
     migrations_paths: db/queue_migrate
   cable:
-    <<: *default
-    database: hoojah_production_cable
-    username: hoojah
-    password: <%= ENV['HOOJAH_DATABASE_PASSWORD'] %>
+    <<: *primary_production
     migrations_paths: db/cable_migrate
