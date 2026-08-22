@@ -1,4 +1,16 @@
 Rails.application.routes.draw do
+  # Container health check (Slice 10b). Rails 8 generates this in `rails new`; this
+  # app predates it, having been upgraded from Rails 6. Coolify polls it to decide a
+  # container is live — without it the deploy either never goes healthy or goes
+  # healthy instantly and wrongly. `rails/health#show` returns 200 once the app has
+  # booted and 500 if boot raised, which is exactly the signal the proxy needs.
+  #
+  # Two things had to be arranged around it, both in config/environments/production.rb:
+  # `config.hosts` (the probe arrives on the container's internal address, not
+  # APP_HOST) and `force_ssl` (the probe is plain HTTP inside the Docker network).
+  # See the `host_authorization` and `ssl_options` comments there.
+  get "/up", to: "rails/health#show", as: :rails_health_check
+
   devise_for :users,
     controllers: {registrations: "users/registrations"},
     path: "",

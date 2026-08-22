@@ -8,9 +8,9 @@
 ![Devise](https://img.shields.io/badge/Devise-auth-E9573F)
 ![Pundit](https://img.shields.io/badge/Pundit-authorization-4B7BEC)
 ![Action Cable](https://img.shields.io/badge/Action%20Cable-Solid%20Cable-9B59B6)
-![Tests](https://img.shields.io/badge/tests-513%20passing-brightgreen?logo=rspec&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-536%20passing-brightgreen?logo=rspec&logoColor=white)
 ![Code style](https://img.shields.io/badge/code_style-standard-brightgreen)
-![Deploy](https://img.shields.io/badge/deploy-Kamal-663399)
+![Deploy](https://img.shields.io/badge/deploy-Coolify%20%2B%20Docker-8b5cf6)
 
 **Hoojah** is a social debate platform. Post a _hujah_ (a stance or claim), gather
 **agree / neutral / disagree** votes, thread stance-tagged responses, and escalate any
@@ -24,7 +24,7 @@ https://beta.hoojah.my
 > Following feed / @mentions), Debate (MVP + spectator verdict + real-time + timeout +
 > named Opening/Counter/Response/Closing phases), Privacy + Analytics, Badges + Trending,
 > Block, and Private accounts have all shipped, and the **Hoojah Design System** is adopted
-> across all eight view families. Suite: **513 examples / 0 failures / 2 pending** (request +
+> across all eight view families. Suite: **536 examples / 0 failures / 0 pending** (request +
 > headless-Chrome system specs); brakeman **0**; bundler-audit clean; StandardRB clean.
 > Next up: **Project 3 — Hotwire Native**. See `docs/superpowers/HANDOVER.md` for full
 > project status.
@@ -33,7 +33,7 @@ https://beta.hoojah.my
 
 - **Ruby** 3.4.9 (managed by **mise**, pinned via `.ruby-version` + `mise.toml`)
 - **Rails** 8.1.3
-- **PostgreSQL** (Postgres 18 locally; multi-database in production: primary + Solid Cache/Queue/Cable)
+- **PostgreSQL** (Postgres 18; one database in production — Solid Cache/Queue/Cable share it)
 - **Hotwire** — Turbo + Stimulus over **importmap-rails** (no Node/Webpacker)
 - **Propshaft** asset pipeline + **Tailwind CSS** (`tailwindcss-rails`)
 - **Devise** 5.0 (`/login`, `/signup`, `/logout`, password reset)
@@ -43,7 +43,7 @@ https://beta.hoojah.my
 - **RSpec** + FactoryBot + Capybara/**Cuprite** (headless-Chrome system specs)
 - **rack-attack** throttling, **invisible_captcha** honeypot, nonce-based CSP
 - **Solid Queue / Solid Cache / Solid Cable** (production infrastructure; `bin/jobs` runs the worker)
-- **Kamal** + Thruster (deploy; registry/host still placeholders)
+- **Coolify** + Docker (deploy) — multi-stage `Dockerfile`, Puma behind **Thruster**; see [Deploy](#deploy)
 
 ## Features
 
@@ -80,14 +80,94 @@ bin/jobs                     # Solid Queue worker (production-style)
 `bin/dev` runs both the web server and the Tailwind `css:watch` process; `bin/rails server`
 alone will not rebuild CSS on change.
 
-> **Deploy note:** `app/assets/builds/tailwind.css` is gitignored and built by the
-> `tailwindcss:build` task, which is hooked into `assets:precompile`. Any deploy must run
-> `assets:precompile` so the compiled Tailwind bundle exists in production.
+## Deploy
+
+The target is **Coolify**, which builds this repo's `Dockerfile` and fronts the container
+with its own TLS-terminating reverse proxy. There is no Kamal, no Capistrano and no
+Procfile — the image's `CMD` is the whole story.
+
+```bash
+docker build --platform linux/amd64 -t hoojah .
+docker run -p 3000:3000 \
+  -e RAILS_MASTER_KEY=... -e DATABASE_URL=... -e APP_HOST=beta.hoojah.my hoojah
+```
+
+**Build for `linux/amd64`.** `Gemfile.lock`'s `PLATFORMS` lists `x86_64-linux` but not
+`aarch64-linux`, so an ARM64 Linux build cannot resolve the platform-specific gems. If
+Coolify ever runs on an ARM host, commit `bundle lock --add-platform aarch64-linux`.
+
+### Environment
+
+Copy [`.env.example`](.env.example) into Coolify's environment editor. Required:
+`RAILS_MASTER_KEY`, `DATABASE_URL`, `APP_HOST`. `RAILS_ENV`, `RAILS_LOG_TO_STDOUT` and
+`RAILS_SERVE_STATIC_FILES` are already baked into the image.
+
+`APP_HOST` feeds `config.hosts <<`, so a wrong value answers **every** request with 403.
+`/up` is deliberately excluded from that check — the platform's health probe reaches the
+container on its internal address, never on `APP_HOST`, and without the exclusion the
+deploy never goes healthy.
+
+### ⚠️ `config/master.key` does not exist
+
+It is gitignored and was never carried over from the original Rails 6 app, while
+`config/credentials.yml.enc` **is** committed — and is unreadable without the key. Before
+the first deploy the key must be **recovered or regenerated**, and regenerating discards
+the current encrypted credentials. This is an owner action; no code change substitutes
+for it. (The image still *builds* without it — `assets:precompile` runs under
+`SECRET_KEY_BASE_DUMMY=1`.)
+
+Once `RAILS_MASTER_KEY` is set in Coolify and a deploy has succeeded, uncomment
+`config.require_master_key = true` in `config/environments/production.rb` — that is the
+last step of the first deploy, and it closes ledger item **L4**. It is left commented
+until then because enabling it now would break local and CI boots, which have no key.
+
+### First-deploy database bootstrap
+
+One-time, from a shell on the container (or a Coolify pre-deploy command):
+
+```bash
+bin/rails db:schema:load:primary   # app schema from db/schema.rb
+bin/rails db:migrate               # Solid Cache/Queue/Cable tables
+```
+
+**Do not run `bin/rails db:prepare`.** It runs `db/seeds.rb`, which creates
+login-capable accounts sharing a hardcoded password; `db/seeds.rb` now aborts in
+production, which would leave the bootstrap half-finished. The two commands above are
+the seed-free equivalent and are safe to re-run.
+
+Solid Cache, Solid Queue and Solid Cable all live in the **primary** database (see the
+comment at the top of `config/database.yml`). Their tables come from `db/cache_migrate`,
+`db/queue_migrate` and `db/cable_migrate` rather than from the `db/*_schema.rb` dumps,
+because `db:prepare` skips a schema dump once `schema_migrations` exists in the target
+database — which, sharing one database, it always does.
+
+### The background worker is a second service
+
+`config/recurring.yml` schedules `ConcludeStaleDebatesJob` daily at 3am, so **without a
+worker, debates idle past 7 days are never auto-concluded**. Deploy a second Coolify
+service from the same image with the command overridden to:
+
+```bash
+bundle exec bin/jobs
+```
+
+### Assets
+
+`app/assets/builds/tailwind.css` is gitignored and nothing rebuilds it at boot. The
+`Dockerfile` runs `assets:precompile` (which `tailwindcss-rails` hooks
+`tailwindcss:build` into) in the build stage — if that step is ever removed, or if the
+build falls back to Nixpacks autodetection, the app deploys with **no CSS at all** while
+appearing to succeed.
+
+### One-time logout on the first deploy
+
+Rails 7.0 changed the session key generator (SHA1 → SHA256), so any sessions predating
+this deploy are invalidated. Users are signed out once. Expected, not a bug.
 
 ## Tests
 
 ```bash
-# full suite (request + system specs) — 513 examples, 0 failures, 2 pending
+# full suite (request + system specs) — 536 examples, 0 failures, 0 pending
 RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec
 
 # skip the headless-Chrome system specs for a faster inner loop

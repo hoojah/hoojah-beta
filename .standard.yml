@@ -2,4 +2,9 @@ ruby_version: 3.4.9
 ignore:
   - 'db/schema.rb'
   - 'db/migrate/**/*'
+  # The Solid Cache/Queue/Cable migration paths declared in config/database.yml
+  # production. Same rationale as db/migrate: generated-shaped schema DSL.
+  - 'db/cache_migrate/**/*'
+  - 'db/queue_migrate/**/*'
+  - 'db/cable_migrate/**/*'
   - 'bin/**/*'
