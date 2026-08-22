@@ -159,20 +159,18 @@ jobs:
 
       - name: bin/ci --only-system-specs
         env:
-          # spec/support/capybara.rb already prefers CUPRITE_CHROME_PATH over its
-          # macOS fallbacks and already passes --no-sandbox, so this one variable is
-          # the whole of the CI-specific browser wiring.
+          # spec/support/capybara.rb prefers CUPRITE_CHROME_PATH over its macOS
+          # fallbacks and passes --no-sandbox, so this one variable is the whole of
+          # the CI-specific browser wiring. Note "passes --no-sandbox" only became
+          # TRUE in this slice: `driven_by :cuprite` had been discarding it, which
+          # is exactly why the first CI run could not start Chrome. See the header
+          # of spec/support/capybara.rb and spec/system/cuprite_driver_spec.rb.
           CUPRITE_CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
-          # Documentation format so a failure names the example. --fail-fast because
-          # the second CI attempt showed every example failing after ~50s each: 30 of
-          # those overran the job timeout, which killed RSpec before it could print
-          # its Failures section, so the log showed WHICH examples broke but never
-          # WHY. Stopping at the first one trades coverage for the error message,
-          # which is the thing we currently lack.
-          #
-          # TODO: drop --fail-fast once the CI browser failure is understood; it
-          # hides the 2nd..30th failures, which may not share a cause.
-          SPEC_OPTS: "--format documentation --fail-fast"
+          # Documentation format so a failure names the example rather than leaving
+          # the log ending in an anonymous row of progress dots. (--fail-fast was
+          # here while the browser failure was being diagnosed; the cause is now
+          # understood and fixed in spec/support/capybara.rb, so all 30 run again.)
+          SPEC_OPTS: "--format documentation"
         run: bin/ci --only-system-specs
 
       - name: Upload Capybara failure screenshots

@@ -26,16 +26,51 @@ CUPRITE_URL_BLACKLIST = [
   "*res.cloudinary.com*"
 ].freeze
 
+# ONE definition of the driver options, used by BOTH the standalone registration
+# below and the `driven_by` call in the RSpec config.
+#
+# Why that matters (Slice 10, found by the first CI run):
+# `driven_by :cuprite` does NOT merely select a previously-registered driver.
+# Rails' ActionDispatch::SystemTesting::Driver#registerable? lists :cuprite
+# alongside :selenium, so `driven_by` RE-REGISTERS the :cuprite name with its own
+# options — silently discarding whatever `Capybara.register_driver(:cuprite)` set.
+#
+# Everything below was therefore dead for the whole life of this suite: the
+# browser_path (and so CUPRITE_CHROME_PATH), --no-sandbox, process_timeout,
+# timeout, window_size, AND the url_blacklist. It went unnoticed because Ferrum's
+# defaults happen to work on the machine this was written on: it autodetects
+# Chrome at the standard macOS path and needs no sandbox flag there.
+#
+# It surfaced the moment CI ran it on Linux: with no --no-sandbox, Chrome cannot
+# start, produces no websocket URL, and every example dies with
+# `Ferrum::ProcessTimeoutError ... within 10 seconds`. The "10" is the tell —
+# process_timeout below says 20, so the number in the error proves these options
+# were not the ones in force.
+#
+# Proof, reproducible locally: set CUPRITE_CHROME_PATH to a nonexistent file and
+# run a `js: true` spec. Before this fix it passed (Ferrum ignored the bogus path
+# and autodetected); after it, the launch fails as it should.
+#
+# A METHOD, not a frozen constant: Cuprite mutates the options hash it is handed,
+# so a frozen one raises FrozenError on the first `js: true` example (verified —
+# that was the first attempt at this fix). Both call sites get their own copy.
+CUPRITE_CHROME_BIN = chrome_path
+
+module CupriteDriver
+  def self.options
+    {
+      window_size: [1200, 900],
+      process_timeout: 20,
+      timeout: 15,
+      browser_path: CUPRITE_CHROME_BIN,
+      url_blacklist: CUPRITE_URL_BLACKLIST.dup,
+      browser_options: {"no-sandbox": nil}
+    }
+  end
+end
+
 Capybara.register_driver(:cuprite) do |app|
-  Capybara::Cuprite::Driver.new(
-    app,
-    window_size: [1200, 900],
-    process_timeout: 20,
-    timeout: 15,
-    browser_path: chrome_path,
-    url_blacklist: CUPRITE_URL_BLACKLIST,
-    browser_options: {"no-sandbox": nil}
-  )
+  Capybara::Cuprite::Driver.new(app, **CupriteDriver.options)
 end
 
 Capybara.javascript_driver = :cuprite
@@ -45,7 +80,10 @@ Capybara.enable_aria_label = true
 
 RSpec.configure do |config|
   config.before(:each, type: :system) { driven_by :rack_test }
-  config.before(:each, type: :system, js: true) { driven_by :cuprite }
+  # `options:` is REQUIRED, not decorative — see the note on CupriteDriver above.
+  # Without it `driven_by` re-registers :cuprite with empty options and every
+  # setting above is silently discarded.
+  config.before(:each, type: :system, js: true) { driven_by :cuprite, options: CupriteDriver.options }
 
   # Reset per-example browser/session state so nothing leaks between cuprite
   # examples sharing the one Chrome process (cookies, dialogs, in-flight requests).
