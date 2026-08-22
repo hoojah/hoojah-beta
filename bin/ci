@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+#
+# bin/ci — every quality gate this project has, in one command.
+#
+# This script is the DEFINITION OF RECORD for what "green" means here. The GitHub
+# Actions workflow (.github/workflows/ci.yml) does not re-list the gates; it calls
+# this script, so CI and a local run cannot drift apart.
+#
+# Gates run in fail-fast order — cheapest and most-likely-to-fail first — so the
+# common failure (a formatting nit) costs seconds rather than a full suite.
+#
+#   1. standardrb                    ~seconds
+#   2. brakeman -q                   ~seconds
+#   3. bundler-audit check --update  ~seconds (network: refreshes the advisory DB)
+#   4. bin/rails db:test:prepare     schema load
+#   5. bin/rails tailwindcss:build   prerequisite, see below
+#   6. rspec                         the suite
+#
+# (5) is not a gate, it is a PREREQUISITE, and it is here because the suite cannot
+# pass without it on a clean checkout. `app/assets/builds/tailwind.css` is gitignored
+# and nothing in the boot path regenerates it, so the layout's
+# `stylesheet_link_tag "tailwind"` raises Propshaft::MissingAssetError and every
+# page-rendering system spec fails. Locally the file survives from `bin/dev`, which
+# is why this was invisible until there was a CI to run from an empty tree.
+# spec/support/tailwind_build.rb rebuilds it too, but only for the specs that assert
+# on compiled CSS, and only if one of those happens to run first.
+#
+# Usage:
+#   bin/ci                        everything, including system specs
+#   bin/ci --skip-system-specs    gates + non-system suite   (env: SKIP_SYSTEM_SPECS=1)
+#   bin/ci --only-system-specs    system specs only          (env: ONLY_SYSTEM_SPECS=1)
+#
+# The two split modes exist because CI runs them as two jobs: the system specs are
+# headless-Chrome examples whose timing on CI hardware differs from a developer's
+# machine, so they are quarantined into their own job.
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Repo root. Non-negotiable, not a convenience.
+#
+# Tailwind v4's `@source not` exclusions in app/assets/tailwind/application.css
+# resolve relative to the PROCESS WORKING DIRECTORY, not to the CSS file. Slice 9
+# established this by experiment: build from anywhere other than the repo root and
+# `docs/` and `spec/` are silently re-admitted to the scan, adding ~14 phantom rules
+# to the bundle. The suite builds Tailwind (spec/support/tailwind_build.rb), so this
+# cd is what keeps the specs that assert on compiled CSS honest.
+# ---------------------------------------------------------------------------
+cd "$(dirname "$0")/.."
+
+# ---------------------------------------------------------------------------
+# Ruby. Detect, do not assume.
+#
+# Locally, Ruby is mise-managed and the shell may or may not have mise activated.
+# On CI, ruby/setup-ruby has already put the right Ruby on PATH and mise is absent.
+# So: use `mise exec` only when the Ruby on PATH is not already the pinned version
+# AND mise is available. `.ruby-version` is the single source of the pin.
+#
+# RUBY_PREFIX is expanded UNQUOTED on purpose below — word-splitting an empty string
+# yields no argument at all, which is exactly the "already correct, run directly"
+# case. Its contents are built here and never come from user input.
+# ---------------------------------------------------------------------------
+RUBY_TARGET="$(tr -d '[:space:]' < .ruby-version)"
+RUBY_PREFIX=""
+
+current_ruby="$(ruby -e 'print RUBY_VERSION' 2>/dev/null || true)"
+if [ "$current_ruby" != "$RUBY_TARGET" ]; then
+  if command -v mise >/dev/null 2>&1; then
+    RUBY_PREFIX="mise exec ruby@${RUBY_TARGET} --"
+  elif [ -z "$current_ruby" ]; then
+    echo "bin/ci: no ruby on PATH and no mise to provide ${RUBY_TARGET}." >&2
+    exit 1
+  else
+    echo "bin/ci: warning — ruby ${current_ruby} on PATH, expected ${RUBY_TARGET}," >&2
+    echo "        and mise is not installed. Continuing with ${current_ruby}." >&2
+  fi
+fi
+
+export RAILS_ENV=test
+# -W0: the suite is warning-noisy from gem internals; warnings here drown real output.
+export RUBYOPT="${RUBYOPT:--W0}"
+
+# ---------------------------------------------------------------------------
+# Mode
+# ---------------------------------------------------------------------------
+SKIP_SYSTEM_SPECS="${SKIP_SYSTEM_SPECS:-}"
+ONLY_SYSTEM_SPECS="${ONLY_SYSTEM_SPECS:-}"
+
+usage() {
+  cat <<'USAGE'
+bin/ci — every quality gate this project has, in one command.
+
+  bin/ci                        everything, including system specs
+  bin/ci --skip-system-specs    gates + non-system suite   (env: SKIP_SYSTEM_SPECS=1)
+  bin/ci --only-system-specs    system specs only          (env: ONLY_SYSTEM_SPECS=1)
+
+Gates, in fail-fast order: standardrb, brakeman, bundler-audit, db:test:prepare,
+tailwindcss:build, rspec. Read the header of this file for why each is where it is.
+USAGE
+}
+
+for arg in "$@"; do
+  case "$arg" in
+    --skip-system-specs) SKIP_SYSTEM_SPECS=1 ;;
+    --only-system-specs) ONLY_SYSTEM_SPECS=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "bin/ci: unknown argument '$arg' (try --help)" >&2; exit 64 ;;
+  esac
+done
+
+if [ -n "$SKIP_SYSTEM_SPECS" ] && [ -n "$ONLY_SYSTEM_SPECS" ]; then
+  echo "bin/ci: --skip-system-specs and --only-system-specs are contradictory." >&2
+  exit 64
+fi
+
+# ---------------------------------------------------------------------------
+# Banner / failure reporting
+#
+# The point of the banners is that a human running this locally can tell which gate
+# failed without scrolling back through a suite's worth of output — and the EXIT trap
+# repeats it at the bottom, where they are already looking.
+# ---------------------------------------------------------------------------
+if [ -t 1 ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
+  B=$'\033[1m'; DIM=$'\033[2m'; RED=$'\033[31m'; GREEN=$'\033[32m'; OFF=$'\033[0m'
+else
+  B=""; DIM=""; RED=""; GREEN=""; OFF=""
+fi
+
+CURRENT_GATE="startup"
+STARTED_AT="$(date +%s)"
+
+gate() {
+  CURRENT_GATE="$1"
+  printf '\n%s══════ %s ══════%s\n' "$B" "$1" "$OFF"
+}
+
+on_exit() {
+  status=$?
+  elapsed=$(( $(date +%s) - STARTED_AT ))
+  if [ "$status" -ne 0 ]; then
+    printf '\n%s✗ bin/ci FAILED at gate: %s%s (exit %d, %ds elapsed)\n' \
+      "$RED$B" "$CURRENT_GATE" "$OFF$RED" "$status" "$elapsed"
+    printf '%s\n' "$OFF"
+  fi
+}
+trap on_exit EXIT
+
+# ---------------------------------------------------------------------------
+# Gates
+# ---------------------------------------------------------------------------
+GATES_RUN=""
+note() { GATES_RUN="${GATES_RUN}  ✓ $1
+"; }
+
+if [ -z "$ONLY_SYSTEM_SPECS" ]; then
+  gate "standardrb"
+  $RUBY_PREFIX bundle exec standardrb
+  note "standardrb"
+
+  gate "brakeman"
+  $RUBY_PREFIX bundle exec brakeman -q
+  note "brakeman"
+
+  gate "bundler-audit"
+  $RUBY_PREFIX bundle exec bundler-audit check --update
+  note "bundler-audit"
+fi
+
+# db:test:prepare, NOT db:prepare. db:prepare runs seeds, and seeded rows break the
+# specs that assert on whole-table counts.
+gate "db:test:prepare"
+$RUBY_PREFIX bin/rails db:test:prepare
+note "db:test:prepare"
+
+# Prerequisite, not a gate — the built bundle is gitignored and the application
+# layout hard-requires it. See the header. Runs from the repo root (the cd above),
+# which is what keeps `@source not docs/` and `@source not spec/` pointing at the
+# directories they name.
+gate "tailwindcss:build"
+$RUBY_PREFIX bin/rails tailwindcss:build
+note "tailwindcss:build"
+
+if [ -n "$ONLY_SYSTEM_SPECS" ]; then
+  gate "rspec (system specs only)"
+  # A directory argument, not --pattern: RSpec resolves --pattern relative to the
+  # default path (`spec`), so a "spec/system/..." pattern matches nothing.
+  $RUBY_PREFIX bundle exec rspec spec/system
+  note "rspec (system specs only)"
+elif [ -n "$SKIP_SYSTEM_SPECS" ]; then
+  gate "rspec (system specs excluded)"
+  $RUBY_PREFIX bundle exec rspec --exclude-pattern "spec/system/**/*"
+  note "rspec (system specs excluded)"
+else
+  gate "rspec (full suite)"
+  $RUBY_PREFIX bundle exec rspec
+  note "rspec (full suite)"
+fi
+
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
+elapsed=$(( $(date +%s) - STARTED_AT ))
+printf '\n%s✓ bin/ci PASSED%s in %ds\n' "$GREEN$B" "$OFF" "$elapsed"
+printf '%s' "$GATES_RUN"
+
+# N+1s are observed, never enforced (config/initializers/prosopite.rb). Surface the
+# count so it is at least visible at the bottom of a green run.
+if [ -s log/prosopite.log ]; then
+  n_plus_ones="$(grep -c 'N+1 queries detected' log/prosopite.log || true)"
+  printf '%s  · prosopite: %s N+1 report(s) in log/prosopite.log (informational, never fatal)%s\n' \
+    "$DIM" "$n_plus_ones" "$OFF"
+fi

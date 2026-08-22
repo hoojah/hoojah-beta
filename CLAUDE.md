@@ -40,7 +40,18 @@ RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/models/debate_spec.rb:42
 bundle exec standardrb              # add --fix to autocorrect
 bundle exec brakeman -q
 bundle exec bundler-audit check --update
+
+# …or all of them, fail-fast, in one command (Slice 10). This is what CI runs.
+bin/ci                              # ~5 min: gates + db:test:prepare + tailwind build + 530 specs
+bin/ci --skip-system-specs          # ~4 min: the CI `gates` job
+bin/ci --only-system-specs          # ~40 s: the CI `system` job
 ```
+
+`bin/ci` is the **definition of record** for what "green" means — `.github/workflows/ci.yml`
+calls it rather than re-listing the gates, so local and CI cannot drift. Add a gate there, not
+in the workflow. It builds Tailwind before RSpec on purpose: the bundle is gitignored, and
+without it the layout's `stylesheet_link_tag` raises and every page-rendering system spec fails
+on a clean checkout.
 
 `bin/rails server` alone does **not** rebuild CSS — always use `bin/dev`.
 If `bundle install` fails building a C extension on Apple Silicon, `source .mise-build-env.sh` first
@@ -146,8 +157,16 @@ dark mode, essentially no animation.
    - **The input CSS file is not scanned as a source at all**, so its own comments are safe.
 
    So the "write `bg-<stance>`, never a concrete class" discipline is load-bearing **in ERB**, and
-   optional in Ruby comments. `docs/`, `spec/` and `app/assets/images` are `@source not`-excluded;
-   `README.md`, `CLAUDE.md` and `.yarn/releases/*.js` are **not**, and do contribute rules.
+   optional in Ruby comments. `docs/`, `spec/`, `app/assets/images`, and — since Slice 10 —
+   `.github/` and `bin/` are `@source not`-excluded; `README.md`, `CLAUDE.md` and
+   `.yarn/releases/*.js` are **not**, and do contribute rules.
+
+   **A dot-directory is not excluded automatically.** Slice 10 measured it: adding
+   `.github/workflows/ci.yml` emitted a real rule from a *structurally required* key under
+   `permissions:` — no prose to reword away — and an extensionless shell script (`bin/ci`)
+   emitted another from an ordinary English word in a comment. Both directories are now
+   excluded. (Note that this very paragraph cannot name either class without recreating them,
+   which is the whole lesson.)
 
    Two traps: **`@source not` paths resolve relative to the working directory, not the CSS file** —
    build from the repo root or `docs/`/`spec/` are silently re-admitted. And **a comment describing a
@@ -175,6 +194,12 @@ dark mode, essentially no animation.
 RSpec + FactoryBot (`spec/factories/`), transactional fixtures, `FactoryBot::Syntax::Methods` mixed
 in, spec type inferred from directory. Support helpers in `spec/support/` (`auth_helpers`,
 `capybara`, `devise`, `record_identifier`, `tailwind_build`).
+
+**prosopite** wraps every example (`spec/support/prosopite.rb`) and writes N+1 reports to
+`log/prosopite.log`. It is configured to **log only, never raise** — see
+`config/initializers/prosopite.rb` for why, and do not "improve" it into a failing gate. It costs
+about 1.5% of suite wall-clock. `grep -c 'N+1 queries detected' log/prosopite.log` after a run is
+the intended workflow; as of Slice 10 that is 146, concentrated in `app/models/debate.rb`.
 
 Known trap: `have_broadcasted_to(...).with { }` runs its block against **every** payload on the
 stream — it asserts "all broadcasts were this one", not "this one was broadcast". Two specs here

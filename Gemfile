@@ -42,6 +42,15 @@ group :development, :test do
   gem "bundler-audit", require: false
   gem "strong_migrations", "~> 2.5"
   gem "standard"
+  # N+1 detection. Configured in config/initializers/prosopite.rb to LOG ONLY,
+  # never raise — see Slice 10. The Slice 2 N+1 audit was deferred; this makes it
+  # ambient observation rather than a slice of its own, and must never fail CI.
+  gem "prosopite"
+  # Required BY prosopite, not optional: on Postgres, Prosopite#fingerprint does
+  # `require "pg_query"` the first time it actually finds an N+1 — and LoadError is
+  # not a StandardError, so its internal `rescue` does not catch it. Without this gem
+  # prosopite is harmless until the moment it detects something, then it explodes.
+  gem "pg_query"
 end
 
 group :development do
