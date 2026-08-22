@@ -39,6 +39,9 @@ jobs:
   gates:
     name: Gates — standardrb, brakeman, bundler-audit, specs
     runs-on: ubuntu-latest
+    # A hung job otherwise runs to GitHub's 6-hour default, burning minutes and
+    # reading as "still running" rather than "broken". Local full run is ~5min.
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -104,6 +107,11 @@ jobs:
     name: System specs (headless Chrome) — non-blocking, see comment
     runs-on: ubuntu-latest
     continue-on-error: true
+    # These take ~42s locally. The first CI attempt hung inside the spec run and
+    # sat for 21 minutes before being cancelled by hand — with no timeout it would
+    # have run for six hours. 15 minutes is generous for a 42-second suite and
+    # turns a hang into a log we can read.
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -138,12 +146,27 @@ jobs:
           chrome-version: stable
           install-dependencies: true
 
+      # Diagnostics, not ceremony. The first CI attempt hung inside the spec run
+      # with Chrome installed successfully, so the next question is whether the
+      # binary this action resolved is actually launchable and what shared memory
+      # it has to work with — /dev/shm is the classic headless-Chrome hang.
+      - name: Chrome diagnostics
+        run: |
+          echo "resolved path: ${{ steps.chrome.outputs.chrome-path }}"
+          "${{ steps.chrome.outputs.chrome-path }}" --version || echo "!! binary would not report a version"
+          echo "nproc: $(nproc)"
+          df -h /dev/shm || true
+
       - name: bin/ci --only-system-specs
         env:
           # spec/support/capybara.rb already prefers CUPRITE_CHROME_PATH over its
           # macOS fallbacks and already passes --no-sandbox, so this one variable is
           # the whole of the CI-specific browser wiring.
           CUPRITE_CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          # Documentation format so a hang names the example it hung ON. With the
+          # default progress dots the log ends in an anonymous row of periods and
+          # tells us nothing about where it stopped.
+          SPEC_OPTS: "--format documentation"
         run: bin/ci --only-system-specs
 
       - name: Upload Capybara failure screenshots
