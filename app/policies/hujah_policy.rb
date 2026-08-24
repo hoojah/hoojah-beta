@@ -15,7 +15,10 @@ class HujahPolicy < ApplicationPolicy
     return false unless user.present?
     return true if record.parent_id.nil?
     parent = record.parent
-    parent && !user.hidden_user_ids.include?(parent.user_id) && parent.visible_to?(user)
+    # 2026 vote-to-respond gate: you must have cast a vote on the parent before you can
+    # reply to it (in addition to the Slice 7 block + Slice 7b visibility gates).
+    parent && !user.hidden_user_ids.include?(parent.user_id) &&
+      parent.visible_to?(user) && parent.voted_by?(user)
   end
 
   # Per-post visibility (2026): a viewer who can't see a claim must not be able to

@@ -4,11 +4,18 @@ class DebatePolicy < ApplicationPolicy
   # Slice 7b (Gate 8, D-1): a participant always sees their own debate; anyone else may
   # read a CONCLUDED transcript only when BOTH participants are visible to them (a
   # concluded debate with a private participant leaks that participant's arguments).
+  # 2026: a concluded debate renders @debate.hujah.body in the transcript, so a
+  # non-participant may read it only when BOTH participants AND the underlying claim
+  # are visible to them (a followers_only claim must not leak via a public transcript).
   def show? = record.participant?(user) ||
-    (record.concluded? && record.challenger.visible_to?(user) && record.opponent.visible_to?(user))
+    (record.concluded? && record.challenger.visible_to?(user) &&
+     record.opponent.visible_to?(user) && record.hujah.visible_to?(user))
 
-  # Reject a challenge against a hidden (blocked/blocked-by) opponent — Slice 7.
-  def create? = user.present? && !user.hidden_user_ids.include?(record.opponent_id)
+  # Reject a challenge against a hidden (blocked/blocked-by) opponent — Slice 7 — and
+  # honor the claim's 2026 allow_debates toggle (no challenge when it's off).
+  def create? = user.present? &&
+    !user.hidden_user_ids.include?(record.opponent_id) &&
+    record.hujah.allow_debates?
 
   def accept? = user.present? && user == record.opponent && record.pending?
 
@@ -32,8 +39,8 @@ class DebatePolicy < ApplicationPolicy
     # (Slice 7b, Gate 8). Visibility depends on the accepted-follower graph, so the
     # concluded set is filtered in Ruby — the lens is one hoojah's (small) debate set.
     def resolve
-      concluded_visible = scope.where(status: :concluded).includes(:challenger, :opponent).select do |d|
-        d.challenger.visible_to?(user) && d.opponent.visible_to?(user)
+      concluded_visible = scope.where(status: :concluded).includes(:challenger, :opponent, :hujah).select do |d|
+        d.challenger.visible_to?(user) && d.opponent.visible_to?(user) && d.hujah.visible_to?(user)
       end
       return concluded_visible unless user
       mine = scope.where(challenger_id: user.id).or(scope.where(opponent_id: user.id)).to_a

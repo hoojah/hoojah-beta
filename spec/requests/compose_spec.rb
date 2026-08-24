@@ -18,6 +18,8 @@ RSpec.describe "Compose", type: :request do
   it "creates a response with a stance + notifies the parent owner" do
     sign_in user
     parent = create(:hujah, user: create(:user))
+    # 2026 vote-to-respond gate: the replier must vote on the parent before replying.
+    parent.cast_vote(by: user, choice: 1)
     expect {
       post "/hoojah", params: {hujah: {body: "reply", parent_id: parent.id, vote: 1}}
     }.to change { Notification.where(category: "new_hoojah_response").count }.by(1)

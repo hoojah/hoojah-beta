@@ -18,6 +18,18 @@ RSpec.describe HujahPolicy do
     expect(HujahPolicy.new(nil, hujah).create?).to be(false)
   end
 
+  # ── Vote-to-respond gate (2026): a reply requires a prior vote on the parent ─────
+  describe "vote-to-respond gate on create?" do
+    it "forbids a reply before the replier has voted on the parent, allows it after" do
+      parent = create(:hujah)
+      replier = create(:user)
+      reply = build(:hujah, parent: parent, user: replier)
+      expect(HujahPolicy.new(replier, reply).create?).to be false
+      parent.cast_vote(by: replier, choice: 1)
+      expect(HujahPolicy.new(replier, reply).create?).to be true
+    end
+  end
+
   # ── Per-post visibility (2026): show? and vote? gate through visible_to? ─────────
   describe "per-post visibility on show?/vote?" do
     let(:stranger) { create(:user) }

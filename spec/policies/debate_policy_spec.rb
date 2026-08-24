@@ -26,6 +26,51 @@ RSpec.describe DebatePolicy do
     end
   end
 
+  describe "#create?" do
+    it "forbids create when the hoojah disallows debates" do
+      claim = create(:hujah, allow_debates: false)
+      reply = create(:hujah, parent: claim, user: create(:user), body: "an argument reply")
+      d = build(:debate, hujah: claim, opponent: reply.user, challenger: create(:user))
+      expect(DebatePolicy.new(d.challenger, d).create?).to be false
+    end
+
+    it "permits create when the hoojah allows debates and the opponent isn't hidden" do
+      claim = create(:hujah, allow_debates: true)
+      reply = create(:hujah, parent: claim, user: create(:user), body: "an argument reply")
+      d = build(:debate, hujah: claim, opponent: reply.user, challenger: create(:user))
+      expect(DebatePolicy.new(d.challenger, d).create?).to be true
+    end
+  end
+
+  # ── Per-post visibility (2026): a concluded debate on a non-public claim renders
+  # that claim's body, so the non-participant transcript branch must also gate on it.
+  describe "#show? — concluded transcript on a non-public claim" do
+    it "hides a concluded debate whose claim is followers_only from a stranger" do
+      restricted = create(:hujah, user: create(:user), visibility: :followers_only)
+      d = create(:debate, hujah: restricted, challenger: challenger, opponent: opponent, status: :concluded)
+      expect(DebatePolicy.new(stranger, d).show?).to be false
+      expect(DebatePolicy.new(nil, d).show?).to be false
+      # participants still see their own debate
+      expect(DebatePolicy.new(challenger, d).show?).to be true
+    end
+
+    it "keeps a concluded debate on a public claim visible to a stranger" do
+      d = create(:debate, challenger: challenger, opponent: opponent, status: :concluded)
+      expect(DebatePolicy.new(stranger, d).show?).to be true
+    end
+  end
+
+  describe "Scope — concluded set gates on claim visibility" do
+    it "excludes a concluded debate on a followers_only claim for a stranger" do
+      restricted = create(:hujah, user: create(:user), visibility: :followers_only)
+      hidden = create(:debate, hujah: restricted, challenger: challenger, opponent: opponent, status: :concluded)
+      visible = create(:debate, challenger: challenger, opponent: opponent, status: :concluded)
+      resolved = DebatePolicy::Scope.new(stranger, Debate.all).resolve
+      expect(resolved).to include(visible)
+      expect(resolved).not_to include(hidden)
+    end
+  end
+
   describe "#accept? / #decline?" do
     it "permits only the opponent, and only while pending" do
       d = debate(status: :pending)
