@@ -53,4 +53,55 @@ RSpec.describe DebateVerdict, type: :model do
       expect(d.verdict_tally).to eq({"challenger" => 2, "draw" => 1})
     end
   end
+
+  # Hoojah 2026 redesign (Phase 3, Task 3.6) — the winner-hero verdict panel needs a
+  # single answer from the aggregate tally, computed on read same as verdict_tally
+  # (no denormalized column). Draw-safe by construction: any tie for the max —
+  # including the zero-verdicts case — resolves to :draw, and so does a strict
+  # majority for the :draw choice itself.
+  describe "#verdict_winner" do
+    it "is :draw when there are no verdicts yet" do
+      d = debate(status: :concluded)
+      expect(d.verdict_winner).to eq(:draw)
+    end
+
+    it "is :challenger when challenger strictly leads" do
+      d = debate(status: :concluded)
+      d.cast_verdict(by: spectator, choice: "challenger")
+      d.cast_verdict(by: create(:user), choice: "challenger")
+      d.cast_verdict(by: create(:user), choice: "opponent")
+      expect(d.verdict_winner).to eq(:challenger)
+    end
+
+    it "is :opponent when opponent strictly leads" do
+      d = debate(status: :concluded)
+      d.cast_verdict(by: spectator, choice: "opponent")
+      d.cast_verdict(by: create(:user), choice: "opponent")
+      d.cast_verdict(by: create(:user), choice: "challenger")
+      expect(d.verdict_winner).to eq(:opponent)
+    end
+
+    it "is :draw on an exact challenger/opponent tie" do
+      d = debate(status: :concluded)
+      d.cast_verdict(by: spectator, choice: "challenger")
+      d.cast_verdict(by: create(:user), choice: "opponent")
+      expect(d.verdict_winner).to eq(:draw)
+    end
+
+    it "is :draw when the draw choice itself has a strict majority" do
+      d = debate(status: :concluded)
+      d.cast_verdict(by: spectator, choice: "draw")
+      d.cast_verdict(by: create(:user), choice: "draw")
+      d.cast_verdict(by: create(:user), choice: "challenger")
+      expect(d.verdict_winner).to eq(:draw)
+    end
+
+    it "is :draw on a three-way tie" do
+      d = debate(status: :concluded)
+      d.cast_verdict(by: spectator, choice: "challenger")
+      d.cast_verdict(by: create(:user), choice: "opponent")
+      d.cast_verdict(by: create(:user), choice: "draw")
+      expect(d.verdict_winner).to eq(:draw)
+    end
+  end
 end

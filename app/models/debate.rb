@@ -214,6 +214,19 @@ class Debate < ApplicationRecord
   # columns on debates.
   def verdict_tally = debate_verdicts.group(:choice).count
 
+  # Hoojah 2026 (redesign Phase 3, Task 3.6) — the winner-hero verdict panel's single
+  # answer, derived from verdict_tally (no separate query, no per-voter read). A TIE for
+  # the max — including the zero-verdicts case, where every count ties at 0 — resolves to
+  # :draw, and so does a strict majority for the :draw choice itself: either way there is
+  # no single side to crown. Only a genuinely UNIQUE max returns :challenger/:opponent.
+  def verdict_winner
+    tally = verdict_tally
+    counts = {challenger: tally["challenger"].to_i, opponent: tally["opponent"].to_i, draw: tally["draw"].to_i}
+    max = counts.values.max
+    leaders = counts.select { |_, n| n == max }
+    (leaders.size == 1) ? leaders.keys.first : :draw
+  end
+
   private
 
   # accept!/conclude! share this: the status label is viewer-agnostic (broadcast to

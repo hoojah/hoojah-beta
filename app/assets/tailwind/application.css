@@ -147,6 +147,20 @@
     background: linear-gradient(120deg, var(--primary), #5b74f0);
     color: #fff;
   }
+
+  /* Debate winner-hero (Hoojah 2026 redesign, Phase 3, Task 3.6) —
+     `debates/_verdict.html.erb`'s CONCLUDED-debate verdict panel. Same rationale as
+     `.trending-hero` immediately above (and `.avatar-tile` before it): `#5b74f0` is
+     the mockup's fixed gradient companion stop, not a stance colour, so this can't be
+     expressed as a `bg-gradient-to-*` utility (those resolve against `--color-*`
+     theme stops, and this second stop has none). Same companion stop as
+     `.trending-hero`, only the angle differs (150deg in the verdict mockup vs 120deg
+     on /trending) — intentionally not unified into one class, since the two surfaces
+     are free to diverge again and sharing a name would couple them by accident. */
+  .verdict-hero {
+    background: linear-gradient(150deg, var(--primary), #5b74f0);
+    color: #fff;
+  }
 }
 
 @theme inline {

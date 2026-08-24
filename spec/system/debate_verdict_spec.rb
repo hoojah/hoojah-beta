@@ -33,9 +33,12 @@ RSpec.describe "Debate spectator verdict", type: :system, js: true do
     # Vote challenger; create.turbo_stream.erb replaces the verdict block in place.
     click_button "@#{challenger.username}"
 
-    # After voting: read-only tally, challenger bar at 100% (1/1), and the buttons
-    # are gone (a spectator's single verdict is immutable).
+    # After voting: the winner-hero (Hoojah 2026, Phase 3.6), challenger crowned at
+    # 100% (1/1), and the buttons are gone (a spectator's single verdict is immutable).
+    expect(page).to have_css("[data-testid='verdict-hero']")
+    expect(page).to have_content(/winner/i)
     expect(page).to have_content("100%")
+    expect(page).to have_content("Decided by 1 spectator over #{debate.rounds_limit} rounds")
     expect(page).to have_no_button("@#{challenger.username}")
     expect(page).to have_no_button("@#{opponent.username}")
     expect(page).to have_no_button("Draw")
