@@ -11,5 +11,5 @@
     what Card.prompt.md's "internal sections are separated by a hairline, not by extra
     shadow" rules out. %>
 <div id="<%= dom_id(debate, :transcript) %>" class="debate-transcript flex flex-col gap-1 my-4">
-  <%= render partial: "debates/debate_turn", collection: turns, as: :debate_turn %>
+  <%= render partial: "debates/debate_turn", collection: turns, as: :debate_turn, locals: {debate: debate} %>
 </div>

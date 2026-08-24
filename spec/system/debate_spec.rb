@@ -64,9 +64,26 @@ RSpec.describe "Debate", type: :system, js: true do
     expect(debate.reload).to be_active
 
     # 3. Challenger's turn: the composer renders focused (connect() refocus) on first paint.
+    # A fresh `visit` also picks up the else-branch's structural HTML for the first
+    # time — accept! only Turbo-Stream-replaces :status/:actions in place, so the
+    # scoreboard (rendered around, not inside, the pending screen it replaces) only
+    # appears after a real page load.
     login_as_system(challenger)
     visit "/debates/#{debate.slug}"
     expect(page).to have_css("textarea[aria-label='Your turn']:focus")
+
+    # 3a. Phase 3.4 — the VS scoreboard: both handles, the derived round/phase, and a
+    # Live pill with a pulsing (hbreathe) dot. No countdown, no spectator-lean bar.
+    # Round/VS/phase/Live are CSS-uppercased (`uppercase`), hence the case-insensitive
+    # matches — same convention `debate_phases_spec.rb` already uses for :status.
+    within(".debate-scoreboard") do
+      expect(page).to have_content("@challengerx")
+      expect(page).to have_content("@opponentx")
+      expect(page).to have_content(/round 1 of #{debate.rounds_limit}/i)
+      expect(page).to have_content(/opening statement/i)
+      expect(page).to have_content(/live/i)
+    end
+    expect(page).to have_no_content(/leaning/i)
 
     fill_in "Your turn", with: "Tabs are one keystroke."
     click_button "Post turn"
@@ -75,6 +92,15 @@ RSpec.describe "Debate", type: :system, js: true do
     # the waiting state for the mover (no full navigation).
     within("##{dom_id(debate, :transcript)}") { expect(page).to have_content("Tabs are one keystroke.") }
     within("##{dom_id(debate, :composer)}") { expect(page).to have_content("Waiting for @opponentx") }
+
+    # 3b. Phase 3.4 — the challenger's turn renders as a chat bubble aligned to the
+    # start, agree-coloured, carrying the "Phase · @handle" micro-label (also
+    # CSS-uppercased).
+    challenger_turn = debate.turns.find_by!(user: challenger)
+    # The alignment class lives on the dom_id ROOT itself, not a descendant — combine
+    # both into one selector rather than `within`, which only searches descendants.
+    expect(page).to have_css("##{dom_id(challenger_turn)}.self-start")
+    within("##{dom_id(challenger_turn)}") { expect(page).to have_content(/opening statement · @challengerx/i) }
 
     # 4. Opponent's turn: composer refocuses again on render, then they post.
     login_as_system(opponent)
@@ -88,6 +114,11 @@ RSpec.describe "Debate", type: :system, js: true do
       expect(page).to have_content("Tabs are one keystroke.")
       expect(page).to have_content("Spaces are unambiguous.")
     end
+
+    # 4b. The opponent's turn bubble aligns to the end, disagree-coloured.
+    opponent_turn = debate.turns.find_by!(user: opponent)
+    expect(page).to have_css("##{dom_id(opponent_turn)}.self-end")
+    within("##{dom_id(opponent_turn)}") { expect(page).to have_content(/opening statement · @opponentx/i) }
 
     # 5. Either participant concludes (opponent is the current viewer).
     click_button "Conclude"

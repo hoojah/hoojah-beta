@@ -1,0 +1,55 @@
+<%# VS scoreboard — Hoojah 2026 (redesign Phase 3, Task 3.4), mockup ~1088-1109. Renders
+    for the ACTIVE/CONCLUDED transcript only (`_debate_pending`, Phase 3.3, already owns
+    the dedicated pending layout) — `debates/show.html.erb`'s non-pending branch renders
+    this ALONGSIDE the existing `_debate_status`/`_debate_actions` card, not instead of
+    it: this partial carries no pinned dom_id of its own, because nothing broadcasts to
+    it directly. Every value here is DERIVED (`current_round`/`current_phase`/
+    `rounds_limit`), so the existing `:status`/`:actions` Turbo-Stream replaces already
+    keep the page correct on every transition — this card simply re-reads the same
+    derived methods on its own next render.
+
+    Locals: debate. VIEWER-AGNOSTIC — no `viewer` local, no `current_user` — so it stays
+    safe to render from a broadcast context even though nothing does yet.
+
+    The round/phase row and the Live pill are gated on `debate.active?`, the same guard
+    `_debate_status` already uses for its own round counter and for the identical reason
+    (`current_round`/`current_phase` go stale — or nil — the moment a debate concludes;
+    see that partial's own comment). A concluded debate therefore renders only the
+    avatar trio + "VS", with no round line and no Live pill.
+
+    Challenger/opponent take the agree/disagree convention `_debate_pending` (Phase 3.3)
+    already established for this trio (its headline colours the two handles the same
+    way) — this is NOT the claim-vote stance colouring `IconsHelper#stance_color` /
+    `Hujah::STANCES` mean elsewhere. Here the two colours simply tell the two SIDES of
+    a debate apart, the same override `_debate_turn`'s bubble label makes below. %>
+<%= render layout: "ui/card", locals: {padded: true, class: "debate-scoreboard flex flex-col gap-3"} do %>
+  <% if debate.active? %>
+    <div class="flex justify-end">
+      <span class="inline-flex items-center gap-1.5 text-[10px] font-extrabold tracking-wide uppercase text-white bg-disagree px-2.5 py-1 rounded-full">
+        <span class="w-1.5 h-1.5 rounded-full bg-white block" style="animation: hbreathe 1.4s ease-in-out infinite"></span>
+        Live
+      </span>
+    </div>
+  <% end %>
+  <div class="flex items-center justify-center gap-3.5">
+    <div class="flex flex-col items-center gap-1 flex-1 min-w-0">
+      <%= render "ui/avatar", user: debate.challenger, size: :md, variant: :tile %>
+      <span class="text-xs font-bold text-ink truncate">@<%= debate.challenger.username %></span>
+      <span class="text-[10px] font-bold uppercase tracking-wide text-agree">Challenger</span>
+    </div>
+    <div class="flex flex-col items-center gap-0.5 shrink-0">
+      <% if debate.active? %>
+        <span class="text-[11px] font-bold uppercase tracking-wide text-faint">Round <%= debate.current_round %> of <%= debate.rounds_limit %></span>
+      <% end %>
+      <span class="text-2xl font-black text-ink">VS</span>
+      <% if debate.active? %>
+        <span class="text-[11px] font-bold uppercase tracking-wide text-neutral"><%= Debate::PHASE_LABELS.fetch(debate.current_phase) %></span>
+      <% end %>
+    </div>
+    <div class="flex flex-col items-center gap-1 flex-1 min-w-0">
+      <%= render "ui/avatar", user: debate.opponent, size: :md, variant: :tile %>
+      <span class="text-xs font-bold text-ink truncate">@<%= debate.opponent.username %></span>
+      <span class="text-[10px] font-bold uppercase tracking-wide text-disagree">Opponent</span>
+    </div>
+  </div>
+<% end %>

@@ -43,6 +43,11 @@
       <%= render "debates/debate_status", debate: @debate %>
       <%= render "debates/debate_actions", debate: @debate, viewer: current_user %>
     <% end %>
+    <%# The VS scoreboard (Phase 3.4) sits alongside the card above, not inside it — it
+        owns no pinned dom_id, so it never competes with the `:status`/`:actions`
+        Turbo-Stream targets those two partials already carry. Declined has neither
+        turns nor a meaningful VS, so it is excluded here same as pending. %>
+    <%= render "debates/debate_scoreboard", debate: @debate unless @debate.declined? %>
   <% end %>
 
   <%= render "debates/debate_transcript", debate: @debate, turns: @turns %>

@@ -8,43 +8,53 @@
     of a duplicate row. It is also what spec/system/debate_phases_spec.rb scopes its
     phase assertions to. Never render this partial without it.
 
-    DESIGN SYSTEM (Slice 9, Task 4.5) —
-    docs/design-system/components/debate/DebateTurn.prompt.md. The surface is `ui/_card`
-    with `padded:` (its `px-4 py-3`, which is what this row already spelled by hand) and
-    NO `stance:`: "There is no stance border, no side label and no arrow — the byline is
-    the only indication of who is speaking." Do not add one, and do not colour the row
-    by the speaker; the two participants are told apart by name, not by chrome.
+    CHAT BUBBLE (Hoojah 2026, redesign Phase 3, Task 3.4) — mockup ~1123-1134. The
+    transcript's own `flex flex-col` stack (`_debate_transcript`) is what lets a bubble
+    align itself with a plain `self-start`/`self-end`, no extra wrapping row: `side` is
+    derived from `debate_turn.user_id == debate.challenger_id`, and it drives BOTH the
+    alignment and the corner that stays square (the "tail"), same as any chat UI.
 
-    The avatar moves to `ui/_avatar` (`size: :sm`, the design system's 32px turn/compact
-    box). This was the LAST live `image_tag user.photo` in the app. `photo` is nullable
-    and `image_tag nil` raises `Nil location provided`, which is reachable here — a
-    debate turn by a user whose photo is blank 500s the whole transcript, and on the
-    broadcast path it fails inside a job where nobody sees it. The partial falls back to
-    initials on primary instead. Its `alt` is the full name on both branches by
-    contract, which is why this row's `alt` changes from the handle. %>
-<%= render layout: "ui/card", locals: {id: dom_id(debate_turn), padded: true, class: "debate-turn"} do %>
-  <%# DS micro-label (12px, uppercase, tracking-wide) — same treatment as the debate
-      state label and the verdict heading. On EVERY turn, not only where the phase
-      changes: this partial is rendered in isolation both by the create Turbo Stream
-      and by broadcast_append_later_to, with `debate_turn` as its only local, so it
-      has no access to the preceding row and cannot know whether the phase changed.
-      A label that renders only "where it changes" would therefore be wrong for every
-      appended turn. It is also a per-utterance fact, not a per-round heading — the
-      second turn of round 1 really is an opening statement, from the other side. %>
-  <div class="debate-turn-phase text-xs uppercase tracking-wide text-grey mb-1"><%= debate_turn.phase_label %></div>
-  <div class="flex items-center min-w-0 mb-1">
-    <%= render "ui/avatar", user: debate_turn.user, size: :sm, class: "mr-2" %>
-    <div class="flex flex-col min-w-0">
-      <span class="text-primary font-medium truncate"><%= debate_turn.user.full_name %></span>
-      <%# `text-sm` is explicit because `<small>` is 80% of its parent — 12.8px here,
-          not the 14px DebateTurn.jsx sets on this byline. Same correction Task 4.4
-          made to `users/_user_hujah`'s handle. %>
-      <small class="text-sm text-grey">
-        @<%= debate_turn.user.username %>
-        <span class="mx-1">·</span>
-        <time datetime="<%= debate_turn.created_at.iso8601 %>" data-local="time-ago"><%= debate_turn.created_at.strftime("%b %-d") %></time>
-      </small>
-    </div>
+    THIS DELIBERATELY OVERRIDES the design system's byline-only rule —
+    docs/design-system/components/debate/DebateTurn.prompt.md says "There is no stance
+    border, no side label and no arrow — the byline is the only indication of who is
+    speaking," and Slice 9 Task 4.5 built exactly that. The 2026 redesign supersedes it
+    for this one surface: bubble alignment already tells the two participants apart
+    spatially, and the mockup adds a THIRD signal, a speaker-stance-coloured "Phase ·
+    @handle" micro-label, on top of it. The colour is the same agree/disagree
+    challenger/opponent convention `_debate_pending` and `_debate_scoreboard` use for
+    this trio — not `IconsHelper#stance_color` / `Hujah::STANCES`, which colour a claim
+    VOTE elsewhere in the app. Do not read this override as license to colour any other
+    `ui/_card`-based row by its author; it is scoped to this one component because a
+    debate has exactly two speakers and the mockup asks for it explicitly.
+
+    The avatar stays — Slice 9 Task 4.5's `ui/_avatar` (`size: :sm`) — and its `alt`/
+    `aria-label` fallback stays the reason spec/models/debate_broadcast_spec.rb's
+    "no photo" example is safe: `photo` is nullable and `image_tag nil` raises, which is
+    reachable on the broadcast path where nobody sees the exception. Do not drop the
+    avatar chasing the mockup's spacing — that spec asserts its `aria-label` fallback by
+    name.
+
+    `.debate-turn-phase` stays scoped to ONLY the phase word (not "Phase · @handle" as a
+    whole) — spec/system/debate_phases_spec.rb anchors an exact regex
+    (`/\A#{label}\z/i`) against that class alone, so folding the handle into the same
+    element would break every phase assertion in that file.
+
+    Locals: debate_turn, debate. `debate` is a SEPARATE local rather than
+    `debate_turn.debate` on purpose: `belongs_to :debate` is not eager-loaded on the
+    `@turns` collection (only `:user` is, in `DebatesController#show`), so reaching for
+    it here would issue one extra query per turn in the transcript — a fresh N+1 this
+    partial did not have before. Every call site (the transcript collection render, the
+    create Turbo Stream, and `Debate#post_turn`'s broadcast) already has the debate in
+    hand and passes it through instead. %>
+<% side = (debate_turn.user_id == debate.challenger_id) ? :challenger : :opponent %>
+<div id="<%= dom_id(debate_turn) %>"
+     class="debate-turn shadow px-3.5 py-3 max-w-[86%] <%= (side == :challenger) ? "self-start rounded-2xl rounded-bl-md bg-card" : "self-end rounded-2xl rounded-br-md bg-disagree-soft" %>">
+  <div class="flex items-center gap-1.5 mb-1 min-w-0 <%= "flex-row-reverse" if side == :opponent %>">
+    <%= render "ui/avatar", user: debate_turn.user, size: :sm %>
+    <span class="text-[10.5px] font-bold uppercase tracking-wide truncate <%= (side == :challenger) ? "text-agree" : "text-disagree" %>">
+      <span class="debate-turn-phase"><%= debate_turn.phase_label %></span>
+      <span class="mx-1">·</span> @<%= debate_turn.user.username %>
+    </span>
   </div>
-  <div class="hujah-body text-black break-words"><%= format_body(debate_turn.body) %></div>
-<% end %>
+  <div class="hujah-body text-sm text-ink break-words"><%= format_body(debate_turn.body) %></div>
+</div>

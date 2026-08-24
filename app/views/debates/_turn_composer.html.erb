@@ -1,45 +1,44 @@
-<%# The turn-posting form. Shown only to the current_turn_user; everyone else sees a
-    "waiting" note (or a concluded note). VIEWER-SCOPED: takes an explicit `viewer:`
-    local, because `current_user` is undefined in a broadcast render context and using
-    it here would blank the composer on every broadcast. Local: debate, viewer (defaults
-    to current_user in the request context). Wrapped in the pinned dom_id so the
-    Turbo-Stream replace lands here — the debate_composer controller refocuses the field
-    on both first paint and that post-turn replace.
+<%# The turn-posting form. Shown only to the current_turn_user; every other viewer sees
+    a note instead (waiting / spectator / concluded — see the three-way branch below).
+    VIEWER-SCOPED: takes an explicit `viewer:` local, because `current_user` is
+    undefined in a broadcast render context and using it here would blank the composer
+    on every broadcast. Local: debate, viewer (defaults to current_user in the request
+    context). Wrapped in the pinned dom_id so the Turbo-Stream replace lands here — the
+    debate_composer controller refocuses the field on both first paint and that
+    post-turn replace.
 
-    DESIGN SYSTEM (Slice 9, Task 4.5) —
-    docs/design-system/components/debate/TurnComposer.prompt.md. The form surface is
-    `ui/_card`, and `data:` carries `data-controller` onto the card element itself: that
-    attribute is the reason `ui/_card` has a `data:` local at all (its header names this
-    file), and the Stimulus controller must stay on the same element it was on. The
-    field keeps its own `debate-composer-target`.
+    PILL COMPOSER (Hoojah 2026, redesign Phase 3, Task 3.4) — mockup ~1141-1144: a pill
+    textarea + a circular primary `send` button, replacing the boxed textarea + text
+    submit. The textarea stays a `<textarea>`, not the mockup's literal `<input>`-style
+    box — `field-sizing: content` (`.debate-composer-field`, `@layer components`) still
+    needs a multi-line-capable element, and `rows` is still its min-height fallback
+    where `field-sizing` is unsupported; only `rows` drops from 3 to 1 since a pill is a
+    single visual line until content grows it. `debate-composer-target="field"` and
+    `data-controller="debate-composer"` stay on the same elements as before (the
+    Stimulus controller's `connect()` refocus does not change).
 
-    `padded:` is NOT used — TurnComposer.jsx sets a uniform `var(--space-4)` box, so
-    `class: "p-4"` is spelled instead. That is the one combination `ui/_card`'s header
-    forbids mixing: `padded:` would emit `py-3`, and a same-family utility resolves by
-    bundle order rather than call order, so the flag would silently beat the `p-4` this
-    card wants.
+    The submit control is now an ICON-ONLY circular button (`f.button` + the `send`
+    glyph, no visible label) rather than `f.submit "Post turn"` — `aria-label` carries
+    the accessible name instead of a text node. `Capybara.enable_aria_label = true`
+    (spec/support/capybara.rb) is what keeps every existing `click_button "Post turn"`
+    in the system specs working unchanged against this button.
 
-    The textarea keeps `border-light-grey` and its indigo focus border — that IS the
-    design system's boxed field ("The boxed variant borders light-grey and turns indigo
-    on focus", TextAreaField.prompt.md) — and keeps `.debate-composer-field`, which
-    carries `field-sizing: content` from the `@layer components` block in
-    app/assets/tailwind/application.css. Do not inline that CSS and do not drop `rows`:
-    it is the min-height fallback where `field-sizing` is unsupported.
-
-    The waiting and concluded notes are plain 14px-muted centred sentences with no card
-    behind them, exactly as TurnComposer.jsx renders its two non-form states. %>
+    Two non-form states, unchanged from before this task: the other participant sees
+    "Waiting for @mover…" while active, and everyone sees "This debate has concluded."
+    once it is. %>
 <% viewer = local_assigns.fetch(:viewer) { current_user } %>
 <div id="<%= dom_id(debate, :composer) %>" class="my-4">
   <% if debate.active? && debate.current_turn_user == viewer %>
-    <%= render layout: "ui/card", locals: {class: "p-4", data: {controller: "debate-composer"}} do %>
-      <%= form_with url: debate_turns_path(debate.slug), method: :post do |f| %>
-        <%= f.text_area :body, rows: 3, required: true, "aria-label": "Your turn",
+    <%= render layout: "ui/card", locals: {class: "p-3", data: {controller: "debate-composer"}} do %>
+      <%= form_with url: debate_turns_path(debate.slug), method: :post, class: "flex items-end gap-2.5" do |f| %>
+        <%= f.text_area :body, rows: 1, required: true, "aria-label": "Your turn",
               data: {"debate-composer-target": "field"},
               placeholder: "Make your argument…",
-              class: "debate-composer-field w-full resize-none rounded border border-light-grey p-2 text-black focus:outline-none focus:border-primary" %>
-        <div class="text-right mt-2">
-          <%= f.submit "Post turn", class: ds_button_classes(variant: :outline, tone: "primary", size: :md) %>
-        </div>
+              class: "debate-composer-field flex-1 min-w-0 resize-none rounded-3xl border border-hairline bg-card-2 px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary" %>
+        <%= f.button type: "submit", "aria-label": "Post turn",
+              class: "w-11 h-11 shrink-0 rounded-full bg-primary text-white shadow flex items-center justify-center active:scale-95 transition disabled:opacity-50" do %>
+          <%= lucide_icon("send", class: "w-5 h-5") %>
+        <% end %>
       <% end %>
     <% end %>
   <% elsif debate.active? %>
