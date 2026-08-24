@@ -19,62 +19,88 @@
 
 <%= render "shared/navbar" %>
 
+<% trending_ids = Rails.cache.read("trending:v1") %>
+<% first_tag = @hujah.hashtags.first %>
+<% header_label = (trending_ids&.include?(@hujah.id) && first_tag) ? "Trending in ##{first_tag.display} · #{total_votes} #{"vote".pluralize(total_votes)}" : "Hoojah" %>
+
 <main class="max-w-xl mx-auto px-4 py-6">
-  <nav class="flex justify-between items-center mb-2">
-    <%= link_to root_path, class: "text-primary no-underline", aria: { label: "Back" } do %>
+  <%# Hoojah 2026 contextual header (mockup lines ~1-30): back · centre context label ·
+      share + more-actions. The share menu and the more/flag menu are the SAME primitives
+      as before (share_spec / flag_spec click them by aria-label) — only their placement
+      moved out of `_hujah_header` (which is still the feed byline and must not change)
+      into this header. %>
+  <header class="flex items-center justify-between gap-2 mb-3">
+    <%= link_to root_path, class: "text-ink no-underline shrink-0", aria: { label: "Back" } do %>
       <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
     <% end %>
-    <details class="relative">
-      <summary class="list-none cursor-pointer text-primary" aria-label="More actions">
-        <%= lucide_icon("more-horizontal", class: "w-6 h-6") %>
-      </summary>
-      <%= render layout: "ui/menu", locals: {width: "w-56"} do %>
-        <% if user_signed_in? && @hujah.user_id == current_user.id %>
-          <%# `tone: "grey"` IS the disabled row — DropdownMenu's greyed-out state, and
-              the exact case `ds_menu_item_classes`' MENU_ITEM_TONES documents. The tone
-              also drops the hover fill, which matters here and only here: this is an
-              inert `<span>`, and a row that lights up under the cursor claims to be
-              clickable. Do not re-add `hover:bg-gray-100` at this call site. %>
-          <span class="<%= ds_menu_item_classes(tone: "grey") %>">Delete hoojah (Slice 2)</span>
-        <% end %>
-        <% if user_signed_in? %>
-          <%= render "hujahs/flag_dialog", hujah: @hujah %>
-        <% else %>
-          <%# `tone: "neutral"` is DropdownMenu.prompt.md's rule that report rows take
-              pink. `flex items-center gap-1` overrides the helper's baked `block` — that
-              works because the bundle emits `.block` before `.flex`, which is bundle
-              order rather than call order, so it is the ONE override to make here and
-              never a second padding or width. %>
-          <%= link_to new_user_session_path,
-                class: "#{ds_menu_item_classes(tone: "neutral")} flex items-center gap-1" do %>
-            <%= lucide_icon("flag", class: "w-4 h-4") %> Login to flag this hoojah
+    <span class="flex-1 min-w-0 truncate text-center text-sm font-bold text-ink"><%= header_label %></span>
+    <div class="flex items-center gap-1 shrink-0">
+      <%= render "hujahs/share_menu", hujah: @hujah %>
+      <details class="relative">
+        <summary class="list-none cursor-pointer text-ink" aria-label="More actions">
+          <%= lucide_icon("more-horizontal", class: "w-6 h-6") %>
+        </summary>
+        <%= render layout: "ui/menu", locals: {width: "w-56"} do %>
+          <% if user_signed_in? && @hujah.user_id == current_user.id %>
+            <%# `tone: "grey"` IS the disabled row — DropdownMenu's greyed-out state, and
+                the exact case `ds_menu_item_classes`' MENU_ITEM_TONES documents. The tone
+                also drops the hover fill, which matters here and only here: this is an
+                inert `<span>`, and a row that lights up under the cursor claims to be
+                clickable. Do not re-add `hover:bg-gray-100` at this call site. %>
+            <span class="<%= ds_menu_item_classes(tone: "grey") %>">Delete hoojah (Slice 2)</span>
+          <% end %>
+          <% if user_signed_in? %>
+            <%= render "hujahs/flag_dialog", hujah: @hujah %>
+          <% else %>
+            <%# `tone: "neutral"` is DropdownMenu.prompt.md's rule that report rows take
+                pink. `flex items-center gap-1` overrides the helper's baked `block` — that
+                works because the bundle emits `.block` before `.flex`, which is bundle
+                order rather than call order, so it is the ONE override to make here and
+                never a second padding or width. %>
+            <%= link_to new_user_session_path,
+                  class: "#{ds_menu_item_classes(tone: "neutral")} flex items-center gap-1" do %>
+              <%= lucide_icon("flag", class: "w-4 h-4") %> Login to flag this hoojah
+            <% end %>
           <% end %>
         <% end %>
-      <% end %>
-    </details>
-  </nav>
+      </details>
+    </div>
+  </header>
 
-  <%= render layout: "ui/card", locals: {as: "article", class: "mb-2"} do %>
-    <%= render "hujahs/hujah_header", hujah: @hujah, parent: @hujah.parent %>
-
-    <div class="px-4 pt-3 pb-1 text-black">
-      <h3 class="hujah-body text-xl leading-snug"><%= format_body(@hujah.body) %></h3>
+  <%# Author + claim hero (mockup lines ~9-30). NEW markup — deliberately NOT
+      `_hujah_header` (that renders on every feed card and must stay put). The verified
+      tick is OMITTED (no User#verified?). The Follow control is deferred: `_follow_button`
+      is locked to the indigo profile surface (white-on-primary) and would read invisible
+      here — flagged in HANDOVER. %>
+  <section class="mb-1">
+    <div class="flex items-center gap-3">
+      <%= render "ui/avatar", user: @hujah.user, size: :md %>
+      <div class="flex-1 min-w-0 leading-tight">
+        <div class="font-bold text-ink truncate"><%= @hujah.user.full_name %></div>
+        <div class="text-xs text-ink-2">
+          @<%= @hujah.user.username %>
+          <span class="mx-1">·</span>
+          <time datetime="<%= @hujah.created_at.iso8601 %>" data-local="time-ago"><%= @hujah.created_at.strftime("%b %-d") %></time>
+        </div>
+      </div>
     </div>
 
-    <%= render "hujahs/vote_hero",
-          hujah: @hujah,
-          current_user_vote: @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id),
-          current_vote_locked: (user_signed_in? && @hujah.votes.find_by(user_id: current_user.id)&.conviction) || false %>
+    <h1 class="hujah-body mt-4 text-2xl font-semibold leading-snug tracking-tight text-ink"><%= format_body(@hujah.body) %></h1>
 
-    <%= render "ui/divider" %>
-    <div class="px-4 py-2 flex items-center text-sm text-grey">
-      <%= lucide_icon("bar-chart-2", class: "w-4 h-4") %>
-      <span class="ml-1"><%= total_votes %></span>
-      <span class="mx-2">·</span>
-      <%= lucide_icon("message-circle", class: "w-4 h-4") %>
-      <span class="ml-1"><%= @children.size %></span>
-    </div>
-  <% end %>
+    <% if @hujah.hashtags.any? %>
+      <div class="mt-3 flex gap-2 flex-wrap">
+        <% @hujah.hashtags.each_with_index do |tag, i| %>
+          <%= link_to "##{tag.display}", tag_path(tag.name),
+                class: "text-xs font-semibold px-3 py-1.5 rounded-full no-underline #{i.zero? ? "bg-primary-soft text-primary" : "bg-card-2 text-ink-2"}" %>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+
+  <%= render "hujahs/vote_hero",
+        hujah: @hujah,
+        current_user_vote: @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id),
+        current_vote_locked: (user_signed_in? && @hujah.votes.find_by(user_id: current_user.id)&.conviction) || false %>
 
   <%# Port of the legacy SPA `Layouts/button_add_hujah.js` — the respond entry.
       Seeds the compose form with this hoojah as the parent (stance-tagged reply).
