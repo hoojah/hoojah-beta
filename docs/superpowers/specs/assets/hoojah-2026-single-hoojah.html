@@ -1,0 +1,345 @@
+x;border-radius:14px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+        </button>
+      </div>
+
+      <!-- scroll area -->
+      <div data-scroll style="flex:1;overflow-y:auto;overflow-x:hidden;">
+
+        <!-- author + claim hero -->
+        <div style="padding:18px 18px 6px;">
+          <div style="display:flex;align-items:center;gap:11px;">
+            <div style="width:46px;height:46px;border-radius:15px;background:linear-gradient(135deg,var(--primary),#7d92ff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;flex-shrink:0;box-shadow:0 8px 18px -8px var(--primary);">NA</div>
+            <div style="flex:1;min-width:0;line-height:1.2;">
+              <div style="display:flex;align-items:center;gap:5px;">
+                <span style="font-weight:700;font-size:15px;color:var(--ink);">Nurul Aziz</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--primary)"><path d="M12 2 15 5l4-.5L18.5 8.5 22 12l-3.5 3.5L19 19l-4.5-.5L12 22 9 19l-4 .5.5-3.5L2 12l3.5-3.5L5 5l4 .5z"/><path d="m9 12 2 2 4-4" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="font-size:12.5px;color:var(--ink-2);">@nurulaziz · Apr 16</div>
+            </div>
+            <button style="padding:8px 15px;border-radius:999px;border:1.5px solid var(--primary);background:transparent;color:var(--primary);font-weight:700;font-size:12.5px;cursor:pointer;">Follow</button>
+          </div>
+
+          <div style="margin-top:16px;font-size:23px;line-height:1.32;font-weight:650;letter-spacing:-.01em;color:var(--ink);text-wrap:pretty;">
+            Malaysia should make public transport <span style="color:var(--primary);">completely free</span> in every major city by 2030.
+          </div>
+          <div style="margin-top:12px;display:flex;gap:7px;flex-wrap:wrap;">
+            <span style="font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;background:var(--primary-soft);color:var(--primary);">#PublicTransport</span>
+            <span style="font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;background:var(--card-2);color:var(--ink-2);">#KlangValley</span>
+          </div>
+        </div>
+
+        <!-- VOTE HERO -->
+        <div style="margin:14px 14px 0;border-radius:26px;background:var(--card);box-shadow:var(--shadow);padding:18px 16px 16px;position:relative;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <span style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);">Where do you stand?</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--agree);background:var(--agree-soft);padding:5px 10px;border-radius:999px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h6l-1 8 10-12h-6z"/></svg>
+              {{ conviction }} conviction
+            </span>
+          </div>
+
+          <!-- big tap targets -->
+          <div style="display:flex;gap:10px;">
+
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+              <button onPointerDown="{{ onAgreeDown }}" onPointerUp="{{ onAgreeUp }}" onPointerLeave="{{ onAgreeLeave }}" onContextMenu="{{ noMenu }}" style="position:relative;height:104px;border-radius:20px;border:2px solid var(--agree);background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;touch-action:none;transition:transform .12s;color:var(--agree);overflow:hidden;">
+                <sc-if value="{{ agreeVoted }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;inset:0;background:var(--agree);box-shadow:var(--stance-shadow) var(--agree);animation:hpop .4s ease;"></span>
+                </sc-if>
+                <span style="position:relative;color:{{ agreeIconColor }};display:flex;flex-direction:column;align-items:center;gap:7px;">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                  <span style="font-size:12.5px;font-weight:700;">Agree</span>
+                </span>
+              </button>
+              <div style="display:flex;align-items:baseline;justify-content:center;gap:5px;">
+                <span style="font-size:19px;font-weight:800;color:var(--agree);">{{ agreePct }}%</span>
+                <span style="font-size:11px;color:var(--faint);font-weight:600;">{{ agreeCount }}</span>
+              </div>
+            </div>
+
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+              <button onPointerDown="{{ onNeutralDown }}" onPointerUp="{{ onNeutralUp }}" onPointerLeave="{{ onNeutralLeave }}" onContextMenu="{{ noMenu }}" style="position:relative;height:104px;border-radius:20px;border:2px solid var(--neutral);background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;touch-action:none;transition:transform .12s;color:var(--neutral);overflow:hidden;">
+                <sc-if value="{{ neutralVoted }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;inset:0;background:var(--neutral);box-shadow:var(--stance-shadow) var(--neutral);animation:hpop .4s ease;"></span>
+                </sc-if>
+                <span style="position:relative;color:{{ neutralIconColor }};display:flex;flex-direction:column;align-items:center;gap:7px;">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+                  <span style="font-size:12.5px;font-weight:700;">Neutral</span>
+                </span>
+              </button>
+              <div style="display:flex;align-items:baseline;justify-content:center;gap:5px;">
+                <span style="font-size:19px;font-weight:800;color:var(--neutral);">{{ neutralPct }}%</span>
+                <span style="font-size:11px;color:var(--faint);font-weight:600;">{{ neutralCount }}</span>
+              </div>
+            </div>
+
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+              <button onPointerDown="{{ onDisagreeDown }}" onPointerUp="{{ onDisagreeUp }}" onPointerLeave="{{ onDisagreeLeave }}" onContextMenu="{{ noMenu }}" style="position:relative;height:104px;border-radius:20px;border:2px solid var(--disagree);background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;touch-action:none;transition:transform .12s;color:var(--disagree);overflow:hidden;">
+                <sc-if value="{{ disagreeVoted }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;inset:0;background:var(--disagree);box-shadow:var(--stance-shadow) var(--disagree);animation:hpop .4s ease;"></span>
+                </sc-if>
+                <span style="position:relative;color:{{ disagreeIconColor }};display:flex;flex-direction:column;align-items:center;gap:7px;">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+                  <span style="font-size:12.5px;font-weight:700;">Disagree</span>
+                </span>
+              </button>
+              <div style="display:flex;align-items:baseline;justify-content:center;gap:5px;">
+                <span style="font-size:19px;font-weight:800;color:var(--disagree);">{{ disagreePct }}%</span>
+                <span style="font-size:11px;color:var(--faint);font-weight:600;">{{ disagreeCount }}</span>
+              </div>
+            </div>
+
+          </div>
+
+          <div style="margin-top:14px;display:flex;height:10px;border-radius:99px;overflow:hidden;gap:2px;">
+            <div style="background:var(--agree);width:{{ agreePct }}%;transition:width .6s cubic-bezier(.2,.8,.2,1);"></div>
+            <div style="background:var(--neutral);width:{{ neutralPct }}%;transition:width .6s cubic-bezier(.2,.8,.2,1);"></div>
+            <div style="background:var(--disagree);width:{{ disagreePct }}%;transition:width .6s cubic-bezier(.2,.8,.2,1);"></div>
+          </div>
+
+          <div style="margin-top:14px;text-align:center;font-size:11.5px;color:var(--faint);display:flex;align-items:center;justify-content:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--faint)"><path d="M13 2 3 14h6l-1 8 10-12h-6z"/></svg>
+            Tap to vote · <b style="color:var(--ink-2);font-weight:700;">hold</b> to charge a conviction vote
+          </div>
+
+          <!-- CHARGE overlay -->
+          <sc-if value="{{ charging }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;inset:0;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20;pointer-events:none;">
+              <div style="position:relative;width:172px;height:172px;display:flex;align-items:center;justify-content:center;">
+                <svg width="172" height="172" viewBox="0 0 172 172" style="position:absolute;transform:rotate(-90deg);">
+                  <circle cx="86" cy="86" r="76" fill="none" stroke="var(--field)" stroke-width="10"/>
+                  <circle cx="86" cy="86" r="76" fill="none" stroke="{{ chargeColor }}" stroke-width="10" stroke-linecap="round" stroke-dasharray="478" stroke-dashoffset="{{ chargeRingOffset }}"/>
+                </svg>
+                <div style="display:flex;flex-direction:column;align-items:center;animation:hbreathe 1s ease-in-out infinite;">
+                  <span style="font-size:64px;font-weight:900;line-height:1;color:{{ chargeColor }};font-variant-numeric:tabular-nums;">{{ chargeNum }}</span>
+                  <span style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{{ chargeColor }};margin-top:4px;">charging {{ chargeStanceLabel }}</span>
+                </div>
+              </div>
+              <div style="font-size:12.5px;color:var(--ink-2);font-weight:600;">Release to cancel · reaches 0 to lock it in</div>
+            </div>
+          </sc-if>
+
+          <!-- BOOM overlay -->
+          <sc-if value="{{ boomShow }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;pointer-events:none;">
+              <span style="position:absolute;width:150px;height:150px;border-radius:999px;background:{{ chargeColor }};opacity:.18;animation:hboom .9s ease-out forwards;"></span>
+              <span style="position:absolute;width:120px;height:120px;border-radius:999px;border:3px solid {{ chargeColor }};animation:hray .9s ease-out forwards;"></span>
+              <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;animation:hpop .5s ease;">
+                <div style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;background:{{ chargeColor }};color:#fff;font-weight:800;font-size:15px;box-shadow:0 14px 30px -10px rgba(0,0,0,.4);">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M13 2 3 14h6l-1 8 10-12h-6z"/></svg>
+                  Conviction vote!
+                </div>
+                <div style="font-size:12px;font-weight:700;color:{{ chargeColor }};animation:hfloat 1.3s ease-out forwards;">+7 conviction</div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- debates on this hoojah -->
+        <div style="margin:14px 14px 0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">
+            <span style="font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/></svg>Debates</span>
+            <span style="font-size:12px;color:var(--faint);font-weight:600;">1 live · 3 concluded</span>
+          </div>
+          <div style="border-radius:18px;background:var(--card);box-shadow:var(--shadow);overflow:hidden;">
+            <div style="padding:12px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;">
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--disagree);padding:4px 8px;border-radius:999px;flex-shrink:0;"><span style="width:5px;height:5px;border-radius:99px;background:#fff;display:block;animation:hbreathe 1.4s ease-in-out infinite;"></span>Live</span>
+              <div style="flex:1;min-width:0;line-height:1.3;"><div style="font-size:13px;font-weight:700;color:var(--ink);"><span style="color:var(--agree);">@limteik</span> vs <span style="color:var(--disagree);">@sitir</span></div><div style="font-size:11px;color:var(--ink-2);">Round 2 · 1,204 watching now</div></div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </div>
+            <div style="height:1px;background:var(--hairline);"></div>
+            <div style="padding:11px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;">
+              <span style="width:26px;height:26px;border-radius:8px;background:var(--card-2);color:var(--ink-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/></svg></span>
+              <div style="flex:1;min-width:0;line-height:1.3;"><div style="font-size:13px;font-weight:600;color:var(--ink);">@aminah vs @faridkamal</div><div style="font-size:11px;color:var(--ink-2);">Concluded · <span style="color:var(--agree);font-weight:700;">@aminah won</span> 61%</div></div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </div>
+            <div style="height:1px;background:var(--hairline);"></div>
+            <div style="padding:11px 14px;text-align:center;font-size:12.5px;font-weight:700;color:var(--primary);cursor:pointer;">See all 3 concluded debates</div>
+          </div>
+        </div>
+
+        <!-- response filter -->
+        <div style="margin-top:22px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:16px;font-weight:800;color:var(--ink);">Responses <span style="color:var(--faint);font-weight:600;">· 214</span></span>
+        </div>
+        <div style="display:flex;gap:8px;padding:12px 14px 4px;overflow-x:auto;">
+          <button onClick="{{ setFilterAll }}" style="flex-shrink:0;padding:8px 15px;border-radius:999px;border:none;font-size:12.5px;font-weight:700;cursor:pointer;background:{{ allBg }};color:{{ allFg }};">All</button>
+          <button onClick="{{ setFilterAgree }}" style="flex-shrink:0;padding:8px 15px;border-radius:999px;border:1.5px solid var(--agree);font-size:12.5px;font-weight:700;cursor:pointer;background:{{ agreeTabBg }};color:{{ agreeTabFg }};">Agree</button>
+          <button onClick="{{ setFilterNeutral }}" style="flex-shrink:0;padding:8px 15px;border-radius:999px;border:1.5px solid var(--neutral);font-size:12.5px;font-weight:700;cursor:pointer;background:{{ neutralTabBg }};color:{{ neutralTabFg }};">Neutral</button>
+          <button onClick="{{ setFilterDisagree }}" style="flex-shrink:0;padding:8px 15px;border-radius:999px;border:1.5px solid var(--disagree);font-size:12.5px;font-weight:700;cursor:pointer;background:{{ disagreeTabBg }};color:{{ disagreeTabFg }};">Disagree</button>
+        </div>
+
+        <!-- responses -->
+        <div style="padding:8px 14px 28px;display:flex;flex-direction:column;gap:10px;">
+
+          <div style="border-radius:18px;background:var(--card);box-shadow:var(--shadow);overflow:hidden;display:flex;">
+            <div style="width:6px;background:var(--agree);flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;padding:13px 14px;">
+              <div style="display:flex;align-items:center;gap:9px;">
+                <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#f59a2e,#e1306c);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0;">LT</div>
+                <div style="flex:1;min-width:0;line-height:1.15;">
+                  <div style="font-size:13.5px;font-weight:700;color:var(--ink);">Lim Teik</div>
+                  <div style="font-size:11px;color:var(--ink-2);">@limteik · <span style="color:var(--agree);font-weight:700;">Agree</span> · 2h</div>
+                </div>
+              </div>
+              <div style="margin-top:9px;font-size:14px;line-height:1.45;color:var(--ink);">Free transit pays for itself — fewer cars, cleaner air, and KL's productivity jumps when commutes stop bleeding hours.</div>
+              <div style="margin-top:11px;display:flex;align-items:center;gap:16px;font-size:12px;color:var(--ink-2);font-weight:600;">
+                <span style="display:inline-flex;align-items:center;gap:5px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>1,024</span>
+                <span style="display:inline-flex;align-items:center;gap:5px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>18</span>
+                <span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;color:var(--disagree);font-weight:700;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h6l-1 8 10-12h-6z"/></svg>Challenge</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-radius:18px;background:var(--card);box-shadow:var(--shadow);overflow:hidden;display:flex;">
+            <div style="width:6px;background:var(--neutral);flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;padding:13px 14px;">
+              <div style="display:flex;align-items:center;gap:9px;">
+                <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#e8930c,#833ab4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0;">AZ</div>
+                <div style="flex:1;min-width:0;line-height:1.15;">
+                  <div style="font-size:13.5px;font-weight:700;color:var(--ink);">Ahmad Zaki</div>
+                  <div style="font-size:11px;color:var(--ink-2);">@ahmadz · <span style="color:var(--neutral);font-weight:700;">Neutral</span> · 3h</div>
+                </div>
+              </div>
+              <div style="margin-top:9px;font-size:14px;line-height:1.45;color:var(--ink);">Depends on the funding model. Free at off-peak could work brilliantly — 24/7 free needs numbers I haven't seen yet. Show me the trial data.</div>
+              <div style="margin-top:11px;display:flex;align-items:center;gap:16px;font-size:12px;color:var(--ink-2);font-weight:600;">
+                <span style="display:inline-flex;align-items:center;gap:5px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>531</span>
+                <span style="display:inline-flex;align-items:center;gap:5px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>27</span>
+                <span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;color:var(--disagree);font-weight:700;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h6l-1 8 10-12h-6z"/></svg>Challenge</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-radius:18px;background:var(--card);box-shadow:var(--shadow);overflow:hidden;display:flex;">
+            <div style="width:6px;background:var(--disagree);flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;padding:13px 14px;">
+              <div style="display:flex;align-items:center;gap:9px;">
+                <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#833ab4,#415de6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0;">SR</div>
+                <div style="flex:1;min-width:0;line-height:1.15;">
+                  <div style="font-size:13.5px;font-weight:700;color:var(--ink);">Siti Rahmah</div>
+                  <div style="font-size:11px;color:var(--ink-2);">@sitir · <span style="color:var(--disagree);font-weight:700;">Disagree</span> · 4h</div>
+                </div>
+              </div>
+              <div style="margin-top:9px;font-size:14px;line-height:1.45;color:var(--ink);">"Free" means taxpayer-funded. Who maintains ageing rolling stock when fare revenue is zero? Show me the budget first.</div>
+              <div style="margin-top:11px;display:flex;align-items:center;gap:16px;font-size:12px;color:var(--ink-2);font-weight:600;">
+                <span style="display:inline-flex;align-items:center;gap:5px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>867</span>
+                <span style="display:inline-flex;align-items:center;gap:5px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>42</span>
+                <span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:var(--disagree-soft);color:var(--disagree);font-weight:700;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/></svg>In debate</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ARGUMENT composer bar -->
+      <div style="flex-shrink:0;padding:10px 14px 20px;background:var(--nav);backdrop-filter:blur(12px);border-top:1px solid var(--hairline);">
+
+        <sc-if value="{{ argLocked }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:1;display:flex;align-items:center;gap:9px;height:44px;padding:0 14px;border-radius:999px;background:var(--card-2);border:1px dashed var(--field);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span style="flex:1;font-size:13px;color:var(--faint);font-weight:600;">Vote to join the argument</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button onClick="{{ argPickAgree }}" style="width:38px;height:38px;border-radius:999px;border:1.5px solid var(--agree);background:transparent;color:var(--agree);display:flex;align-items:center;justify-content:center;cursor:pointer;" style-active="transform:scale(.9)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg></button>
+            <button onClick="{{ argPickNeutral }}" style="width:38px;height:38px;border-radius:999px;border:1.5px solid var(--neutral);background:transparent;color:var(--neutral);display:flex;align-items:center;justify-content:center;cursor:pointer;" style-active="transform:scale(.9)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button>
+            <button onClick="{{ argPickDisagree }}" style="width:38px;height:38px;border-radius:999px;border:1.5px solid var(--disagree);background:transparent;color:var(--disagree);display:flex;align-items:center;justify-content:center;cursor:pointer;" style-active="transform:scale(.9)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg></button>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ argCollapsed }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div onClick="{{ argTap }}" style="flex:1;display:flex;align-items:center;gap:9px;height:44px;padding:0 8px 0 15px;border-radius:999px;background:var(--card-2);border:1px solid var(--hairline);cursor:text;">
+            <span style="flex:1;font-size:13.5px;color:var(--faint);">Make your argument…</span>
+            <div style="display:flex;gap:5px;">
+              <button onClick="{{ argPickAgree }}" style="{{ argMiniAgree }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg></button>
+              <button onClick="{{ argPickNeutral }}" style="{{ argMiniNeutral }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button>
+              <button onClick="{{ argPickDisagree }}" style="{{ argMiniDisagree }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg></button>
+            </div>
+          </div>
+          <button onClick="{{ argTap }}" style="width:44px;height:44px;border-radius:999px;border:none;background:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 22px -8px var(--primary);flex-shrink:0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+          </button>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ argExpanded }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:hrise .3s cubic-bezier(.34,1.56,.64,1);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-2);">Post this response as</span>
+            <button onClick="{{ argMaximize }}" style="width:30px;height:30px;border-radius:9px;border:none;background:var(--card-2);display:flex;align-items:center;justify-content:center;color:var(--ink-2);cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg></button>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onClick="{{ argPickAgree }}" style="{{ argRowAgree }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>Agree</button>
+            <button onClick="{{ argPickNeutral }}" style="{{ argRowNeutral }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>Neutral</button>
+            <button onClick="{{ argPickDisagree }}" style="{{ argRowDisagree }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>Disagree</button>
+          </div>
+          <div style="margin-top:9px;display:flex;align-items:flex-end;gap:9px;">
+            <textarea onChange="{{ argInput }}" value="{{ argText }}" placeholder="Make your argument…" rows="2" style="flex:1;border:none;background:var(--card-2);border-radius:14px;padding:11px 13px;resize:none;outline:none;font-family:inherit;font-size:14px;line-height:1.4;color:var(--ink);"></textarea>
+            <button onClick="{{ argPost }}" style="width:44px;height:44px;border-radius:999px;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px -8px var(--primary);flex-shrink:0;transition:all .18s;{{ argSendStyle }}">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{ argSendIcon }}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+            </button>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+
+      <!-- SINGLE HOOJAH · Respond with a stance (morph overlay) -->
+      <div style="{{ argOverlayStyle }}">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 6px;font-size:13px;font-weight:600;color:var(--ink);flex-shrink:0;background:var(--nav);">
+          <span>9:41</span>
+          <span style="display:flex;gap:6px;align-items:center;opacity:.9;">
+            <svg width="17" height="12" viewBox="0 0 17 12" fill="var(--ink)"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1" opacity=".35"/></svg>
+            <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="19" height="10" rx="3" stroke="var(--ink)" stroke-opacity=".5"/><rect x="2.5" y="2.5" width="14" height="7" rx="1.5" fill="var(--ink)"/><rect x="21" y="4" width="2" height="4" rx="1" fill="var(--ink)" opacity=".5"/></svg>
+          </span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px 12px;background:var(--nav);backdrop-filter:blur(12px);border-bottom:1px solid var(--hairline);flex-shrink:0;">
+          <button onClick="{{ argClose }}" style="width:40px;height:40px;border-radius:14px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;color:var(--ink);cursor:pointer;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          <span style="font-size:15px;font-weight:800;color:var(--ink);">Respond</span>
+          <button onClick="{{ argPost }}" style="padding:9px 20px;border-radius:999px;border:none;font-weight:700;font-size:13.5px;transition:all .18s;{{ argPostStyle }}">Post</button>
+        </div>
+        <div data-scroll style="flex:1;overflow-y:auto;padding:16px 16px 24px;display:flex;flex-direction:column;">
+          <div style="border-radius:16px;background:var(--card-2);padding:12px 14px;border-left:5px solid var(--primary);">
+            <div style="font-size:11.5px;color:var(--ink-2);margin-bottom:4px;">Responding to <span style="color:var(--primary);font-weight:700;">@nurulaziz</span>'s hoojah</div>
+            <div style="font-size:14px;line-height:1.4;color:var(--ink);font-weight:600;">Malaysia should make public transport completely free in every major city by 2030.</div>
+          </div>
+
+          <div style="margin-top:18px;font-size:12px;font-weight:700;color:var(--ink-2);">Post this response as</div>
+          <div style="margin-top:10px;display:flex;gap:10px;">
+            <button onClick="{{ argPickAgree }}" style="{{ argBigAgree }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg><span style="font-size:12.5px;font-weight:700;">Agree</span></button>
+            <button onClick="{{ argPickNeutral }}" style="{{ argBigNeutral }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg><span style="font-size:12.5px;font-weight:700;">Neutral</span></button>
+            <button onClick="{{ argPickDisagree }}" style="{{ argBigDisagree }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg><span style="font-size:12.5px;font-weight:700;">Disagree</span></button>
+          </div>
+
+          <textarea onChange="{{ argInput }}" value="{{ argText }}" placeholder="Make your argument…" rows="6" style="width:100%;margin-top:18px;border:none;background:transparent;resize:none;outline:none;font-family:inherit;font-size:16px;line-height:1.45;color:var(--ink);"></textarea>
+        </div>
+        <div style="flex-shrink:0;padding:11px 16px 20px;background:var(--nav);backdrop-filter:blur(12px);border-top:1px solid var(--hairline);display:flex;align-items:center;gap:14px;">
+          <sc-if value="{{ hasArgStance }}" hint-placeholder-val="{{ false }}">
+          <span style="display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:{{ argStanceColor }};"><span style="width:8px;height:8px;border-radius:999px;background:{{ argStanceColor }};display:block;"></span>Posting as {{ argStanceName }}</span>
+          </sc-if>
+          <span style="margin-left:auto;font-size:12.5px;font-weight:700;color:var(--faint);">Draft</span>
+        </div>
+      </div>
+
+      <div style="position:absolute;bottom:9px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:99px;background:var(--ink);opacity:.28;z-index:50;"></div>
+    </div>
+  </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+  <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8a90a2;font-weight:700;">Respond · with a stance</div>
+  <div data-hoojah="app" data-theme="{{ theme }}" data-scheme="{{ scheme }}" style="width:393px;height:852px;border-radius:46px;background:#0b0c10;padding:11px;box-shadow:0 40px 90px -30px rgba(20,24,54,.55),0 0 0 2px rgba(0,0,0,.35);position:relative;user-select:none;">
+    <div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:118px;height:30px;background:#0b0c10;border-radius:0 0 18px 18px;z-index:60;"></div>
+    <div style="width:100%;height:100%;border-radius:35px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;position:relative;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 6px;font-size:13px;font-weight:600;color:var(--ink);flex-shrink:0;background:var(--nav);">
+        <span>9:41</span>
+        <span style="display:flex;gap:6px;align-items:center;opacity:.9;">
+          <svg width="17" height="12" viewBox="0 0 17 12" fill="var(--ink)"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1" opacity=".35"/></svg>
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="19" height="10" rx="3" stroke="var(--ink)" stroke-opacity=".5"/><rect x="2.5" y="2.5" width="14" height="7" rx="1.5" fill="var(--ink)"/><rect x="21" y="4" width="2" height="4" rx="1" fill="var(--ink)" opacity=".5"/></svg>
+        </span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px 12px;background:var(--nav);backdrop-filter:blur(12px);border-bottom:1px solid var(--hairline);flex-shrink:0;">
+        <button style="width:40px;height:40px;border-radius:14px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;color:var(--ink);cursor:pointer;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></s
