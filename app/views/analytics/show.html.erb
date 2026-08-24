@@ -1,42 +1,57 @@
-<%# Owner-only analytics dashboard (Slice 5, Part B). Aggregates only, off the
-    denormalized hujahs counters — no per-voter data anywhere.
+<%# Owner-only analytics dashboard. Aggregates only, off the denormalized hujahs
+    counters — no per-voter data anywhere.
 
-    DESIGN SYSTEM (Slice 9, Task 4.7) — docs/design-system/components/analytics/*.prompt.md
-    for the two chips and the bars; readme.md VISUAL FOUNDATIONS for everything else.
+    DESIGN SYSTEM (Hoojah 2026, Slice 2026 Phase 4.6) — mockup "Analytics · dashboard"
+    ~lines 1456-1510, restyling Slice 9 Task 4.7's version.
+    docs/design-system/components/analytics/*.prompt.md for the two chips and the bars
+    still applies to the shapes; this pass changes tone, not structure.
 
-    The page title takes the product's page-title idiom, `text-lg font-medium mb-3`, the
-    same string `blocks/index`, `users/followers` and `users/following` already use —
-    that shared string is the whole reason, and it is enough. It was `text-xl font-bold`;
-    VISUAL FOUNDATIONS puts weights at "medium for names/CTAs, semibold section heads,
-    bold rare" — a page title is neither of the rare cases. (No argument is made from the
-    20px size itself: readme.md hands 20px to the single-hujah body, but it hands 18px to
-    a hujah body too, so "that size is a body size" would rule out the size we picked just
-    as fast as the one we dropped.) `text-black` came off with it
-    because `@layer base` already paints the body `--fg-body`, which IS `--color-black`.
+    HEADER: `shared/_screen_header` replaces the earlier `shared/navbar` + hand-rolled
+    `<h1>`. The mockup draws this screen as a drill-down (back arrow + title bar), the
+    same chrome `debates/new` uses, not the persistent top-level nav every feed/list page
+    keeps — this page is reached from the avatar menu, one level down from the feed, so
+    `back:` returns to `root_path`. That is also why the page title moves off the
+    `blocks/index`-style `text-lg font-medium` idiom documented below: `_screen_header`
+    owns its own `<h1>` (`text-base font-bold text-ink`), and duplicating a second title
+    directly under it would be a second heading for one screen.
 
-    The `gap-3` on the chip row is StatChip.prompt.md's "12px gap", stated once here
-    because `ui/_card` (and therefore `_stat`) owns no margin of its own.
+    FOLLOWERS KPI (Task 4.6): computed in the controller as
+    `current_user.followers.count`, NOT inside `UserAnalytics` — see that model's header
+    comment and `AnalyticsController#show`. `UserAnalytics` reads only `hujahs`; the
+    follower count is `users`+`follows` and stays entirely outside it, which is also why
+    it is a separate "stat" partial call passed `@followers_count` rather than a value
+    pulled off `@analytics`.
 
-    The empty state is `ui/_empty_state` rather than the icon + sentence this file used to
-    hand-roll — the sixth and last of the six copies that partial was extracted from. Its
-    baked-in `p-3 bg-white` and `gap-1` reproduce what was here; what it drops is
-    `rounded`. The authority for that is its OWN component file, not Card.prompt.md:
-    docs/design-system/components/core/EmptyState.jsx declares a background, padding, a
-    gap, a font size and a colour — and no `borderRadius` at all. An empty state is not a
-    card, so "Never round a feed card" was never the rule that applied to it; the rule
-    that applies is that this component has no corner radius to begin with. The sentence
-    is unchanged to the byte, and EmptyState.prompt.md quotes it as real product copy. %>
-<%= render "shared/navbar" %>
+    NO delta/percentage-change chip and NO 7-day chart. The mockup draws both ("↑ 12%
+    this week", a bar-per-weekday sparkline); this app has no backing time-series for
+    either — `UserAnalytics` and the followers count are both live point-in-time reads,
+    not snapshots. Fabricating a trend off a single reading would be fictional data on a
+    page whose whole point is real, denormalized counters. Deferred until there is an
+    actual snapshot job to read from.
+
+    TOP HOOJAH: the user's own top-level hoojah with the most total votes, rendered with
+    `_distribution_bar`'s `stacked:` form (see that partial's comment). Ties and the
+    "no hoojahs yet" case both fall through to `nil` via `max_by`, so the card only
+    renders when there is a hoojah to show — no separate empty state needed here, since
+    the section below already carries `ui/_empty_state` for "no hoojahs at all".
+
+    The per-hoojah `_distribution_bar` list below is UNCHANGED (the row form, the k=5
+    suppression, the empty state) — this pass adds to the page, it does not replace that
+    section. %>
+<%= render "shared/screen_header", title: "Your dashboard", back: root_path %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
-  <h1 class="text-lg font-medium mb-3">Your dashboard</h1>
-
-  <div class="flex gap-3 mb-6">
-    <%= render "stat", label: "Votes received", value: @analytics.total_votes_received %>
-    <%= render "stat", label: "Arguments received", value: @analytics.total_arguments_received %>
+  <div class="flex gap-3 mb-4">
+    <%= render "stat", label: "Total votes received", value: @analytics.total_votes_received %>
+    <%= render "stat", label: "Followers", value: @followers_count %>
   </div>
 
-  <h2 class="text-sm font-semibold text-grey mb-3">Your hoojahs</h2>
+  <% top = @analytics.distributions.max_by(&:total) %>
+  <% if top %>
+    <%= render "distribution_bar", dist: top, stacked: true, heading: "Top hoojah" %>
+  <% end %>
+
+  <h2 class="text-sm font-semibold text-ink-2 mb-3 mt-2">Your hoojahs</h2>
   <% if @analytics.distributions.any? %>
     <%= render partial: "distribution_bar", collection: @analytics.distributions, as: :dist %>
   <% else %>
