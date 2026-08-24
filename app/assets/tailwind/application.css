@@ -128,10 +128,33 @@
 }
 
 @theme {
-  --color-primary: #415de6;
-  --color-agree: #fcaf45;
-  --color-neutral: #e1306c;
-  --color-disagree: #833ab4;
+  /* Hoojah 2026 bridge — stance/surface utilities indirect through runtime
+     custom properties (the `--agree`, `--card`, `--ink`, … defined on
+     :root / [data-theme] / [data-scheme] below), so `bg-agree`, `text-ink`,
+     `border-hairline`, etc. compile once and retint per theme+scheme at
+     runtime. This MUST stay a plain `@theme` (not `@theme inline`): only the
+     non-inline form emits `--color-x: var(--x)` into the theme layer, keeping
+     the indirection live; `inline` would bake the Spectrum/light value at build
+     and freeze dark mode out. */
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-agree: var(--agree);
+  --color-neutral: var(--neutral);
+  --color-disagree: var(--disagree);
+  --color-agree-soft: var(--agree-soft);
+  --color-neutral-soft: var(--neutral-soft);
+  --color-disagree-soft: var(--disagree-soft);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-2: var(--card-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-faint: var(--faint);
+  --color-hairline: var(--hairline);
+  --color-field: var(--field);
+
+  /* Fixed neutrals the views still spell directly — theme-independent, kept
+     as literals so they do NOT swing with the runtime scheme. */
   --color-black: #343a40;
   --color-grey: #8e8e8e;
   --color-light-grey: #bac2ca;
@@ -152,8 +175,8 @@
   /* `border-read` / `border-unread` are used by
      app/views/notifications/_notification_card.html.erb and were defined nowhere,
      so the 8px left border rendered as nothing. */
-  --color-unread: #e1306c;      /* stance neutral pink, matching the unread dot */
-  --color-read: #bac2ca;        /* light-grey */
+  --color-unread: var(--unread);  /* chains to the active scheme's neutral (see :root --unread) */
+  --color-read: #bac2ca;          /* light-grey */
 
   /* Size steps the views actually use. `--spacing` is deliberately NOT redefined:
      the design system's --space-1..6 are the 4px steps Tailwind already ships. */
@@ -200,18 +223,79 @@
  * `text-primary` utilities, not these.
  */
 :root {
-  --surface-page: #ffffff;  --surface-card: #ffffff;  --surface-menu: #ffffff;
-  --surface-nav: rgba(255,255,255,0.9);  --surface-profile: var(--color-primary);
-  --fg-body: var(--color-black);  --fg-muted: var(--color-grey);
-  --fg-faint: var(--color-light-grey);  --fg-link: var(--color-primary);
+  /* ── Hoojah 2026 runtime tokens · Spectrum / light (the base scheme) ──
+     Verbatim from docs/superpowers/specs/assets/hoojah-2026-tokens.css (spec
+     §2.4). These are the values the @theme `--color-*` bridge points at; the
+     [data-theme="dark"] and [data-scheme="…"] blocks below override only them,
+     so every `bg-agree`/`text-ink`/`border-hairline` in the app retints without
+     touching a single utility name. Spectrum is the bare-:root default —
+     absence of data-scheme means Spectrum. This block is UNLAYERED, so it wins
+     over Tailwind's `@layer theme` defaults for the same custom property. */
+  --primary:#415de6; --primary-soft:#eaeeff;
+  --agree:#0ea5a4; --neutral:#e8930c; --disagree:#8b5cf6;
+  --agree-soft:#e0f5f4; --neutral-soft:#fdf1de; --disagree-soft:#efeafe;
+  --surface:#f4f5f9; --card:#ffffff; --card-2:#f6f7fb;
+  --ink:#191c22; --ink-2:#5b616e; --faint:#a2a9b6;
+  --hairline:#edeef3; --field:#e6e8ef; --read:#d4d8e2; --unread:var(--neutral);
+  --nav:rgba(255,255,255,0.82); --shadow:0 8px 30px -12px rgba(20,24,54,.28);
+  --stance-shadow:0 10px 26px -12px;
+
+  /* Semantic aliases (var()-only — they generate no utilities). Rewired onto
+     the runtime tokens above so dark mode and the schemes actually paint
+     through them: change `--ink` under [data-theme="dark"] and every consumer
+     of --fg-body follows. `@layer base` already sets
+     `body { background: var(--surface-page) }`, and --surface-page now chains to
+     --surface, so dark mode works there with no further change. */
+  --surface-page: var(--surface);  --surface-card: var(--card);  --surface-menu: var(--card);
+  --surface-nav: var(--nav);  --surface-profile: var(--color-primary);
+  --fg-body: var(--ink);  --fg-muted: var(--ink-2);
+  --fg-faint: var(--faint);  --fg-link: var(--color-primary);
   --fg-inverse: var(--color-white);
-  --border-hairline: var(--color-gray-100);  --border-field: var(--color-gray-200);
-  --track-bar: var(--color-gray-200);  --backdrop: rgba(0,0,0,0.4);
+  --border-hairline: var(--hairline);  --border-field: var(--field);
+  --track-bar: var(--field);  --backdrop: rgba(0,0,0,0.4);
   --border-stance: 8px;  --border-pill: 2px;
   --nav-h: 56px;  --content-max: 576px;  --sidebar-w: 256px;
   --vote-btn: 44px;  --bar-h: 8px;
   --avatar-lg: 96px; --avatar-md: 44px; --avatar-row: 40px; --avatar-nav: 36px; --avatar-sm: 32px;
 }
+
+/* ── Runtime overrides — theme × scheme. Each block redefines ONLY the tokens
+   that differ from Spectrum/light above; everything else inherits from :root.
+   Verbatim values from the design mockup (spec §2.4). Attribute selectors
+   outrank bare :root, and dark×scheme combinations rely on the dark block +
+   the scheme block both matching (later source wins on ties, so the dark×scheme
+   rows follow their light-scheme rows). ── */
+
+/* dark (any scheme) */
+:root[data-theme="dark"] {
+  --primary:#7d92ff; --primary-soft:#1c2140;
+  --agree:#2dd4cf; --neutral:#fbbf24; --disagree:#a78bfa;
+  --agree-soft:#0c2a29; --neutral-soft:#2c2410; --disagree-soft:#221b3a;
+  --surface:#0d0e13; --card:#16181f; --card-2:#1c1f28;
+  --ink:#f3f4f7; --ink-2:#a7adba; --faint:#6a7180;
+  --hairline:#242732; --field:#2a2e39; --read:#39404e; --unread:var(--neutral);
+  --nav:rgba(18,20,26,0.82); --shadow:0 12px 34px -14px rgba(0,0,0,.7);
+  --stance-shadow:0 12px 30px -12px;
+}
+
+/* Scheme: Signal (emerald / amber / rose) */
+:root[data-scheme="signal"]{--agree:#12b981;--neutral:#f59e0b;--disagree:#f43f5e;--agree-soft:#e6f7f0;--neutral-soft:#fdf2df;--disagree-soft:#fdeaed;}
+:root[data-scheme="signal"][data-theme="dark"]{--agree:#2ee6a6;--neutral:#fbbf24;--disagree:#ff6b83;--agree-soft:#0e2b22;--neutral-soft:#2e2611;--disagree-soft:#33141b;}
+
+/* Scheme: Ballot (sage / ochre / clay) */
+:root[data-scheme="ballot"]{--agree:#4c956c;--neutral:#c98a3c;--disagree:#b5546a;--agree-soft:#e9f1ec;--neutral-soft:#f6efe4;--disagree-soft:#f3e7ea;}
+:root[data-scheme="ballot"][data-theme="dark"]{--agree:#7cc79a;--neutral:#e0a95e;--disagree:#d97e93;--agree-soft:#16241c;--neutral-soft:#2a2214;--disagree-soft:#2c1a1f;}
+
+/* Keyframes ported from the 2026 mockup — consumed by the vote/charge/boom
+   animations landing in Tracks 4–5. Named h* to avoid clashing with any
+   Tailwind-generated keyframes. */
+@keyframes hpop{0%{transform:scale(.6);opacity:0}55%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+@keyframes hfloat{0%{transform:translateY(6px);opacity:0}18%{opacity:1}100%{transform:translateY(-30px);opacity:0}}
+@keyframes hboom{0%{transform:scale(.3);opacity:0}40%{transform:scale(1.15);opacity:1}100%{transform:scale(2.1);opacity:0}}
+@keyframes hray{0%{transform:scale(.4);opacity:.9}100%{transform:scale(1.7);opacity:0}}
+@keyframes hbar{from{width:0}}
+@keyframes hbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes hrise{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
 
 /* Port of docs/design-system/tokens/base.css — this is what gives the layout's
    `<body class="body">` an actual definition. */
