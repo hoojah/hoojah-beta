@@ -1,0 +1,26 @@
+<%# The hashtag feed. Same page shape as the main feed (hujahs/index) — a max-w-xl
+    centred column of the SAME `hujahs/_hujah_card` partial so cards look identical —
+    with a tag header on top instead of the feed tabs. No trending sidebar here. %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-5xl mx-auto px-4 py-6">
+  <div class="w-full max-w-xl mx-auto">
+    <header class="bg-card border border-hairline rounded-none p-4 mb-2">
+      <div class="inline-flex items-center gap-2 bg-primary-soft text-primary px-3 py-1 rounded-full text-sm font-semibold">
+        <%= lucide_icon "hash", class: "w-4 h-4" %>
+        <span>#<%= @tag.display %></span>
+      </div>
+      <p class="text-ink-2 text-sm mt-2">
+        <%= pluralize(@tag.hujahs_count, "hoojah") %> tagged
+      </p>
+    </header>
+
+    <div id="hujah-feed">
+      <%= render partial: "hujahs/hujah_card", collection: @hujahs, as: :hujah %>
+    </div>
+
+    <div id="load-more">
+      <%= render "load_more" if @pagy.next %>
+    </div>
+  </div>
+</main>

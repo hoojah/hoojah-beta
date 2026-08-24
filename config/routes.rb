@@ -103,6 +103,10 @@ Rails.application.routes.draw do
   # Trending (Slice 6). Public, cached top-level hoojahs by HN-decayed activity.
   # Rendered both as a standalone page and as the feed's lazy turbo_frame sidebar.
   get "/trending", to: "trending#index", as: :trending
+  # Hashtag feed (2026). Public, countless-paginated top-level claims carrying :name
+  # (canonical lower-cased). A hand-written path (no `resources`) addressed by tag
+  # name — not id — like the rest of the app; mirrors the feed's per-post visibility.
+  get "/t/:name", to: "tags#show", as: :tag
   get "/notifications", to: "notifications#index", as: :notifications
   patch "/notifications/:id", to: "notifications#update", as: :notification
   delete "/notifications/:id", to: "notifications#destroy"
