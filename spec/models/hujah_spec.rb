@@ -10,6 +10,27 @@ RSpec.describe Hujah, type: :model do
     end
   end
 
+  describe "body length + #voted_by?" do
+    it "requires >= 8 chars for a top-level claim" do
+      h = build(:hujah, parent: nil, body: "short")
+      expect(h).not_to be_valid
+    end
+
+    it "allows a short reply" do
+      parent = create(:hujah)
+      h = build(:hujah, parent: parent, body: "ok")
+      expect(h).to be_valid
+    end
+
+    it "voted_by? reflects a cast vote" do
+      h = create(:hujah)
+      u = create(:user)
+      expect(h.voted_by?(u)).to be false
+      h.cast_vote(by: u, choice: 1)
+      expect(h.voted_by?(u)).to be true
+    end
+  end
+
   describe "#current_user_vote" do
     let!(:user) { create(:user) }
     let!(:hujah) { create(:hujah) }

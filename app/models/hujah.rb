@@ -13,6 +13,15 @@ class Hujah < ApplicationRecord
   enum :visibility, {visible_public: 0, followers_only: 1, private_only: 2}, prefix: :visibility
 
   validates :body, presence: true
+  # 2026: a top-level claim must be a substantial statement (>= 8 chars); replies
+  # (parent_id present) stay unconstrained so a terse "Agreed." still posts.
+  validates :body, length: {minimum: 8}, if: -> { parent_id.nil? }
+
+  # Has this user cast any vote on this hoojah? Used to gate replying (must vote first,
+  # HujahPolicy#create?) and to render the argument composer's locked state.
+  def voted_by?(user)
+    user.present? && votes.exists?(user_id: user.id)
+  end
 
   # A hoojah inherits its author's visibility (Slice 7b). Every content surface
   # that renders a hoojah gates through this.
