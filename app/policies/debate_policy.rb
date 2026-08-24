@@ -26,9 +26,21 @@ class DebatePolicy < ApplicationPolicy
 
   # Reject a challenge against a hidden (blocked/blocked-by) opponent — Slice 7 — and
   # honor the claim's 2026 allow_debates toggle (no challenge when it's off).
+  #
+  # Hoojah 2026 (redesign Phase 3.2): create? also gates `new?` (Pundit falls through
+  # new? → create?), and the new standalone `debates/new` page RENDERS @hujah.body and
+  # the @argument author card. Without a visibility clause here, GET
+  # /hoojah/:slug/debates/new?argument_id=N (an enumerable id) becomes a read primitive
+  # for a followers_only/private_only claim and a private argument author — content
+  # show? denies. So creating a challenge (and reaching its form) requires that the
+  # claim AND the opponent be visible to the actor, mirroring show?. Pre-2026 the
+  # stance dialog lived inside the policy-gated hujah page, so create?'s laxness leaked
+  # nothing readable; the standalone page changes that.
   def create? = user.present? &&
     !user.hidden_user_ids.include?(record.opponent_id) &&
-    record.hujah.allow_debates?
+    record.hujah.allow_debates? &&
+    record.hujah.visible_to?(user) &&
+    record.opponent.visible_to?(user)
 
   def accept? = user.present? && user == record.opponent && record.pending?
 

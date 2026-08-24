@@ -1,6 +1,8 @@
 <%# Debate transcript screen. Read-only once concluded; the composer renders only for
     the current_turn_user. Access is gated by DebatePolicy#show? in the controller
-    (concluded → anyone incl. logged-out; active → participants only). %>
+    (participants always; plus, since 2026 Phase 3.5, any viewer to whom BOTH
+    participants and the claim are visible may spectate an ACTIVE or CONCLUDED debate —
+    a pending one stays participants-only). %>
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
