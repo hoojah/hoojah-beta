@@ -1,0 +1,62 @@
+<%# Inline feed composer (Track 4, Task 4.4). Visual target: the feedCollapsed /
+    feedExpanded blocks of docs/superpowers/specs/assets/hoojah-2026-newpost.html.
+    A composer-controller wrapper with a collapsed pill and a hidden expanded card.
+    Clicking the pill expands it (Stimulus); the expanded form is a Turbo form that
+    POSTs /hoojah and gets create.turbo_stream.erb (prepend the new card to #hujah-feed).
+    JS-off users reach the full working composer through the maximize link to
+    new_hujah_path. Theme-token utilities only, so it follows the runtime theme. %>
+<div id="inline-composer" data-controller="composer" data-composer-require-min-value="true" class="mb-4">
+  <button type="button" data-composer-target="collapsed" data-action="click->composer#expand"
+    class="w-full flex items-center gap-3 px-4 py-3 bg-card shadow text-left">
+    <%= render "ui/avatar", user: current_user, size: :row %>
+    <span class="flex-1 text-ink-2 text-base">What's your hoojah?</span>
+    <span class="px-4 py-1.5 rounded-full bg-primary text-white text-sm font-bold">Post</span>
+  </button>
+
+  <div data-composer-target="expanded" hidden class="bg-card shadow">
+    <%= form_with model: Hujah.new, url: "/hoojah", method: :post, local: true, class: "block" do |f| %>
+      <div class="flex items-start gap-3 px-4 pt-4">
+        <%= render "ui/avatar", user: current_user, size: :row %>
+        <div class="flex-1 min-w-0">
+          <div class="relative inline-block">
+            <%= f.hidden_field :visibility, value: "visible_public", data: {composer_target: "visField"} %>
+            <button type="button" data-action="composer#toggleMenu"
+              class="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-primary bg-primary-soft px-2.5 py-1 rounded-full">
+              <%= lucide_icon("globe", class: "w-3 h-3") %>
+              <span data-composer-target="visLabel">Public</span>
+              <%= lucide_icon("chevron-down", class: "w-2.5 h-2.5") %>
+            </button>
+            <div data-composer-target="menu" hidden
+              class="absolute left-0 top-full mt-1.5 z-30 w-40 bg-card border border-hairline rounded-xl shadow p-1">
+              <button type="button" data-action="composer#select" data-value="visible_public" data-label="Public"
+                class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-ink hover:bg-card-2">
+                <%= lucide_icon("globe", class: "w-3.5 h-3.5") %>Public
+              </button>
+              <button type="button" data-action="composer#select" data-value="followers_only" data-label="Followers"
+                class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-ink hover:bg-card-2">
+                <%= lucide_icon("users", class: "w-3.5 h-3.5") %>Followers
+              </button>
+              <button type="button" data-action="composer#select" data-value="private_only" data-label="Private"
+                class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-ink hover:bg-card-2">
+                <%= lucide_icon("lock", class: "w-3.5 h-3.5") %>Private
+              </button>
+            </div>
+          </div>
+          <%= f.text_area :body, rows: 3, placeholder: "What's your hoojah?",
+                data: {composer_target: "body", action: "input->composer#input"},
+                "aria-label": "What's your hoojah?",
+                class: "w-full mt-2 border-0 p-0 bg-transparent resize-none focus:ring-0 text-lg leading-snug text-ink" %>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 px-4 py-3 border-t border-hairline">
+        <%= link_to new_hujah_path, aria: {label: "Open full composer"},
+              class: "w-9 h-9 rounded-xl bg-card-2 flex items-center justify-center text-ink-2 no-underline" do %>
+          <%= lucide_icon("maximize-2", class: "w-4 h-4") %>
+        <% end %>
+        <span class="text-xs text-faint">Min 8 characters to post</span>
+        <%= f.submit "Post", data: {composer_target: "post"},
+              class: "ml-auto px-5 py-2 rounded-full bg-primary text-white font-bold text-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-default" %>
+      </div>
+    <% end %>
+  </div>
+</div>

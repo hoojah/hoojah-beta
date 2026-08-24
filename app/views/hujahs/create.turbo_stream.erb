@@ -1,0 +1,10 @@
+<%# Inline feed composer response (Task 4.4): prepend the freshly-created card to the
+    feed, then reset the composer back to its collapsed state. Only the inline composer
+    reaches here — the full-page composer form is turbo:false and redirects instead. %>
+<%= turbo_stream.prepend "hujah-feed" do %>
+  <%= render "hujahs/hujah_card", hujah: @hujah %>
+<% end %>
+
+<%= turbo_stream.replace "inline-composer" do %>
+  <%= render "hujahs/inline_composer" %>
+<% end %>

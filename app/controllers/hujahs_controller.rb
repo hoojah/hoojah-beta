@@ -72,7 +72,13 @@ class HujahsController < ApplicationController
     @hujah = current_user.hujahs.new(compose_params)
     authorize @hujah
     if @hujah.save
-      redirect_to hujah_path(@hujah.slug), status: :see_other
+      respond_to do |format|
+        # The inline feed composer is a Turbo form and gets a stream that prepends the
+        # new card to #hujah-feed (create.turbo_stream.erb). The full-page composer form
+        # submits with turbo:false, so it lands here as HTML and redirects to the hoojah.
+        format.turbo_stream
+        format.html { redirect_to hujah_path(@hujah.slug), status: :see_other }
+      end
     else
       @parent ||= nil
       render :new, status: :unprocessable_content

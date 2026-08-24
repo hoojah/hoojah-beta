@@ -10,6 +10,10 @@
 
     <%= render "feed_tabs" %>
 
+    <%# Inline feed composer (2026) — signed-in only. Collapsed pill expands to a Turbo
+        form that prepends the new card to #hujah-feed via create.turbo_stream.erb. %>
+    <%= render "hujahs/inline_composer" if user_signed_in? %>
+
     <%# Deliberately NOT `ui/_empty_state`. That primitive is the product's one-line
         empty state — "one Lucide glyph, one plain sentence" — and its six call sites
         are all single fragments ("No response yet", "Nothing trending yet."). This is

@@ -13,8 +13,11 @@
 
     The avatar is `ui/_avatar` at `md`; `image_tag current_user.photo` raises on a blank
     photo, so the partial's fallback matters here. %>
+<%# turbo: false — the full-page composer navigates on success (create redirects to the
+    new hoojah). Without it the Turbo form would consume create.turbo_stream.erb, which
+    prepends to the (absent) feed, leaving the user stranded on the composer. %>
 <%= form_with model: hujah, url: "/hoojah", method: :post, local: true,
-      data: {controller: "composer", composer_require_min_value: parent.nil?},
+      data: {turbo: false, controller: "composer", composer_require_min_value: parent.nil?},
       class: "min-h-screen flex flex-col bg-surface" do |f| %>
   <% if parent.present? %>
     <%= f.hidden_field :parent_id, value: parent.id %>
