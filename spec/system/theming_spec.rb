@@ -26,4 +26,24 @@ RSpec.describe "Theming", :js do
     visit root_path
     expect(page).to have_css('html[data-scheme="signal"]')
   end
+
+  # Proves the cascade actually WINS at runtime, not just that the value strings
+  # exist in the bundle: `@theme inline` emits `var(--agree)` into every utility, and
+  # the [data-theme="dark"] block redefines `--agree`, so the resolved custom
+  # property on <html> must flip when the toggle does. The hex comes from the CSS var
+  # (Spectrum/light #0ea5a4 → dark #2dd4cf), not from the bundle text.
+  it "resolves --agree per theme at runtime" do
+    visit root_path
+    spectrum_light = page.evaluate_script(
+      "getComputedStyle(document.documentElement).getPropertyValue('--agree').trim()"
+    )
+    expect(spectrum_light).to eq("#0ea5a4")
+
+    find('[data-theme-target="toggle"]').click # -> dark
+    expect(page).to have_css('html[data-theme="dark"]')
+    dark = page.evaluate_script(
+      "getComputedStyle(document.documentElement).getPropertyValue('--agree').trim()"
+    )
+    expect(dark).to eq("#2dd4cf")
+  end
 end

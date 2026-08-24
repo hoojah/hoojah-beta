@@ -98,9 +98,14 @@ module DesignSystemHelper
   # in spec/helpers/design_system_helper_spec.rb derives its expectation from here.
   CARD_STANCES = %w[agree neutral disagree primary read unread].freeze
 
-  # White, SQUARE-cornered, `shadow`. Card.prompt.md's first line is "Never round a
+  # SQUARE-cornered, `shadow`. Card.prompt.md's first line is "Never round a
   # feed card", so there is deliberately no rounding class and no way to ask for one.
-  CARD_BASE = "shadow bg-white".freeze
+  # The fill is `bg-card` (a theme-aware token, Hoojah 2026) rather than `bg-white`:
+  # cards are the surface body text sits on, so a pinned white would leave dark-mode
+  # ink invisible on a still-white card. `bg-card` chains to `--card`, which the
+  # [data-theme]/[data-scheme] blocks retint. `text-white` glyph inversions are
+  # unaffected — white stays fixed.
+  CARD_BASE = "shadow bg-card".freeze
 
   # Backs `app/views/ui/_card.html.erb`. Same contract as the two helpers above: a nil
   # stance is an unpassed local and means "no left border"; a non-nil one outside the
@@ -209,7 +214,7 @@ module DesignSystemHelper
   # `neutral` is DropdownMenu.prompt.md's rule that "destructive/report rows take
   # tone=neutral (pink)". Nothing renders an agree-coloured or primary-coloured menu row,
   # and offering one would invite a menu that looks like a stance.
-  MENU_ITEM_TONES = %w[black grey neutral].freeze
+  MENU_ITEM_TONES = %w[ink grey neutral].freeze
 
   # Same contract as every helper above: nil is an unpassed local and takes the default,
   # anything else outside the set is a typo and says so.
@@ -227,8 +232,8 @@ module DesignSystemHelper
   # `hover:` boolean would be a second thing every one of the eleven callers has to
   # decide, to express something the tone already means. The emitted string for the other
   # two tones is byte-identical to before the split.
-  def ds_menu_item_classes(tone: "black")
-    tone = ds_option(tone&.to_s, "black", MENU_ITEM_TONES, "tone")
+  def ds_menu_item_classes(tone: "ink")
+    tone = ds_option(tone&.to_s, "ink", MENU_ITEM_TONES, "tone")
     [MENU_ITEM_BASE, (MENU_ITEM_HOVER unless tone == "grey"), "text-#{tone}"].compact.join(" ")
   end
 
@@ -273,7 +278,12 @@ module DesignSystemHelper
     when :on_primary then "px-4 py-1 text-sm rounded-full bg-white text-primary"
     when :on_primary_outline then "px-4 py-1 text-sm rounded-full border border-white text-white bg-transparent"
     when :link then "border-0 bg-transparent p-0 text-#{tone}"
-    else "#{sizing} rounded-full border-2 border-#{tone} text-#{tone} bg-white shadow"
+    # The house pill: `bg-card` (theme-aware, Hoojah 2026) not a pinned `bg-white`, so
+    # the fill retints in dark mode instead of staying white. The 2px stance border and
+    # `text-#{tone}` still carry the identity; `on_primary` above keeps its literal
+    # `bg-white` on purpose — it sits on the blue profile header, a colour surface, not a
+    # card.
+    else "#{sizing} rounded-full border-2 border-#{tone} text-#{tone} bg-card shadow"
     end
   end
 end

@@ -29,10 +29,12 @@ RSpec.describe DesignSystemHelper, type: :helper do
 
   describe "#ds_button_classes" do
     describe "the house style (outline)" do
-      it "is a white pill with a 2px border, matching text, and a shadow" do
+      it "is a card-surfaced pill with a 2px border, matching text, and a shadow" do
+        # `bg-card` (theme-aware), not a pinned `bg-white`: the house pill retints in
+        # dark mode instead of staying white. The border + text still carry identity.
         expect(tokens).to include(
           "rounded-full", "border-2", "border-primary",
-          "text-primary", "bg-white", "shadow"
+          "text-primary", "bg-card", "shadow"
         )
       end
 
@@ -201,7 +203,9 @@ RSpec.describe DesignSystemHelper, type: :helper do
       # get past here, and the example after this one refuses it outright.
       it "never emits a colour utility with a blank or unknown token" do
         non_colour = %w[text-sm text-base border-0 border-2]
-        known = DesignSystemHelper::TONES + %w[white transparent]
+        # `card` joins the known set: the outline pill's fill is now the theme-aware
+        # `bg-card` token (Hoojah 2026), while `on_primary` keeps its literal `bg-white`.
+        known = DesignSystemHelper::TONES + %w[white transparent card]
 
         DesignSystemHelper::VARIANTS.product(DesignSystemHelper::TONES).each do |variant, tone|
           colours = tokens(variant: variant, tone: tone).grep(/\A(bg|text|border|fill)-/) - non_colour
@@ -337,8 +341,10 @@ RSpec.describe DesignSystemHelper, type: :helper do
       helper.ds_card_classes(**opts).split
     end
 
-    it "is a white shadowed box and nothing else by default" do
-      expect(tokens).to eq(%w[shadow bg-white])
+    it "is a card-surfaced shadowed box and nothing else by default" do
+      # `bg-card`, not a pinned `bg-white`: a card is the surface body text sits on, so
+      # a fixed white would leave dark-mode ink invisible on a still-white card.
+      expect(tokens).to eq(%w[shadow bg-card])
     end
 
     # Card.prompt.md's first line. Asserted on the token list rather than by naming
@@ -443,7 +449,9 @@ RSpec.describe DesignSystemHelper, type: :helper do
     end
 
     it "is ink by default" do
-      expect(tokens).to include("text-black")
+      # `text-ink` (theme-aware), renamed from the pinned `text-black` in Hoojah 2026 so
+      # a menu row stays readable when the panel retints to `bg-card` in dark mode.
+      expect(tokens).to include("text-ink")
     end
 
     # DropdownMenu.prompt.md: "destructive/report rows take tone=neutral (pink)".
@@ -459,15 +467,15 @@ RSpec.describe DesignSystemHelper, type: :helper do
     # in the tone rather than in a `hover:` argument, so this is what pins it.
     it "drops the hover fill on the disabled tone, and only on that tone" do
       expect(tokens(tone: "grey")).not_to include("hover:bg-gray-100")
-      expect(tokens(tone: "black")).to include("hover:bg-gray-100")
+      expect(tokens(tone: "ink")).to include("hover:bg-gray-100")
       expect(tokens(tone: "neutral")).to include("hover:bg-gray-100")
     end
 
     # Splitting the hover out of MENU_ITEM_BASE must not have reordered anything for the
     # two tones that keep it — same utilities, same order, same string.
     it "is unchanged for the two interactive tones" do
-      expect(helper.ds_menu_item_classes(tone: "black"))
-        .to eq("#{DesignSystemHelper::MENU_ITEM_BASE} #{DesignSystemHelper::MENU_ITEM_HOVER} text-black")
+      expect(helper.ds_menu_item_classes(tone: "ink"))
+        .to eq("#{DesignSystemHelper::MENU_ITEM_BASE} #{DesignSystemHelper::MENU_ITEM_HOVER} text-ink")
     end
 
     it "never carries two colours at once" do
@@ -597,10 +605,10 @@ end
 # no rule behind it leaves a "Flag this hoojah" row rendered in ordinary ink, which
 # reads as a perfectly normal menu entry rather than a destructive one.
 #
-# `text-black` is the interesting member. Unlike `grey` and `neutral` it is covered by no
-# `@source inline(...)` line at all — it survives purely because some view still spells it
-# as a literal, and eight later tasks are busy replacing hand-written strings with helper
-# calls. The day the last literal goes, this example is what says so.
+# `text-ink` is the interesting member. Unlike `grey` and `neutral` it is covered by no
+# `@source inline(...)` line at all — it survives purely because the navbar (its Hoojah
+# 2026 theme pill, and the swept menu chrome) still spells it as a literal. The day the
+# last literal goes, this example is what says so.
 RSpec.describe "Menu item tone utilities reach the compiled bundle" do
   before(:all) { TailwindBuild.once! }
 

@@ -52,7 +52,7 @@
   <% rows.each do |stance, choice, count| %>
     <% pct = total.zero? ? 0 : (count * 100.0 / total).round %>
     <% voted = current_user_vote == stance %>
-    <% colours = voted ? "bg-#{stance} text-white" : "bg-white text-#{stance}" %>
+    <% colours = voted ? "bg-#{stance} text-white" : "bg-card text-#{stance}" %>
     <div class="flex items-center mb-3 last:mb-0">
       <%= button_to hujah_votes_path(hujah.slug),
             params: { vote: choice },

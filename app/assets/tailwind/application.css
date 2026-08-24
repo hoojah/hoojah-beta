@@ -159,6 +159,20 @@
   --color-hairline: var(--hairline);
   --color-field: var(--field);
 
+  /* Tailwind's own neutrals, REMAPPED onto the surface tokens (Task 1.4) so the
+     legacy chrome adapts to dark without a per-view rewrite. The site-wide toggle
+     flips <html data-theme>, but the app paints with pinned `bg-gray-50/100/200`,
+     `border-gray-100`, `hover:bg-gray-100`; chaining each onto a surface token
+     makes every existing gray utility retint — gray-50 → card-2 (raised fill),
+     gray-100 → hairline (borders / menu hover), gray-200 → field (vote track) —
+     with no markup change. Inline for the same per-element reason as the stance
+     colours. `--color-white` and `--color-black` stay FIXED below: `text-white`
+     carries the safelisted stance-glyph inversion and must read white in every
+     theme, so white is not a neutral to retint here. */
+  --color-gray-50: var(--card-2);
+  --color-gray-100: var(--hairline);
+  --color-gray-200: var(--field);
+
   /* Notification unread border follows the active scheme's neutral (see :root
      --unread). Inline for the same per-element reason as the stance colours;
      --color-read (below) is fixed. */
@@ -172,16 +186,13 @@
   --color-grey: #8e8e8e;
   --color-light-grey: #bac2ca;
 
-  /* Tailwind's own neutrals, which the views lean on (border-gray-100,
-     bg-gray-200, hover:bg-gray-50, text-white, the flag/report error palette).
-     These match the v4 defaults today and are restated as literal hex purely to
-     pin them: v4 ships its greys as oklch, so leaving them implicit means an
-     upstream palette tweak silently shifts the app. Keep them even though they
-     look redundant — the redundancy is the point. */
+  /* Kept FIXED even under the 2026 dark toggle. `--color-white` backs the
+     safelisted `text-white` stance-glyph inversion, which must read white in
+     every theme (the gray-* neutrals were remapped onto surface tokens in the
+     @theme inline block above; white is not a neutral to retint). The red
+     flag/report palette is restated as literal hex to pin it against v4's oklch
+     defaults shifting under an upstream tweak. */
   --color-white: #ffffff;
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
   --color-red-50: #fef2f2;
   --color-red-700: #b91c1c;
 
