@@ -23,6 +23,11 @@ class UsersController < ApplicationController
           @user.hujahs.where(visibility: :visible_public)
         end
       @hujahs = scoped.includes(:user).order(updated_at: :desc)
+      # Hoojah 2026 (redesign Phase 4, Task 4.4): the profile's live-debate card.
+      # LEAK PREVENTION carried forward from Phase 1.7-fix — `Hujah#active_debate`
+      # is per-CLAIM and not usable here; the profile needs the OWNER's own active
+      # debate as a participant (challenger or opponent), computed directly.
+      @active_debate = owner_visible_active_debate
     end
   end
 
@@ -74,5 +79,22 @@ class UsersController < ApplicationController
   # Email stays API-only (the HTML edit form omits it, matching the legacy SPA).
   def user_params
     params.require(:user).permit(:full_name, :username, :location, :link, :headline, :photo, :private)
+  end
+
+  # The profile owner's own active debate (they are challenger OR opponent),
+  # gated by the SAME predicate as `HujahsController#debate_teaser_visible?` —
+  # a private/blocked co-debater's handle must never appear on the owner's
+  # profile to a viewer who couldn't otherwise see them. Returns nil both when
+  # there is no active debate and when the leak filter excludes it, so the view
+  # can render the card unconditionally on `@active_debate.present?`.
+  def owner_visible_active_debate
+    debate = Debate.active
+      .where("challenger_id = :id OR opponent_id = :id", id: @user.id)
+      .includes(:challenger, :opponent, :hujah)
+      .first
+    return nil unless debate
+    return nil unless debate.challenger.visible_to?(current_user) && debate.opponent.visible_to?(current_user)
+    return nil if current_user && (current_user.hidden_user_ids & [debate.challenger_id, debate.opponent_id]).any?
+    debate
   end
 end

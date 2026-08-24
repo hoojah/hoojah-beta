@@ -161,6 +161,20 @@
     background: linear-gradient(150deg, var(--primary), #5b74f0);
     color: #fff;
   }
+
+  /* Profile header hero (Hoojah 2026 redesign, Phase 4, Task 4.4) —
+     `users/_profile_header.html.erb`'s gradient block. Same rationale as
+     `.trending-hero`/`.verdict-hero` above: `#5b74f0` is the mockup's fixed
+     gradient companion stop, not a stance colour, so this can't be expressed as a
+     `bg-gradient-to-*` utility (those resolve against `--color-*` theme stops, and
+     this second stop has none). Angle (160deg) is the mockup's own, distinct from
+     the other two heroes for the same "free to diverge, not worth coupling"
+     reason `.verdict-hero`'s comment gives. `_gated_header` stays on the older
+     flat `bg-primary` on purpose — Gate 4's whitelist is deliberately plainer. */
+  .profile-hero {
+    background: linear-gradient(160deg, var(--primary), #5b74f0);
+    color: #fff;
+  }
 }
 
 @theme inline {

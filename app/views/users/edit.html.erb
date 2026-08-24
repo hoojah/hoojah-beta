@@ -6,7 +6,8 @@
 
 <main class="max-w-xl mx-auto px-4 py-6">
   <div class="relative flex justify-center shadow">
-    <%= render "profile_header", user: @user %>
-    <%= render "profile_edit", user: @user, open: true %>
+    <%# `edit_open: true` — the owner's gear-triggered dialog inside `profile_header`
+        renders pre-opened, so the form is usable with JS off. %>
+    <%= render "profile_header", user: @user, edit_open: true %>
   </div>
 </main>

@@ -1,0 +1,38 @@
+<%# Profile live-debate card — Hoojah 2026 (redesign Phase 4, Task 4.4), mockup
+    ~1426-1433. Rendered by `users/show` only when the controller's
+    `owner_visible_active_debate` returned a non-nil debate — i.e. it has ALREADY
+    passed the leak filter (both participants `visible_to?` the viewer, neither
+    blocked). This partial does not re-check visibility; it trusts the caller,
+    same division of labour as `hujahs/_live_debate_strip` trusts
+    `debate_teaser_visible?` upstream.
+
+    Locals: debate, user (the profile owner — used only to pick out the OTHER
+    participant via `debate.other(user)`, never to gate anything).
+
+    Deliberately NOT the mockup's "1,204 watching" line — no watcher-count data
+    exists anywhere in this app, same omission `_live_debate_strip`'s header
+    documents for the feed version of this same card. %>
+<% other = debate.other(user) %>
+<%= link_to debate_path(debate.slug),
+      class: "block rounded-2xl bg-card shadow overflow-hidden no-underline", data: {testid: "profile-live-debate-card"} do %>
+  <div class="flex items-stretch">
+    <div class="w-1.5 bg-disagree shrink-0"></div>
+    <div class="flex-1 min-w-0 px-3.5 py-3 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl bg-disagree-soft text-disagree flex items-center justify-center shrink-0">
+        <%= lucide_icon("swords", class: "w-4 h-4") %>
+      </span>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-bold text-ink truncate">
+          Debating @<%= other.username %> · Round <%= debate.current_round %>
+        </div>
+        <div class="text-xs text-ink-2 truncate">
+          On "<%= truncate(strip_tags(debate.hujah.body.to_s), length: 60) %>"
+        </div>
+      </div>
+      <span class="inline-flex items-center gap-1 text-[10px] font-extrabold tracking-wide uppercase text-white bg-disagree px-2 py-1 rounded-full shrink-0">
+        <span class="w-1.5 h-1.5 rounded-full bg-white block" style="animation: hbreathe 2s ease-in-out infinite"></span>
+        Live
+      </span>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,30 @@
+<%# Conviction card — Hoojah 2026 (redesign Phase 4, Task 4.4), mockup ~1410-1420.
+    Locals: user.
+
+    REAL NUMBERS ONLY. The mockup draws a "Conviction Lvl 7" ring with "70% to Lvl
+    8 · 12-day streak" — none of that exists anywhere in this app: there is no
+    level column, no XP formula, and no streak tracking. Inventing one here would
+    be gamification fiction shipped as a real stat, so this renders only what the
+    `votes` table can actually answer: the user's total cast votes
+    (`user.votes.count`), and — only when it is nonzero, so a user with zero
+    conviction votes doesn't get a "0 with conviction" line implying a feature
+    that never engaged — how many of those carried `conviction: true`
+    (`user.votes.where(conviction: true).count`). No ring, no percentage, no
+    streak; do not add one back without a real column behind it.
+
+    `data-testid="conviction-card"` / `"conviction-votes-cast"` are what
+    spec/requests/profile_spec.rb and spec/system/profile_redesign_spec.rb select
+    on — keep both if this markup changes shape. %>
+<% conviction_count = user.votes.where(conviction: true).count %>
+<div class="rounded-2xl bg-card shadow p-4 flex items-center gap-3" data-testid="conviction-card">
+  <span class="w-11 h-11 rounded-full bg-agree-soft text-agree flex items-center justify-center shrink-0">
+    <%= lucide_icon("zap", class: "w-5 h-5") %>
+  </span>
+  <div class="flex-1 min-w-0">
+    <div class="text-sm font-bold text-ink">Votes cast</div>
+    <% if conviction_count.positive? %>
+      <div class="text-xs text-ink-2 mt-0.5"><%= conviction_count %> with conviction</div>
+    <% end %>
+  </div>
+  <div class="text-2xl font-extrabold text-ink shrink-0" data-testid="conviction-votes-cast"><%= user.votes.count %></div>
+</div>

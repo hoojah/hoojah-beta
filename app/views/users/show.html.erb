@@ -1,26 +1,34 @@
 <%# Public profile screen — faithful port of the legacy SPA `UserProfile.jsx`:
-    the primary-colored header card (with the owner's edit pencil + modal), then the
+    the gradient header card (owner edit surfaced via the settings gear — Hoojah
+    2026 redesign Phase 4, Task 4.4), then the conviction card + live-debate card
+    (owner only, both gated the same way as the hoojah list below), then the
     user's hoojahs as compact cards. %>
-<% owner = user_signed_in? && current_user.id == @user.id %>
-
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
   <div class="relative flex justify-center shadow">
     <%# Slice 7b (Gate 4): a private account the viewer can't see renders the gated
-        header (no hoojah list). The owner always sees their own full profile + editor. %>
+        header (no hoojah list). The owner always sees their own full profile + editor —
+        `visible_to?` is true for self, so `@gated` is never true for the owner, and the
+        owner's edit dialog trigger lives INSIDE `profile_header` now (the settings gear
+        in its action bar), not as a sibling render here. %>
     <% if @gated %>
       <%= render "gated_header", user: @user %>
     <% else %>
       <%= render "profile_header", user: @user %>
-      <% if owner %>
-        <%= render "profile_edit", user: @user %>
-      <% end %>
     <% end %>
   </div>
 
   <% unless @gated %>
-    <div class="mt-2 flex flex-col">
+    <div class="mt-2 flex flex-col gap-2">
+      <%= render "conviction_card", user: @user %>
+      <%# LEAK PREVENTION: `@active_debate` is nil both when the owner has no active
+          debate AND when the leak filter in `UsersController#owner_visible_active_debate`
+          excluded it (a private/blocked co-debater), so this render is safe unconditionally. %>
+      <% if @active_debate %>
+        <%= render "live_debate_card", debate: @active_debate, user: @user %>
+      <% end %>
+
       <% if @hujahs.any? %>
         <%= render partial: "user_hujah", collection: @hujahs, as: :hujah %>
       <% else %>

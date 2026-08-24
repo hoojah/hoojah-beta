@@ -1,78 +1,142 @@
-<%# Faithful port of the legacy SPA `UserProfile.jsx` header column: avatar, name,
-    @handle, headline, optional location + link, and the vote/hoojah counts.
+<%# Profile header — Hoojah 2026 (redesign Phase 4, Task 4.4), mockup ~1388-1408.
     Root carries `dom_id(user, :profile_header)` so update.turbo_stream.erb can
     replace just this block after an edit. Locals: user.
 
-    DESIGN SYSTEM (Slice 9, Task 4.4) —
-    docs/design-system/components/social/ProfileHeader.prompt.md: "the full-bleed indigo
-    profile block — the one saturated colour field in the product. Everything on it is
-    white — text, icons, links (underlined)." The block already was that; what changed is
-    the avatar, which now goes through `ui/_avatar` at the design system's `lg` (96px)
-    box. That is not tidiness: `image_tag user.photo` RAISES on a blank photo, `:photo`
-    is user-editable, and this partial is the whole profile screen — one photoless user
-    took their own profile down with a 500.
+    Faithful port of the legacy SPA `UserProfile.jsx` header column (avatar, name,
+    @handle, headline, optional location + link, follow control, follower/
+    following counts), now on the `.profile-hero` gradient treatment
+    (`linear-gradient(160deg, var(--primary), #5b74f0)`, app/assets/tailwind/
+    application.css `@layer components`, same family as `.trending-hero` /
+    `.verdict-hero`) instead of flat `bg-primary`. `_gated_header` deliberately
+    stays on flat `bg-primary` — Gate 4's private-account whitelist is not this
+    partial's concern and is not touched here.
 
-    The badge chips are `bg-white/20` translucent pills and stay exactly as they were —
-    BadgeChip.prompt.md is explicit that the chip "has no light-background variant",
-    which is why nothing here offers one.
+    ACTION BAR (new this task): back / share / settings-gear, mockup's
+    icon row above the avatar. The gear is the OWNER-ONLY trigger for the
+    existing `_profile_edit` `<dialog>` (Slice 9, Task 4.6) — that dialog is
+    UNCHANGED in substance, only its trigger icon (pencil → gear, matching the
+    mockup) and its position (absolute top-right corner → inline in this row)
+    moved; see the header comment on `_profile_edit` for the full note. Back
+    goes to the main feed — there is no "previous screen" concept server-side to
+    return to, so `root_path` is the one destination that is always valid. Share
+    reuses the SAME `share` Stimulus controller + `ui/_menu` idiom as
+    `hujahs/_share_menu` (Web Share API on capable devices, six real `<a href>`
+    fallback rows otherwise — no JS required), pointed at the profile's own URL
+    instead of a hoojah's.
+
+    AVATAR: `variant: :tile` (Hoojah 2026's gradient-initials TREATMENT), same
+    choice `debates/_verdict` and `debates/_debate_pending` already make for an
+    avatar rendered ON a coloured hero — see `ui/_avatar`'s header comment: tile
+    is "for surfaces that want the tile look on purpose, not merely as a
+    fallback." `border-2 border-white/50` is the mockup's translucent ring.
+
+    FOLLOW: `render "follow_button", user:, surface: :gradient` — the surface
+    local `_follow_button` gained in Phase 2.4 for exactly this hero. It already
+    renders BOTH the Follow/Following pill AND the secondary Block control as a
+    pair; nothing extra is added here for a "round secondary button" — that IS
+    the Block control the partial already renders on `:gradient`.
+
+    BADGES: `bg-white/18` (2026 token; was `bg-white/20` pre-redesign) — no
+    light-background variant exists, per `BadgeChip.prompt.md`.
+
+    FOLLOWER/FOLLOWING COUNTS: kept at the foot of the hero, unstyled changes
+    aside from the surrounding redesign — Task 4.4's mockup slice doesn't show
+    them, but dropping the only on-page links to `/u/:username/followers` and
+    `/u/:username/following` would be a real navigation regression, not a scoped
+    omission like the count TABS (Hoojahs/Responses/Debates — a SEPARATE next
+    task, per this task's brief). Do not confuse the two.
 
     FROZEN: `dom_id(user, :profile_header)` is what `users/update.turbo_stream.erb`
     replaces after a profile edit, and what `_gated_header` deliberately mirrors. %>
-<div id="<%= dom_id(user, :profile_header) %>"
-     class="w-full bg-primary text-white flex flex-col items-center py-6 px-4">
-  <%= render "ui/avatar", user: user, size: :lg, class: "mb-3" %>
-  <h5 class="mb-0 text-lg font-medium"><%= user.full_name %></h5>
-  <div class="mb-3">@<%= user.username %></div>
-
-  <%# Follow button (signed-in non-owner only; self-wraps in dom_id for Turbo). %>
-  <div class="mb-3">
-    <%= render "follow_button", user: user %>
-  </div>
-
-  <%# Achievement badges (public). Each chip is a Lucide icon + name with the
-      description as a `title` tooltip. %>
-  <% if user.badges.any? %>
-    <div class="mb-3 flex flex-wrap justify-center gap-2">
-      <% user.badges.each do |badge| %>
-        <span class="inline-flex items-center gap-1 text-xs bg-white/20 rounded-full px-2 py-1"
-              title="<%= badge[:description] %>">
-          <%= lucide_icon(badge[:icon], class: "w-3.5 h-3.5") %>
-          <%= badge[:name] %>
-        </span>
+<% owner = user_signed_in? && current_user.id == user.id %>
+<% profile_share_url = profile_url(user.username) %>
+<% profile_share_text = "@#{user.username} on Hoojah" %>
+<div id="<%= dom_id(user, :profile_header) %>" class="w-full profile-hero flex flex-col">
+  <%# Action bar: back / share / settings (owner only). %>
+  <div class="flex items-center justify-between px-2 pt-2">
+    <%= link_to root_path, class: "flex items-center justify-center w-10 h-10 rounded-full text-white no-underline", aria: {label: "Back"} do %>
+      <%= lucide_icon("arrow-left", class: "w-5 h-5") %>
+    <% end %>
+    <div class="flex items-center">
+      <details class="relative shrink-0"
+               data-controller="share"
+               data-share-title-value="Hoojah profile"
+               data-share-text-value="<%= profile_share_text %>"
+               data-share-url-value="<%= profile_share_url %>">
+        <summary class="list-none cursor-pointer flex items-center justify-center w-10 h-10 rounded-full text-white" aria-label="Share this profile">
+          <%= lucide_icon("share-2", class: "w-5 h-5") %>
+        </summary>
+        <%= render layout: "ui/menu", locals: {width: "w-52"} do %>
+          <h6 class="text-xs text-grey px-3 pb-1">Share this profile via</h6>
+          <button type="button" hidden
+                  data-share-target="button"
+                  data-action="share#share"
+                  class="<%= ds_menu_item_classes %> border-0 bg-transparent cursor-pointer">
+            Share…
+          </button>
+          <%= link_to "WhatsApp", "https://wa.me/?text=#{CGI.escape("#{profile_share_text} #{profile_share_url}")}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+          <%= link_to "X", "https://x.com/intent/tweet?url=#{CGI.escape(profile_share_url)}&text=#{CGI.escape(profile_share_text)}&via=hoojah_my", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+          <%= link_to "Telegram", "https://t.me/share/url?url=#{CGI.escape(profile_share_url)}&text=#{CGI.escape(profile_share_text)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+          <%= link_to "Facebook", "https://www.facebook.com/sharer/sharer.php?u=#{CGI.escape(profile_share_url)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+          <%= mail_to "hello@hoojah.my", "Email", subject: "Hoojah profile", body: "#{profile_share_text}\n\n#{profile_share_url}", class: ds_menu_item_classes %>
+        <% end %>
+      </details>
+      <% if owner %>
+        <%= render "profile_edit", user: user, wrapper_class: "shrink-0", open: local_assigns.fetch(:edit_open, false) %>
       <% end %>
     </div>
-  <% end %>
+  </div>
 
-  <% if user.headline.present? %>
-    <div class="mb-3 text-center"><%= user.headline %></div>
-  <% end %>
+  <div class="flex flex-col items-center px-4 pb-6">
+    <%= render "ui/avatar", user: user, size: :lg, variant: :tile, class: "mb-3 border-2 border-white/50" %>
+    <h5 class="mb-0 text-lg font-extrabold"><%= user.full_name %></h5>
+    <div class="text-sm opacity-85">@<%= user.username %></div>
 
-  <% if user.location.present? %>
-    <div class="text-sm mb-1 flex items-center gap-1">
-      <%= lucide_icon("map-pin", class: "w-4 h-4") %> <%= user.location %>
-    </div>
-  <% end %>
-  <% if user.link.present? %>
-    <div class="text-sm mb-1 flex items-center gap-1">
-      <%= lucide_icon("globe", class: "w-4 h-4") %>
-      <%= link_to user.link, user.link, target: "_blank", rel: "noopener nofollow", class: "text-white underline" %>
-    </div>
-  <% end %>
-
-  <div class="text-sm mt-1 flex items-center gap-1">
-    <%= lucide_icon("bar-chart-2", class: "w-4 h-4") %>
-    <span><%= user.votes.size %></span>
-    <span class="mx-2">·</span>
-    <%= lucide_icon("message-circle", class: "w-4 h-4") %>
-    <span><%= user.hujahs.size %></span>
-    <span class="mx-2">·</span>
-    <%= link_to user_followers_path(user.username), class: "flex items-center gap-1 text-white" do %>
-      <%= render "follower_count", user: user %>
+    <% if user.headline.present? %>
+      <div class="mt-2 text-center text-sm opacity-95 max-w-xs"><%= user.headline %></div>
     <% end %>
-    <span class="mx-2">·</span>
-    <%= link_to user_following_path(user.username), class: "flex items-center gap-1 text-white" do %>
-      <%= lucide_icon("user-plus", class: "w-4 h-4") %>
-      <span><%= user.following.size %></span>
+
+    <% if user.location.present? || user.link.present? %>
+      <div class="mt-2 flex items-center gap-3.5 text-xs opacity-90">
+        <% if user.location.present? %>
+          <span class="flex items-center gap-1">
+            <%= lucide_icon("map-pin", class: "w-3.5 h-3.5") %> <%= user.location %>
+          </span>
+        <% end %>
+        <% if user.link.present? %>
+          <span class="flex items-center gap-1">
+            <%= lucide_icon("globe", class: "w-3.5 h-3.5") %>
+            <%= link_to user.link, user.link, target: "_blank", rel: "noopener nofollow", class: "text-white underline" %>
+          </span>
+        <% end %>
+      </div>
     <% end %>
+
+    <div class="mt-3.5">
+      <%= render "follow_button", user: user, surface: :gradient %>
+    </div>
+
+    <% if user.badges.any? %>
+      <div class="mt-4 flex flex-wrap justify-center gap-2">
+        <% user.badges.each do |badge| %>
+          <span class="inline-flex items-center gap-1 text-xs font-semibold bg-white/18 rounded-full px-2.5 py-1.5"
+                title="<%= badge[:description] %>">
+            <%= lucide_icon(badge[:icon], class: "w-3.5 h-3.5") %>
+            <%= badge[:name] %>
+          </span>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="mt-4 text-sm flex items-center gap-1 opacity-90">
+      <%= link_to user_followers_path(user.username), class: "flex items-center gap-1 text-white no-underline" do %>
+        <%= render "follower_count", user: user %>
+      <% end %>
+      <span class="mx-2">·</span>
+      <%= link_to user_following_path(user.username), class: "flex items-center gap-1 text-white no-underline" do %>
+        <%= lucide_icon("user-plus", class: "w-4 h-4") %>
+        <span><%= user.following.size %></span>
+      <% end %>
+    </div>
   </div>
 </div>
