@@ -43,8 +43,10 @@ RSpec.describe "Notification card read-state tokens", type: :system, js: true do
     expect(page).to have_css("##{unread_id}.border-unread")
     expect(page).to have_css("##{read_id}.border-read")
 
-    # --color-unread: #e1306c (stance neutral pink, matching the unread dot)
-    expect(border_left_color(unread_id)).to eq("rgb(225, 48, 108)")
+    # 2026: --color-unread chains to var(--unread) → var(--neutral), so the unread
+    # border follows the active scheme's neutral. Default = Spectrum, whose neutral is
+    # #e8930c (amber). (Was the old fixed pink #e1306c before the rebrand.)
+    expect(border_left_color(unread_id)).to eq("rgb(232, 147, 12)")
     # --color-read: #bac2ca (light-grey)
     expect(border_left_color(read_id)).to eq("rgb(186, 194, 202)")
   end
