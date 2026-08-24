@@ -1,0 +1,12 @@
+<%# One "Top matches" hashtag row — hash tile, name (matched substring highlighted),
+    hoojah count, chevron; the whole row links to the tag feed. %>
+<%= link_to tag_path(hashtag.name), class: "flex items-center gap-3 p-3 bg-card shadow rounded-xl no-underline" do %>
+  <span class="w-[38px] h-[38px] rounded-xl bg-primary-soft text-primary flex items-center justify-center shrink-0">
+    <%= lucide_icon "hash", class: "w-[18px] h-[18px]" %>
+  </span>
+  <div class="flex-1 min-w-0">
+    <div class="text-sm font-bold text-ink truncate">#<%= highlight_match(hashtag.display, @query) %></div>
+    <div class="text-xs text-ink-2"><%= pluralize(hashtag.hujahs_count, "hoojah") %></div>
+  </div>
+  <%= lucide_icon "chevron-right", class: "w-4 h-4 text-faint shrink-0" %>
+<% end %>

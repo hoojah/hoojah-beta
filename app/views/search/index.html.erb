@@ -1,62 +1,41 @@
-<%# Minimal search results page (Phase 2.2 — backend + safety). Rich result cards
-    land in the NEXT task; this placeholder exists only so the route is
-    non-erroring and the leak specs have something to assert against (each
-    result's slug/username/display must appear in the body so a request spec can
-    prove presence/absence without depending on final markup). %>
+<%# Discover / search screen (Hoojah 2026 redesign Phase 2.4) — mockup ~881-935
+    "Discover · search & hashtags". Three parts:
+
+      1. `shared/navbar` + `hujahs/feed_tabs` (existing chrome — Discover is already
+         the third feed tab; unchanged by this task).
+      2. The search bar: a plain GET <form> to `search_path`, deliberately OUTSIDE the
+         results turbo-frame and carrying `data-turbo-frame: "search-results"` so a
+         submit — native (JS off: a full page reload, this same template, same frame
+         id lands in the same place) or Stimulus-driven (JS on:
+         `search_controller.js`'s debounced `requestSubmit()`) — always resolves to
+         the SAME frame-swap. Keeping the <input> outside the frame means a
+         live-suggest swap never yanks focus out of it mid-keystroke.
+      3. `search/_results` — the turbo-frame body. `SearchController#index` re-renders
+         it on every GET (full page, JS-off submit, or live-suggest fetch alike), so
+         there is exactly one server-side branch for "what results look like". %>
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
   <%= render "hujahs/feed_tabs" %>
 
-  <h1 class="text-lg font-semibold mt-4">Search</h1>
+  <h1 class="text-2xl font-extrabold text-ink tracking-tight mt-2">Discover</h1>
 
-  <%= form_with url: search_path, method: :get, class: "mt-2" do %>
-    <input type="text" name="q" value="<%= @query %>" placeholder="Search Hoojah"
-           class="w-full border border-hairline rounded-none px-3 py-2 text-sm" />
+  <%= form_with url: search_path, method: :get,
+        data: {controller: "search", turbo_frame: "search-results"}, class: "mt-3" do %>
+    <div class="flex items-center gap-2.5 h-[46px] px-3.5 rounded-xl bg-card-2 border-[1.5px] border-transparent focus-within:border-primary">
+      <%= lucide_icon "search", class: "w-[18px] h-[18px] text-primary shrink-0" %>
+      <%= text_field_tag :q, @query, placeholder: "Search Hoojah", autocomplete: "off",
+            "aria-label": "Search", data: {action: "input->search#queryChanged"},
+            class: "flex-1 min-w-0 bg-transparent border-0 focus:ring-0 focus:outline-none p-0 text-sm font-semibold text-ink placeholder:text-ink-2 placeholder:font-normal" %>
+    </div>
+    <%# Explicit submit control — a lone text input's implicit Enter-to-submit is not
+        guaranteed across assistive tech, and it is what makes the JS-off path
+        exercisable at all under Capybara's rack_test driver, which has no keyboard
+        events. `sr-only`: the magnifier glyph already reads as "search" visually. %>
+    <button type="submit" class="sr-only">Search</button>
   <% end %>
 
-  <% if @query.present? %>
-    <p class="text-grey text-sm mt-4">
-      Results for &ldquo;<%= @query %>&rdquo;
-      &mdash; <%= @hujahs&.size.to_i %> hoojahs,
-      <%= @users&.size.to_i %> people,
-      <%= @hashtags&.size.to_i %> tags
-    </p>
-
-    <section class="mt-4">
-      <h2 class="text-sm font-semibold text-grey">Hoojahs</h2>
-      <ul>
-        <% (@hujahs || []).each do |h| %>
-          <li><%= link_to h.body.to_s.truncate(80), hujah_path(h.slug) %></li>
-        <% end %>
-      </ul>
-    </section>
-
-    <section class="mt-4">
-      <h2 class="text-sm font-semibold text-grey">People</h2>
-      <ul>
-        <% (@users || []).each do |u| %>
-          <li><%= link_to "@#{u.username}", profile_path(u.username) %></li>
-        <% end %>
-      </ul>
-    </section>
-
-    <section class="mt-4">
-      <h2 class="text-sm font-semibold text-grey">Tags</h2>
-      <ul>
-        <% (@hashtags || []).each do |t| %>
-          <li><%= link_to "##{t.display}", tag_path(t.name) %></li>
-        <% end %>
-      </ul>
-    </section>
-  <% else %>
-    <section class="mt-4">
-      <h2 class="text-sm font-semibold text-grey">Browse tags</h2>
-      <ul>
-        <% @browse_hashtags.each do |t| %>
-          <li><%= link_to "##{t.display}", tag_path(t.name) %></li>
-        <% end %>
-      </ul>
-    </section>
-  <% end %>
+  <turbo-frame id="search-results" class="block mt-4">
+    <%= render "search/results" %>
+  </turbo-frame>
 </main>

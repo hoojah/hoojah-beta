@@ -1,0 +1,24 @@
+<%# One "Top matches" person row — tile avatar, display name (matched substring
+    highlighted), @handle + follower count, and the card-surface Follow control.
+
+    NOT a single link_to wrapping the whole row: `users/_follow_button` renders a
+    `button_to` (its own <form>), and a <form> cannot legally nest inside an <a> — so
+    this is a plain flex container with the profile link on the avatar/name side only,
+    and the follow control a sibling.
+
+    The @handle is left UNHIGHLIGHTED on purpose. spec/requests/search_spec.rb's
+    visibility-leak tests assert the raw HTML contains the literal substring
+    "@<username>" as proof a result rendered at all (vs. the query merely echoed back
+    into the search box's `value=`). Wrapping the handle in a `<span>` would put a tag
+    between "@" and the match and silently break that literal check even when nothing
+    is actually leaking — so highlighting stays on the display name only. %>
+<div class="flex items-center gap-3 p-3 bg-card shadow rounded-xl">
+  <%= link_to profile_path(user.username), class: "flex items-center gap-3 flex-1 min-w-0 no-underline" do %>
+    <%= render "ui/avatar", user: user, size: :row, variant: :tile %>
+    <div class="flex-1 min-w-0">
+      <div class="text-sm font-bold text-ink truncate"><%= highlight_match(user.full_name, @query) %></div>
+      <div class="text-xs text-ink-2 truncate">@<%= user.username %> &middot; <%= pluralize(user.followers.size, "follower") %></div>
+    </div>
+  <% end %>
+  <%= render "users/follow_button", user: user, surface: :card %>
+</div>

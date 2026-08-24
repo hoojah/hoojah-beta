@@ -146,4 +146,77 @@ RSpec.describe "Search", type: :request do
       expect(response.body).not_to include(no_percent.slug)
     end
   end
+
+  # Phase 2.4 — the rich "Top matches" result UI + the browse hashtag cloud, built on
+  # top of the Phase 2.2 backend the specs above already prove is visibility-safe.
+  describe "GET /search?q=... — result card links" do
+    it "links a hashtag result to its tag feed" do
+      Hashtag.create!(name: "resulttag", display: "ResultTag")
+
+      get "/search", params: {q: "resulttag"}
+
+      expect(response.body).to include(%(href="/t/resulttag"))
+    end
+
+    it "links a hoojah result to the hoojah, and a person result to their profile" do
+      author = create(:user, username: "cardauthor")
+      hujah = create(:hujah, user: author, body: "CARDMATCH unique claim body text")
+
+      get "/search", params: {q: "CARDMATCH"}
+      expect(response.body).to include(%(href="/hoojah/#{hujah.slug}"))
+
+      get "/search", params: {q: "cardauthor"}
+      expect(response.body).to include(%(href="/u/cardauthor"))
+    end
+
+    it "renders the card-surface Follow pill (not the gradient/on-primary treatment) for a person result" do
+      viewer = create(:user)
+      target = create(:user, username: "followtarget")
+      sign_in(viewer)
+
+      get "/search", params: {q: "followtarget"}
+
+      expect(response.body).to include("border-primary", "text-primary", "bg-card")
+      expect(response.body).to include(follow_user_path(target.username))
+    end
+  end
+
+  describe "GET /search?q=... — matched-substring highlight" do
+    it "wraps the matched hashtag substring in text-primary" do
+      Hashtag.create!(name: "highlighttag", display: "HighlightTag")
+
+      get "/search", params: {q: "light"}
+
+      expect(response.body).to include(%(<span class="text-primary">light</span>))
+    end
+
+    it "does not highlight the @handle itself, so the literal @<username> substring stays intact" do
+      create(:user, username: "highlightperson")
+
+      get "/search", params: {q: "highlightperson"}
+
+      expect(response.body).to include("@highlightperson")
+      expect(response.body).not_to include(%(@<span class="text-primary">))
+    end
+  end
+
+  describe "GET /search — no results" do
+    it "shows a graceful message rather than empty sections when a query matches nothing" do
+      get "/search", params: {q: "nosuchmatchanywhereintheapp"}
+
+      expect(response.body).to include("No results")
+    end
+  end
+
+  describe "GET /search — browse hashtag chips" do
+    it "links every browse chip to its tag feed, blank query or not" do
+      Hashtag.create!(name: "browsechip", display: "BrowseChip")
+
+      get "/search"
+      expect(response.body).to include(%(href="/t/browsechip"))
+
+      get "/search", params: {q: "somethingelseentirely"}
+      expect(response.body).to include(%(href="/t/browsechip"))
+    end
+  end
 end

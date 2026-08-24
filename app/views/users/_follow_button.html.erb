@@ -5,55 +5,84 @@
     States (Slice 7): blocked-by-me → Unblock (never Follow); blocked-by-them →
     Block only (never Follow for a hidden pair); otherwise Follow/Following + Block.
 
-    DESIGN SYSTEM (Slice 9, Task 4.4) —
+    DESIGN SYSTEM (Slice 9, Task 4.4; restyled Hoojah 2026 Phase 2.4) —
     docs/design-system/components/social/FollowButton.prompt.md: "the follow/block pair
-    on a profile header. Designed for the indigo background only." That last clause is
-    why every button below takes `on_primary` / `on_primary_outline` rather than the
-    house `:outline` pill: those two variants are locked to white-on-primary and to the
-    small size precisely because there is exactly one surface they may appear on, and
-    this partial is it. They take no `tone:` — asking for one is a category error.
+    on a profile header." Phase 2.4 needed this same control on a card-background search
+    result row, so the single hard-coded look below split into a `surface:` local with
+    two treatments:
 
-    Filled (`on_primary`) means "the relationship exists": Following, Requested,
-    Unblock. Outlined (`on_primary_outline`) means "act": Follow, Block. The four
-    branches below are the prompt's own rules, unchanged.
+      `surface: :gradient` — the saturated blue/gradient profile hero. Reuses
+      `ds_button_classes(variant: :on_primary / :on_primary_outline)` UNCHANGED: those
+      two variants are locked to white-on-primary and the small size precisely because
+      there is exactly one surface they may appear on (see design_system_helper.rb),
+      and this is still it. They take no `tone:` — asking for one is a category error.
 
-    "Requested" is FULLY opaque, where it used to be a translucent white. That is a
-    design decision, not something the variant forced: `on_primary` plus an opacity
-    utility in `class:` was available and is exactly what the Block chip does three
-    branches down, so "the variant is locked" would be a false excuse. The reason is
-    that FollowButton.prompt.md names the clock glyph and the word "Requested" as the
-    signal for a pending request — a state the viewer must be able to read and cancel,
-    not a faded version of a button. Translucency was carrying meaning that the icon
-    and the label already carry, at the cost of legibility on a saturated field.
+      `surface: :card` (the DEFAULT) — a card/white background. `ds_button_classes`'s
+      own outline variant is a heavier weight (2px border, shadow) built for a
+      page-level CTA, not a compact result row, so `:card` is NOT drawn from
+      `ds_button_classes` at all — `filled_classes`/`outline_classes` below spell it
+      directly: a solid primary pill for "the relationship exists", a thin
+      primary-outline pill on `bg-card` for "act".
+
+    Every EXISTING caller (`_profile_header`, `_gated_header`, the four follow/block
+    turbo_stream views) passes no `surface:`, so they now render `:card` by default —
+    intended by this restyle, not a regression to patch. Both header partials are
+    still `bg-primary` (the gradient hero itself is a separate, not-yet-landed piece of
+    Hoojah 2026 — see HANDOVER's deferred backlog "Follow button on hero"), so those two
+    callers will look visibly plain until that hero lands and switches them to
+    `surface: :gradient`.
+
+    Filled means "the relationship exists": Following, Requested, Unblock. Outlined
+    means "act": Follow, Block. That split is unchanged by `surface:` — only the two
+    concrete class strings it maps to move.
+
+    "Requested" is FULLY opaque, where on `:gradient` it used to be a translucent
+    white. That is a design decision, not something the variant forced: `on_primary`
+    plus an opacity utility in `class:` was available and is exactly what the Block
+    chip does three branches down. The reason is that FollowButton.prompt.md names the
+    clock glyph and the word "Requested" as the signal for a pending request — a state
+    the viewer must be able to read and cancel, not a faded version of a button.
+    Translucency was carrying meaning the icon and label already carry, at the cost of
+    legibility. `filled_classes` on `:card` carries no opacity either, for the same
+    reason.
 
     The secondary Block that rides alongside Follow/Following carries `opacity-80` to
-    keep it quieter than the control it sits next to — it used to say that with a
-    `border-white/<pct>` plus a narrower `px-<n>`, which is why it looks different now.
-    Opacity is the one utility that can express the same idea without fighting the
-    variant: a border-opacity or a padding override would be the SAME Tailwind family
-    as the variant's own border and padding, and same-family utilities resolve by
+    keep it quieter than the control it sits next to, on either surface. Opacity is the
+    one utility that can express that without fighting `outline_classes`'s own border:
+    a border-opacity or padding override would be the SAME Tailwind family as the
+    border/padding already in `outline_classes`, and same-family utilities resolve by
     bundle order rather than call order (see `ui/_card`'s `padded:` header for the full
-    trap). Nothing in `ds_button_classes` sets a base opacity, so `opacity-80` has
-    nothing to collide with. Note the placeholder spelling of the two dead classes
-    above: Tailwind scans these files as plain text and would keep emitting rules for
-    utilities no view renders any more.
+    trap). Neither `outline_classes` branch sets a base opacity, so `opacity-80` has
+    nothing to collide with.
 
-    FROZEN: every `button_to` path and HTTP verb. `unfollow_user_path` with DELETE is
-    reused by BOTH "Following" (drop an accepted follow) and "Requested" (cancel a
-    pending one) — that is deliberate, not a copy-paste. `dom_id(user, :follow_button)`
-    is the replace target for all four of follows/blocks create+destroy turbo streams. %>
+    FROZEN: every `button_to` path and HTTP verb, on BOTH surfaces. `unfollow_user_path`
+    with DELETE is reused by BOTH "Following" (drop an accepted follow) and "Requested"
+    (cancel a pending one) — that is deliberate, not a copy-paste. `dom_id(user,
+    :follow_button)` is the replace target for all four of follows/blocks create+destroy
+    turbo streams. %>
+<% surface = local_assigns.fetch(:surface, :card) %>
+<% filled_classes, outline_classes = case surface
+   when :gradient
+     [ds_button_classes(variant: :on_primary), ds_button_classes(variant: :on_primary_outline)]
+   when :card
+     ["px-4 py-1 text-sm rounded-full bg-primary text-white",
+       "px-4 py-1 text-sm rounded-full border border-primary text-primary bg-card"]
+   else
+     raise ArgumentError, "unknown surface #{surface.inspect}; expected :card or :gradient" unless Rails.env.production?
+     [ds_button_classes(variant: :on_primary), ds_button_classes(variant: :on_primary_outline)]
+   end %>
 <div id="<%= dom_id(user, :follow_button) %>">
   <% if user_signed_in? && current_user.id != user.id %>
     <% if current_user.blocks_made.exists?(blocked_id: user.id) %>
       <%= button_to unblock_user_path(user.username), method: :delete,
-            class: ds_button_classes(variant: :on_primary) do %>
+            class: filled_classes do %>
         <%= lucide_icon("user-x", class: "w-4 h-4") %>
         <span>Unblock</span>
       <% end %>
     <% elsif current_user.hidden_user_ids.include?(user.id) %>
       <%# They blocked me — never offer Follow. Block-back stays available. %>
       <%= button_to block_user_path(user.username),
-            class: ds_button_classes(variant: :on_primary_outline) do %>
+            class: outline_classes do %>
         <%= lucide_icon("ban", class: "w-4 h-4") %>
         <span>Block</span>
       <% end %>
@@ -61,7 +90,7 @@
       <div class="flex items-center gap-2">
         <% if current_user.following.include?(user) %>
           <%= button_to unfollow_user_path(user.username), method: :delete,
-                class: ds_button_classes(variant: :on_primary) do %>
+                class: filled_classes do %>
             <%= lucide_icon("user-check", class: "w-4 h-4") %>
             <span>Following</span>
           <% end %>
@@ -69,19 +98,19 @@
           <%# Private target with a pending request (Slice 7b). The button cancels the
               request — reuses the unfollow route (DELETE removes the pending follow). %>
           <%= button_to unfollow_user_path(user.username), method: :delete,
-                class: ds_button_classes(variant: :on_primary) do %>
+                class: filled_classes do %>
             <%= lucide_icon("clock", class: "w-4 h-4") %>
             <span>Requested</span>
           <% end %>
         <% else %>
           <%= button_to follow_user_path(user.username),
-                class: ds_button_classes(variant: :on_primary_outline) do %>
+                class: outline_classes do %>
             <%= lucide_icon("user-plus", class: "w-4 h-4") %>
             <span>Follow</span>
           <% end %>
         <% end %>
         <%= button_to block_user_path(user.username),
-              class: "#{ds_button_classes(variant: :on_primary_outline)} opacity-80" do %>
+              class: "#{outline_classes} opacity-80" do %>
           <%= lucide_icon("ban", class: "w-4 h-4") %>
           <span>Block</span>
         <% end %>
