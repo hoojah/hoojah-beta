@@ -41,6 +41,13 @@ RSpec.describe Debate, type: :model do
     expect(d.current_phase).to eq(:opening)
   end
 
+  it "accept! with an opening_argument notifies the OPPONENT it's their turn (not the challenger, whose turn is already posted)" do
+    d = build_debate(opening_argument: "My opening case")
+    expect { d.accept!(by: opponent) }
+      .to change { Notification.where(user: opponent, category: "debate_your_turn").count }.by(1)
+      .and change { Notification.where(user: challenger, category: "debate_your_turn").count }.by(0)
+  end
+
   it "accept! without an opening_argument behaves exactly as today: no auto turn, challenger moves first" do
     d = build_debate(opening_argument: nil)
 
