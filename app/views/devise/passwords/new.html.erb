@@ -3,27 +3,33 @@
     reveals whether the address exists; the error summary below is therefore reachable
     only for a malformed submit.
 
-    DESIGN SYSTEM (Slice 9, Task 4.6) — the shared auth treatment: `ui/_card` for the
-    white SQUARE panel, the field-border token plus the indigo focus border in place of
-    a bare uncoloured border resolving to body ink, the 14px muted label, and the
-    `rect` solid submit the design system assigns to auth screens.
+    HOOJAH 2026 (Phase 1.1) — the same restyle as log-in/sign-up: no white card
+    panel, `bg-surface` page, one 52px `bg-card-2` field row. No "or / Continue
+    with Google" divider and no password reveal toggle here — there is no
+    password field on this screen, and this is a single-purpose recovery flow
+    rather than a second entry point into the app.
 %>
-<%= render layout: "ui/card", locals: {class: "max-w-md mx-auto mt-16 p-6"} do %>
-  <h2 class="text-2xl font-semibold mb-6">Forgot your password?</h2>
+<div class="min-h-screen bg-surface flex items-center justify-center px-6 py-12">
+  <div class="w-full max-w-sm">
+    <%= render "devise/shared/brand" %>
 
-  <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :post }) do |f| %>
-    <%= render "devise/shared/error_messages", resource: resource %>
+    <h1 class="mt-6 text-2xl font-extrabold leading-tight text-ink">Forgot your password?</h1>
+    <p class="mt-2 text-sm text-ink-2 leading-relaxed">Enter your email and we'll send you reset instructions.</p>
 
-    <div class="mb-3">
-      <%= f.label :email, class: "block text-sm text-grey mb-1" %>
-      <%= f.email_field :email, autofocus: true, autocomplete: "email",
-            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
-    </div>
+    <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: {method: :post}) do |f| %>
+      <%= render "devise/shared/error_messages", resource: resource %>
 
-    <div class="mt-4">
-      <%= f.submit "Send me password reset instructions", class: ds_button_classes(variant: :rect) %>
-    </div>
-  <% end %>
+      <div class="mt-6">
+        <div class="flex items-center gap-3 h-[52px] px-4 rounded-xl bg-card-2 border border-field">
+          <%= lucide_icon "mail", class: "w-[19px] h-[19px] text-faint shrink-0" %>
+          <%= f.email_field :email, autofocus: true, autocomplete: "email", placeholder: "Email address",
+                class: "flex-1 min-w-0 bg-transparent border-0 outline-none text-[14.5px] text-ink placeholder:text-faint" %>
+        </div>
+      </div>
 
-  <%= render "devise/shared/links" %>
-<% end %>
+      <%= f.submit "Send me password reset instructions", class: "mt-4 w-full h-[52px] rounded-xl bg-primary text-white font-bold shadow cursor-pointer" %>
+    <% end %>
+
+    <%= render "devise/shared/links" %>
+  </div>
+</div>

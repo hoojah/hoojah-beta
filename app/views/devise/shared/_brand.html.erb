@@ -1,0 +1,17 @@
+<%# The stance-dot row + wordmark at the top of every auth screen (Hoojah 2026,
+    Phase 1.1) — identical on log-in, sign-up and password-reset, so it is
+    extracted rather than left to drift three ways. Headline/subhead copy stays
+    per-screen (each view writes its own), because that's where the product
+    message actually differs.
+
+    The three dots are agree/neutral/disagree in that fixed order — the same
+    trio and order as the theme-scheme switcher elsewhere in the app — rendered
+    as bare `bg-<stance>` utilities (never a concrete hex) so they retint with
+    the active theme/scheme like everything else.
+%>
+<div class="flex gap-1.5">
+  <span class="w-3 h-3 rounded-full bg-agree"></span>
+  <span class="w-3 h-3 rounded-full bg-neutral"></span>
+  <span class="w-3 h-3 rounded-full bg-disagree"></span>
+</div>
+<%= image_tag "logo.svg", alt: "Hoojah", class: "mt-3 h-8 w-auto" %>

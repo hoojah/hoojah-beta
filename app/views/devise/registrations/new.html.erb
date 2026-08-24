@@ -7,63 +7,84 @@
     create whose honeypot came back filled. Do not restyle it, do not move it inside a
     field group, and do not touch how it hides itself — the hiding IS the control.
 
-    DESIGN SYSTEM (Slice 9, Task 4.6) — same treatment as the log-in screen: the panel
-    is `ui/_card` (white, SQUARE, shadowed), the fields take the field-border token
-    plus the indigo focus border instead of a bare uncoloured border resolving to body
-    ink, labels are the 14px muted label, and the submit is the `rect` solid button the
-    design system assigns to auth screens.
+    HOOJAH 2026 (Phase 1.1) — same restyle as the log-in screen: no white card
+    panel, `bg-surface` page, 52px `bg-card-2` field rows with leading Lucide
+    icons, and a `password_visibility` reveal toggle on BOTH password fields.
+    Each field row carries its own `data-controller="password-visibility"`, so
+    the two toggles are independent Stimulus instances — clicking one never
+    affects the other's field/icons.
 
     The password-length hint moves from a Tailwind-default grey onto the design
-    system's own muted token; the palette has no grey between those two.
+    system's `text-faint` token, same as the pre-2026 version did onto its own
+    muted token — the palette still has no grey between those two.
 
-    The design system's `TextField` shows an "@" prefix and real placeholders on the
-    username field, but only inside the profile editor — this screen has never rendered
-    either, and adding them would be new user-visible copy rather than codification.
+    No "or / Continue with Google" divider here on purpose, unlike log-in: the
+    mockup only specifies that control for the sign-in frame, and a sign-up screen
+    that offers a second, unwired entry point invites exactly the confusion the
+    "inert" constraint on log-in's Google button already accepts a little risk on.
 %>
-<%= render layout: "ui/card", locals: {class: "max-w-md mx-auto mt-16 p-6"} do %>
-  <h2 class="text-2xl font-semibold mb-6">Sign up</h2>
+<div class="min-h-screen bg-surface flex items-center justify-center px-6 py-12">
+  <div class="w-full max-w-sm">
+    <%= render "devise/shared/brand" %>
 
-  <%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
-    <%= render "devise/shared/error_messages", resource: resource %>
+    <h1 class="mt-6 text-2xl font-extrabold leading-tight text-ink">Join the debate.</h1>
+    <p class="mt-2 text-sm text-ink-2 leading-relaxed">Create an account to post a hoojah and cast your vote.</p>
 
-    <%= invisible_captcha :subtitle %>
+    <%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
+      <%= render "devise/shared/error_messages", resource: resource %>
 
-    <div class="mb-3">
-      <%= f.label :full_name, class: "block text-sm text-grey mb-1" %>
-      <%= f.text_field :full_name, autofocus: true,
-            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
-    </div>
-    <div class="mb-3">
-      <%= f.label :username, class: "block text-sm text-grey mb-1" %>
-      <%= f.text_field :username,
-            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
-    </div>
+      <%= invisible_captcha :subtitle %>
 
-    <div class="mb-3">
-      <%= f.label :email, class: "block text-sm text-grey mb-1" %>
-      <%= f.email_field :email, autocomplete: "email",
-            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
-    </div>
+      <div class="mt-6 flex flex-col gap-3">
+        <div class="flex items-center gap-3 h-[52px] px-4 rounded-xl bg-card-2 border border-field">
+          <%= lucide_icon "user", class: "w-[19px] h-[19px] text-faint shrink-0" %>
+          <%= f.text_field :full_name, autofocus: true, placeholder: "Full name",
+                class: "flex-1 min-w-0 bg-transparent border-0 outline-none text-[14.5px] text-ink placeholder:text-faint" %>
+        </div>
 
-    <div class="mb-3">
-      <%= f.label :password, class: "block text-sm text-grey mb-1" %>
-      <% if @minimum_password_length %>
-        <em class="text-xs text-grey">(<%= @minimum_password_length %> characters minimum)</em>
-      <% end %>
-      <%= f.password_field :password, autocomplete: "new-password",
-            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
-    </div>
+        <div class="flex items-center gap-3 h-[52px] px-4 rounded-xl bg-card-2 border border-field">
+          <%= lucide_icon "at-sign", class: "w-[19px] h-[19px] text-faint shrink-0" %>
+          <%= f.text_field :username, placeholder: "Username",
+                class: "flex-1 min-w-0 bg-transparent border-0 outline-none text-[14.5px] text-ink placeholder:text-faint" %>
+        </div>
 
-    <div class="mb-3">
-      <%= f.label :password_confirmation, class: "block text-sm text-grey mb-1" %>
-      <%= f.password_field :password_confirmation, autocomplete: "new-password",
-            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
-    </div>
+        <div class="flex items-center gap-3 h-[52px] px-4 rounded-xl bg-card-2 border border-field">
+          <%= lucide_icon "mail", class: "w-[19px] h-[19px] text-faint shrink-0" %>
+          <%= f.email_field :email, autocomplete: "email", placeholder: "Email address",
+                class: "flex-1 min-w-0 bg-transparent border-0 outline-none text-[14.5px] text-ink placeholder:text-faint" %>
+        </div>
 
-    <div class="mt-4">
-      <%= f.submit "Sign up", class: ds_button_classes(variant: :rect) %>
-    </div>
-  <% end %>
+        <div>
+          <div class="flex items-center gap-3 h-[52px] px-4 rounded-xl bg-card-2 border border-field" data-controller="password-visibility">
+            <%= lucide_icon "lock", class: "w-[19px] h-[19px] text-faint shrink-0" %>
+            <%= f.password_field :password, autocomplete: "new-password", placeholder: "Password",
+                  data: {password_visibility_target: "field"},
+                  class: "flex-1 min-w-0 bg-transparent border-0 outline-none text-[14.5px] text-ink placeholder:text-faint" %>
+            <button type="button" data-action="password-visibility#toggle" aria-label="Show password" class="shrink-0 text-faint">
+              <%= lucide_icon "eye", class: "w-[19px] h-[19px]", data: {password_visibility_target: "showIcon"} %>
+              <%= lucide_icon "eye-off", class: "w-[19px] h-[19px]", data: {password_visibility_target: "hideIcon"}, hidden: true %>
+            </button>
+          </div>
+          <% if @minimum_password_length %>
+            <p class="mt-1.5 ml-1 text-xs text-faint"><%= @minimum_password_length %> characters minimum</p>
+          <% end %>
+        </div>
 
-  <%= render "devise/shared/links" %>
-<% end %>
+        <div class="flex items-center gap-3 h-[52px] px-4 rounded-xl bg-card-2 border border-field" data-controller="password-visibility">
+          <%= lucide_icon "lock", class: "w-[19px] h-[19px] text-faint shrink-0" %>
+          <%= f.password_field :password_confirmation, autocomplete: "new-password", placeholder: "Confirm password",
+                data: {password_visibility_target: "field"},
+                class: "flex-1 min-w-0 bg-transparent border-0 outline-none text-[14.5px] text-ink placeholder:text-faint" %>
+          <button type="button" data-action="password-visibility#toggle" aria-label="Show password" class="shrink-0 text-faint">
+            <%= lucide_icon "eye", class: "w-[19px] h-[19px]", data: {password_visibility_target: "showIcon"} %>
+            <%= lucide_icon "eye-off", class: "w-[19px] h-[19px]", data: {password_visibility_target: "hideIcon"}, hidden: true %>
+          </button>
+        </div>
+      </div>
+
+      <%= f.submit "Sign up", class: "mt-4 w-full h-[52px] rounded-xl bg-primary text-white font-bold shadow cursor-pointer" %>
+    <% end %>
+
+    <%= render "devise/shared/links" %>
+  </div>
+</div>

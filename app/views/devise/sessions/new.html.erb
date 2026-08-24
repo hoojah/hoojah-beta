@@ -2,53 +2,74 @@
     element, its verb or its field names may move — Warden authenticates on
     `user[email]` / `user[password]` / `user[remember_me]` by exactly those names.
 
-    DESIGN SYSTEM (Slice 9, Task 4.6) —
+    HOOJAH 2026 (Phase 1.1) — restyled from the Card.jsx-borrowed treatment (Slice
+    9, Task 4.6) to the 2026 mockup's "Auth · sign in" frame: no white card
+    panel — the page itself carries `bg-surface`, each field
+    is a 52px `bg-card-2` row with a leading Lucide icon, and the password field's
+    trailing control is the new `password_visibility` Stimulus controller (a tiny,
+    JS-off-safe reveal toggle — with JS disabled it's a perfectly ordinary
+    `type="password"` field and the toggle button does nothing).
 
-    - The panel is `ui/_card`: the design system's white `shadow` surface, which is
-      SQUARE. It was hand-typed here with a corner radius, and the radius is the one
-      thing Card.prompt.md forbids outright.
-    - Every input took a bare border utility with no colour, and Tailwind v4 resolves
-      an uncoloured border to `currentColor` — so these fields were outlined in body
-      ink rather than in the field-border token. The same defect painted an indigo rule
-      under every follower row in Task 4.4. Both the colour and the indigo focus border
-      come from TextField/TextAreaField.
-    - Labels are the 14px muted label the profile editor already used.
-    - "Remember me" is Checkbox.prompt.md exactly: a 16px NATIVE checkbox with a 14px
-      grey label. There is no switch component in Hoojah.
-    - The submit is `rect` — the squarer solid button the design system assigns to the
-      auth screens and the signup CTA, not the house pill.
+    No error summary here on purpose: Devise answers a bad login with a flash, not
+    with `resource.errors`, so `devise/shared/_error_messages` would never have
+    anything to say on this screen (unchanged from the pre-2026 note).
 
-    No error summary here on purpose: Devise answers a bad login with a flash, not with
-    `resource.errors`, so `devise/shared/_error_messages` would never have anything to
-    say on this screen.
+    "Continue with Google" is INERT — `type="button"`, no href, no OmniAuth wired
+    up anywhere in this app. It is visual-only per the mockup; do not turn it into
+    a link, `button_to`, or anything that could 404.
 %>
-<%= render layout: "ui/card", locals: {class: "max-w-md mx-auto mt-16 p-6"} do %>
-  <h2 class="text-2xl font-semibold mb-6">Log in</h2>
+<div class="min-h-screen bg-surface flex items-center justify-center px-6 py-12">
+  <div class="w-full max-w-sm">
+    <%= render "devise/shared/brand" %>
 
-  <%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
-    <div class="mb-3">
-      <%= f.label :email, class: "block text-sm text-grey mb-1" %>
-      <%= f.email_field :email, autofocus: true, autocomplete: "email",
-            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
-    </div>
+    <h1 class="mt-6 text-2xl font-extrabold leading-tight text-ink">Where Malaysia's brilliant minds debate.</h1>
+    <p class="mt-2 text-sm text-ink-2 leading-relaxed">Post a hoojah. Gather votes. Settle it in a debate.</p>
 
-    <div class="mb-3">
-      <%= f.label :password, class: "block text-sm text-grey mb-1" %>
-      <%= f.password_field :password, autocomplete: "current-password",
-            class: "w-full rounded border border-gray-200 px-3 py-2 focus:outline-none focus:border-primary" %>
-    </div>
+    <%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
+      <div class="mt-6 flex flex-col gap-3">
+        <div class="flex items-center gap-3 h-[52px] px-4 rounded-xl bg-card-2 border border-field">
+          <%= lucide_icon "mail", class: "w-[19px] h-[19px] text-faint shrink-0" %>
+          <%= f.email_field :email, autofocus: true, autocomplete: "email", placeholder: "Email address",
+                class: "flex-1 min-w-0 bg-transparent border-0 outline-none text-[14.5px] text-ink placeholder:text-faint" %>
+        </div>
 
-    <% if devise_mapping.rememberable? %>
-      <div class="mb-3 flex items-center gap-2">
-        <%= f.check_box :remember_me, class: "w-4 h-4" %>
-        <%= f.label :remember_me, class: "text-sm text-grey" %>
+        <div class="flex items-center gap-3 h-[52px] px-4 rounded-xl bg-card-2 border border-field" data-controller="password-visibility">
+          <%= lucide_icon "lock", class: "w-[19px] h-[19px] text-faint shrink-0" %>
+          <%= f.password_field :password, autocomplete: "current-password", placeholder: "Password",
+                data: {password_visibility_target: "field"},
+                class: "flex-1 min-w-0 bg-transparent border-0 outline-none text-[14.5px] text-ink placeholder:text-faint" %>
+          <button type="button" data-action="password-visibility#toggle" aria-label="Show password" class="shrink-0 text-faint">
+            <%= lucide_icon "eye", class: "w-[19px] h-[19px]", data: {password_visibility_target: "showIcon"} %>
+            <%= lucide_icon "eye-off", class: "w-[19px] h-[19px]", data: {password_visibility_target: "hideIcon"}, hidden: true %>
+          </button>
+        </div>
       </div>
+
+      <%= f.submit "Log in", class: "mt-4 w-full h-[52px] rounded-xl bg-primary text-white font-bold shadow cursor-pointer" %>
+
+      <%= link_to "Forgot password?", new_password_path(resource_name), class: "block text-center mt-3 text-sm font-semibold text-primary" %>
+
+      <% if devise_mapping.rememberable? %>
+        <div class="mt-4 flex items-center gap-2">
+          <%= f.check_box :remember_me, class: "w-4 h-4" %>
+          <%= f.label :remember_me, class: "text-sm text-ink-2" %>
+        </div>
+      <% end %>
     <% end %>
 
-    <div class="mt-4">
-      <%= f.submit "Log in", class: ds_button_classes(variant: :rect) %>
+    <div class="flex items-center gap-3 my-6">
+      <div class="flex-1 h-px bg-hairline"></div>
+      <span class="text-xs font-semibold text-faint">or</span>
+      <div class="flex-1 h-px bg-hairline"></div>
     </div>
-  <% end %>
 
-  <%= render "devise/shared/links" %>
-<% end %>
+    <%# Custom monochrome "G" glyph, not a Lucide icon — this is the one Google
+        mark the mockup specifies, and Lucide has no equivalent in its set. %>
+    <button type="button" class="w-full h-[52px] rounded-xl border border-field bg-card text-ink font-bold text-[14.5px] flex items-center justify-center gap-2.5">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10c0-.5 0-.9-.1-1.4H12v2.8h5.5A5.9 5.9 0 0 1 12 18a6 6 0 1 1 4-10.5"/></svg>
+      Continue with Google
+    </button>
+
+    <%= render "devise/shared/links" %>
+  </div>
+</div>
