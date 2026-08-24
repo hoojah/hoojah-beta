@@ -6,13 +6,20 @@ class HujahsController < ApplicationController
     # Anonymous `?filter=following` must fall back to the global feed (no 500 on
     # current_user being nil), so the branch also requires user_signed_in?.
     base = if params[:filter] == "following" && user_signed_in?
-      Hujah.timeline_for(current_user).includes(:user).order(updated_at: :desc)
+      # Per-post visibility (2026): followers may see visible_public + followers_only
+      # from people they follow, PLUS the viewer's own private_only claims (don't
+      # over-hide — timeline_for already includes current_user.id).
+      Hujah.timeline_for(current_user)
+        .where("hujahs.visibility IN (0, 1) OR hujahs.user_id = ?", current_user.id)
+        .includes(:user).order(updated_at: :desc)
     else
       global = Hujah.where(parent_id: nil).includes(:user).order(updated_at: :desc)
       # Slice 7b (Gate 1): the global feed NEVER shows a private author — UNCONDITIONAL
       # (anonymous too). A private user's content lives on their gated profile and in
       # their accepted followers' Following feed, never the public feed.
       global = global.joins(:user).where(users: {private: false})
+      # Per-post visibility (2026): the global/anonymous feed shows only visible_public.
+      global = global.where(visibility: :visible_public)
       # Slice 7: signed-in viewers never see a hidden (blocked/blocked-by) author's
       # top-level hoojahs; anonymous is deliberately unfiltered.
       global = global.where.not(user_id: current_user.hidden_user_ids) if user_signed_in?

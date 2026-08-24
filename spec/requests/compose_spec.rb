@@ -10,7 +10,7 @@ RSpec.describe "Compose", type: :request do
 
   it "creates a top-level hoojah and redirects to it" do
     sign_in user
-    expect { post "/hoojah", params: {hujah: {body: "My take"}} }
+    expect { post "/hoojah", params: {hujah: {body: "My take on this"}} }
       .to change(Hujah, :count).by(1)
     expect(response).to have_http_status(:see_other)
   end

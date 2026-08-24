@@ -58,6 +58,48 @@ RSpec.describe Hujah, type: :model do
     end
   end
 
+  describe "#visible_to? per-post" do
+    let(:author) { create(:user) }
+    let(:follower) { create(:user) }
+    let(:stranger) { create(:user) }
+    before { follower.active_follows.create!(followed: author, status: :accepted) }
+
+    it "private_only claim: author only" do
+      h = create(:hujah, user: author, visibility: :private_only)
+      expect(h.visible_to?(author)).to be true
+      expect(h.visible_to?(follower)).to be false
+      expect(h.visible_to?(stranger)).to be false
+      expect(h.visible_to?(nil)).to be false
+    end
+
+    it "followers_only claim: author + accepted followers, not strangers" do
+      h = create(:hujah, user: author, visibility: :followers_only)
+      expect(h.visible_to?(author)).to be true
+      expect(h.visible_to?(follower)).to be true
+      expect(h.visible_to?(stranger)).to be false
+      expect(h.visible_to?(nil)).to be false
+    end
+
+    it "visible_public claim by a public author: everyone" do
+      h = create(:hujah, user: author, visibility: :visible_public)
+      expect(h.visible_to?(stranger)).to be true
+      expect(h.visible_to?(nil)).to be true
+    end
+
+    # Slice 7b Gate 6 regression guard: a PRIVATE replier's reply under a public
+    # parent must stay hidden from a stranger, visible to an accepted follower.
+    it "a private replier's reply under a public parent is gated by the replier's own privacy" do
+      private_replier = create(:user, private: true)
+      fan = create(:user)
+      fan.active_follows.create!(followed: private_replier, status: :accepted)
+      parent = create(:hujah, user: author, visibility: :visible_public)
+      reply = create(:hujah, parent: parent, user: private_replier, body: "a reply body")
+      expect(reply.visible_to?(stranger)).to be false
+      expect(reply.visible_to?(fan)).to be true
+      expect(reply.visible_to?(private_replier)).to be true
+    end
+  end
+
   describe "#current_user_vote" do
     let!(:user) { create(:user) }
     let!(:hujah) { create(:hujah) }

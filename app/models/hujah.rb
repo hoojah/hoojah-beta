@@ -23,9 +23,24 @@ class Hujah < ApplicationRecord
     user.present? && votes.exists?(user_id: user.id)
   end
 
-  # A hoojah inherits its author's visibility (Slice 7b). Every content surface
-  # that renders a hoojah gates through this.
-  def visible_to?(viewer) = user.visible_to?(viewer)
+  # A hoojah is visible when BOTH the author is visible to the viewer (account
+  # privacy, Slice 7b) AND the per-post visibility (2026) permits it. A REPLY
+  # (parent_id present) is gated by the parent AND by the reply author's OWN account
+  # privacy — dropping the latter regresses Slice 7b Gate 6 (a private user's reply
+  # under a public claim must stay hidden from non-followers; the API show +
+  # notification cards rely on this). Every content surface that renders a hoojah
+  # gates through this.
+  def visible_to?(viewer)
+    return parent.visible_to?(viewer) && user.visible_to?(viewer) if parent_id
+    return false unless user.visible_to?(viewer)
+
+    case visibility
+    when "visible_public" then true
+    when "followers_only" then viewer == user || user.accepted_follower?(viewer)
+    when "private_only" then viewer == user
+    else false
+    end
+  end
 
   # @handle mention pattern. The `(?<!\w)` lookbehind means an `@` preceded by a
   # word char (e.g. inside an email `foo@bar`) is NOT a mention.
@@ -74,6 +89,7 @@ class Hujah < ApplicationRecord
       # Slice 7b: trending candidates exclude a private author's hoojahs (with the
       # User#after_update_commit cache-bust so the flip is reflected immediately).
       where(parent_id: nil).where("hujahs.updated_at > ?", 48.hours.ago)
+        .where(visibility: :visible_public) # 2026: a non-public claim never trends
         .joins(:user).where(users: {private: false}).to_a
         .map { |h|
           [h.id, ((h.agree_count + h.neutral_count + h.disagree_count + h.children.size).to_f /
