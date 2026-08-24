@@ -1,10 +1,25 @@
-<%# Inline feed composer response (Task 4.4): prepend the freshly-created card to the
-    feed, then reset the composer back to its collapsed state. Only the inline composer
-    reaches here — the full-page composer form is turbo:false and redirects instead. %>
-<%= turbo_stream.prepend "hujah-feed" do %>
-  <%= render "hujahs/hujah_card", hujah: @hujah %>
-<% end %>
+<%# Turbo response for a hoojah created via a composer form.
 
-<%= turbo_stream.replace "inline-composer" do %>
-  <%= render "hujahs/inline_composer" %>
+    A REPLY (parent_id present) comes from the single-hoojah argument composer: append
+    the new response to the parent's responses list, clear the empty-state placeholder if
+    it was there, and reset the argument bar (voted: true — you just posted, so you've
+    voted). A TOP-LEVEL claim comes from the inline feed composer: prepend the new card to
+    the feed and reset the inline composer. (The full-page composer form is turbo:false
+    and redirects instead of reaching here.) %>
+<% if @hujah.parent_id %>
+  <% root = @hujah.parent %>
+  <%= turbo_stream.remove dom_id(root, :responses_empty) %>
+  <%= turbo_stream.append dom_id(root, :responses) do %>
+    <%= render "hujahs/child_card", child: @hujah, hujah: root, live_debate_keys: Set.new %>
+  <% end %>
+  <%= turbo_stream.replace dom_id(root, :argument_composer) do %>
+    <%= render "hujahs/argument_composer", hujah: root, voted: true %>
+  <% end %>
+<% else %>
+  <%= turbo_stream.prepend "hujah-feed" do %>
+    <%= render "hujahs/hujah_card", hujah: @hujah %>
+  <% end %>
+  <%= turbo_stream.replace "inline-composer" do %>
+    <%= render "hujahs/inline_composer" %>
+  <% end %>
 <% end %>

@@ -15,3 +15,10 @@
         current_user_vote: @hujah.current_user_vote(logged_in: true, current_user_id: current_user.id),
         current_vote_locked: (@hujah.votes.find_by(user_id: current_user.id)&.conviction) || false %>
 <% end %>
+<%# Unlock the argument composer after an inline vote. Only present on the show page and
+    only when the viewer is a non-author — an absent target is a harmless no-op. %>
+<% if current_user.id != @hujah.user_id %>
+  <%= turbo_stream.replace dom_id(@hujah, :argument_composer) do %>
+    <%= render "hujahs/argument_composer", hujah: @hujah, voted: true %>
+  <% end %>
+<% end %>

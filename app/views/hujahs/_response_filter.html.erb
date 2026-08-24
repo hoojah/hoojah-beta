@@ -64,13 +64,18 @@
     </button>
   </div>
 
-  <div class="mt-3 flex flex-col">
+  <%# id is the append target for a freshly-posted argument (create.turbo_stream.erb).
+      Always rendered — even when empty — so the first reply has somewhere to land; the
+      empty-state placeholder carries its own id and is removed by that same stream. %>
+  <div id="<%= dom_id(hujah, :responses) %>" class="mt-3 flex flex-col">
     <% if children.any? %>
       <% children.each do |child| %>
         <%= render "hujahs/child_card", child: child, hujah: hujah, live_debate_keys: live_debate_keys %>
       <% end %>
     <% else %>
-      <%= render "ui/empty_state", message: "No response yet", class: "px-4" %>
+      <div id="<%= dom_id(hujah, :responses_empty) %>">
+        <%= render "ui/empty_state", message: "No response yet", class: "px-4" %>
+      </div>
     <% end %>
   </div>
 </div>

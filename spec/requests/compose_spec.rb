@@ -39,4 +39,13 @@ RSpec.describe "Compose", type: :request do
     expect(h.visibility).to eq "private_only"
     expect(h.allow_debates).to be false
   end
+
+  it "rejects a reply before the replier has voted on the parent (2026 gate)" do
+    sign_in user
+    parent = create(:hujah, user: create(:user))
+    expect { post "/hoojah", params: {hujah: {body: "no vote yet reply", parent_id: parent.id, vote: "1"}} }
+      .not_to change(Hujah, :count)
+    # Pundit#NotAuthorizedError → HTML redirect back with an alert.
+    expect(response).to have_http_status(:forbidden).or have_http_status(:found)
+  end
 end

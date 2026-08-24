@@ -102,20 +102,14 @@
         current_user_vote: @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id),
         current_vote_locked: (user_signed_in? && @hujah.votes.find_by(user_id: current_user.id)&.conviction) || false %>
 
-  <%# Port of the legacy SPA `Layouts/button_add_hujah.js` — the respond entry.
-      Seeds the compose form with this hoojah as the parent (stance-tagged reply).
-
-      The house pill, via `ds_button_classes`, whose `tone:` exists for exactly this:
-      "Add hoojah" on a hoojah you agreed with is agree-coloured, and falls back to
-      primary when you have not voted. Passing the stance through the helper also buys
-      the guard the hand-written `border-#{stance}` had none of — a value outside TONES
-      raises here instead of rendering a class with no rule behind it. %>
-  <% stance = @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) || "primary" %>
-  <div class="flex justify-center mb-2">
-    <%= link_to respond_hujah_path(@hujah.slug), class: ds_button_classes(tone: stance) do %>
-      <%= lucide_icon("message-square-plus", class: "w-4 h-4") %> Add hoojah
-    <% end %>
-  </div>
+  <%# Hoojah 2026 argument composer — replaces the old "Add hoojah" link. Locked until
+      the viewer votes (mirrors HujahPolicy#create?), then a real POST /hoojah reply form.
+      respond_hujah_path stays reachable inside it as the JS-off fallback. Only shown to a
+      signed-in viewer who is not the author (an author replying to their own claim is not
+      a use case here). %>
+  <% if user_signed_in? && current_user.id != @hujah.user_id %>
+    <%= render "hujahs/argument_composer", hujah: @hujah, voted: @hujah.voted_by?(current_user) %>
+  <% end %>
 
   <%# Debates lens (Slice 4). Lists the debates on this hoojah visible to the viewer
       (policy_scope in HujahsController#show — concluded to everyone, plus the viewer's
