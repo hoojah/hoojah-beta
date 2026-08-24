@@ -1,6 +1,6 @@
 # Hoojah — Session Handover
 
-_Last updated: 2026-08-06. Read this first when resuming._
+_Last updated: 2026-08-24. Read this first when resuming._
 
 ## TL;DR
 
@@ -24,17 +24,67 @@ them.
 
 Next up: **Project 3 (Hotwire Native)** — not started.
 
-### Hoojah 2026 redesign — Track 2 backlog
+## Hoojah 2026 redesign — DONE ✅ (branch `hoojah-2026-redesign`, not merged)
 
-- **Unique index on `votes [hujah_id, user_id]` (Task 6.1 writes it).** `Hujah#cast_vote` now
-  takes a `FOR UPDATE` row lock (`votes.lock.find_by`) so a same-stance conviction upgrade can't
-  double-increment `conviction_count`. That still leaves the concurrent *first-vote* race (two
-  requests both find no row and both `votes.create!`) open. Add a concurrent unique index and
-  `rescue ActiveRecord::RecordNotUnique` (retry) to close it. Until then a race can create two vote
-  rows for one (hujah, user).
-- **Locked re-vote is a silent no-op**, not a domain error — deviation from spec §3.7. The vote
-  hero's `locked-value` makes it unreachable in the UI; the votes controller just re-renders the
-  unchanged widget.
+A deliberate **rebrand** of the new-post composer and the single-hujah "argument" view, imported from
+a Claude Design project (`Hoojah 2026.dc.html`). Spec: `docs/superpowers/specs/2026-08-24-hoojah-2026-redesign-design.md`;
+plan: `docs/superpowers/plans/2026-08-24-hoojah-2026-redesign.md`; mockup refs under
+`docs/superpowers/specs/assets/`. Full `bin/ci` green (**603 examples / 0 failures**, all gates);
+clean prosopite **147** (≈ the 146 baseline — no N+1 regression). Built via superpowers
+brainstorm→spec→plan→subagent-driven development with a **Fable-5 architecture audit** that caught
+five visibility-leak surfaces before implementation, plus a final code-review pass.
+
+**What shipped (28 commits, ~6 tracks):**
+- **Theming (rebrand).** Tailwind v4 `@theme inline` colors now chain onto runtime CSS vars switched
+  by `data-theme` (light/dark) + `data-scheme` (spectrum/signal/ballot) on `<html>`, with a nonce'd
+  no-FOUC head script and a `theme_controller` navbar toggle. **This supersedes the old design-system
+  rules** ("neutral is PINK", "no dark mode"): the default scheme is **Spectrum** (agree `#0ea5a4`
+  teal / neutral `#e8930c` amber / disagree `#8b5cf6` violet). `--color-gray-{50,100,200}` remap onto
+  surface tokens; `bg-white`/`text-black` are still pinned, so shared chrome was swept to
+  `bg-card`/`text-ink` (baked into `ds_card_classes`). `docs/design-system/` is now **stale** and
+  needs re-mirroring (deferred — see below).
+- **Per-post visibility.** `hujahs.visibility` enum (`visible_public`/`followers_only`/`private_only`).
+  `Hujah#visible_to?` gates it (reply branch ANDs the replier's own account privacy). Closed on
+  **every** claim reader: HTML feed (both branches), show, `HujahPolicy#show?`/`#vote?`, the JSON API
+  index, `Hujah.trending`, the profile page, concluded-debate transcripts (`DebatePolicy#show?`/Scope),
+  the `/t/:name` tag feed, **and** `HujahsController#new` (the respond composer's parent card — a leak
+  the final review caught). Each surface has a named leak spec.
+- **Conviction voting = a lock, not a weight.** `votes.conviction` boolean + `hujahs.conviction_count`
+  (aggregate only — secret ballot preserved). `cast_vote` takes a `FOR UPDATE` row lock. UI: tap =
+  normal vote, hold-to-charge = conviction (locked forever), progressive-enhancement over `button_to`.
+- **Hashtags.** `Hashtag` + `hashtag_hujahs` join, parsed from the body like `@mentions`
+  (`HASHTAG_RE`, `sync_hashtags` after_save_commit), `format_body` linkifies `#tags` (distinct
+  U+E002/E003 markers) to a `/t/:name` feed.
+- **New-post surface:** full-page composer + inline feed composer rebuilt to the mockup —
+  visibility select (JS-off-safe native `<select>`), suggested-hashtag chips, "How people weigh in"
+  preview, allow-debates toggle, 8-char gate. `composer_controller`.
+- **Single-hujah surface:** contextual header, author/claim hero, vote hero with charge-ring/boom,
+  restyled debates + responses (stance-left-border, Challenge/"In debate"), three-state argument
+  composer + `respond_hujah_path` fallback. `conviction_controller`, `argument_composer_controller`.
+  `_vote_bars` (feed) left untouched; new `_vote_hero` for the show page; the vote Turbo Stream
+  replaces both + the composer bar.
+
+**Backlog / deferred (decisions, not oversights):**
+- **Unique index on `votes [hujah_id, user_id]`.** The `FOR UPDATE` lock closes the conviction
+  double-count + same-stance-upgrade races, but the concurrent *first-vote* race (two requests both
+  find no row and both `votes.create!`) is still open. Add a concurrent unique index +
+  `rescue ActiveRecord::RecordNotUnique` (retry). Until then a race can create two vote rows per
+  (hujah, user).
+- **Locked re-vote is a silent no-op**, not a domain error (spec §3.7) — UI-unreachable via the hero's
+  `locked-value`.
+- **Deep dark-mode polish of non-focus screens** (auth, profile, notifications, debate room) — they
+  inherit the tokens but still carry pinned `bg-white`/`text-black` islands (e.g. `_challenge_dialog`,
+  left frozen). The redesigned surfaces + shared chrome are dark-safe.
+- **Re-mirror `docs/design-system/`** to the 2026 palette — it currently documents the retired one.
+- **Follow button** omitted from the claim hero (`users/_follow_button` is locked to the indigo
+  profile surface; would render invisible on the light hero).
+- **BOOM celebration** markup is present but `hidden` — a conviction commits immediately and Turbo
+  replaces the hero, leaving no client-side window; needs an optimistic-animation pass.
+- **Respond overlay** = the existing full-page `respond_hujah_path` flow rather than a separate
+  in-page morph overlay (keeps the no-JS baseline).
+- **Scheme picker** is a minimal navbar cycle button (no dedicated picker screen); **image-attach**
+  button in the composer is visual-only.
+- Nice-to-have: `preventDefault` the vote-hero button click to drop a redundant (harmless, lock-serialized) tap POST.
 
 ---
 
