@@ -1,8 +1,8 @@
 require "rails_helper"
 
-# Cuprite (headless Chrome) coverage for the Hoojah 2026 profile redesign
-# (Phase 4.4): the gradient header, the conviction card, and the live-debate
-# card. Count tabs are a SEPARATE next task and are not covered here.
+# Cuprite (headless Chrome) coverage for the Hoojah 2026 profile redesign: the
+# gradient header, the conviction card, and the live-debate card (Phase 4.4),
+# plus the Hoojahs/Responses/Debates count tabs (Phase 4.5).
 RSpec.describe "Profile redesign", type: :system, js: true do
   let!(:user) { create(:user, username: "rudz", full_name: "Rudz Rahman") }
 
@@ -69,5 +69,30 @@ RSpec.describe "Profile redesign", type: :system, js: true do
 
     expect(page).not_to have_content("@privateopp9")
     expect(page).not_to have_selector("a[href*='/debates/']")
+  end
+
+  # ── Hoojah 2026, Phase 4.5: profile count tabs ──────────────────────────────
+  describe "the profile count tabs" do
+    it "shows the three tabs with counts, hoojahs active by default" do
+      create(:hujah, user: user, body: "tab default claim")
+      login_as_system(user)
+      visit "/u/rudz"
+
+      expect(page).to have_selector("turbo-frame#profile-list")
+      expect(page).to have_selector("[data-testid='profile-tab-hoojahs']")
+      expect(page).to have_selector("[data-testid='profile-tab-responses']")
+      expect(page).to have_selector("[data-testid='profile-tab-debates']")
+      expect(page).to have_content("tab default claim")
+    end
+
+    it "switches to the responses list when the Responses tab is clicked" do
+      parent = create(:hujah)
+      create(:hujah, user: user, parent: parent, body: "tab reply body for system spec")
+      login_as_system(user)
+      visit "/u/rudz"
+
+      find("[data-testid='profile-tab-responses']").click
+      expect(page).to have_content("tab reply body for system spec")
+    end
   end
 end

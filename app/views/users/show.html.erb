@@ -1,8 +1,14 @@
 <%# Public profile screen — faithful port of the legacy SPA `UserProfile.jsx`:
     the gradient header card (owner edit surfaced via the settings gear — Hoojah
     2026 redesign Phase 4, Task 4.4), then the conviction card + live-debate card
-    (owner only, both gated the same way as the hoojah list below), then the
-    user's hoojahs as compact cards. %>
+    (owner only, both gated the same way as the tabbed list below), then the
+    Hoojahs / Responses / Debates count tabs (Phase 4.5) with a framed list beneath.
+
+    The tab bar and `<turbo-frame id="profile-list">` below are an ENHANCEMENT, not
+    a requirement: each tab is a plain `link_to ... ?tab=<key>`, so a JS-off visit
+    still navigates (full page reload) and lands on the right tab server-side —
+    `data: {turbo_frame: "profile-list"}` only makes Turbo, when present, replace
+    just the frame instead of the whole page. %>
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
@@ -29,13 +35,27 @@
         <%= render "live_debate_card", debate: @active_debate, user: @user %>
       <% end %>
 
-      <% if @hujahs.any? %>
-        <%= render partial: "user_hujah", collection: @hujahs, as: :hujah %>
-      <% else %>
-        <%# `ui/_empty_state`'s baked-in `p-3 bg-white` and faint tone are exactly what
-            this row spelled by hand; the only thing lost is a dead `card-body` class
-            left over from the Bootstrap SPA, which matches no rule in the bundle. %>
-        <%= render "ui/empty_state", message: "No response yet" %>
+      <%= render "profile_tabs", user: @user, active_tab: @active_tab,
+            hoojahs_count: @hoojahs_count, responses_count: @responses_count, debates_count: @debates_count %>
+
+      <%= turbo_frame_tag "profile-list", class: "flex flex-col gap-2 mt-2" do %>
+        <% if @list.any? %>
+          <% if @active_tab == "debates" %>
+            <%= render partial: "debates/debate_card", collection: @list, as: :debate %>
+          <% else %>
+            <%# Both the Hoojahs and Responses tabs are `Hujah` records — a reply
+                renders through the same compact card as a top-level claim, which
+                already reads fine for either shape (avatar/handle/body/counts). %>
+            <%= render partial: "user_hujah", collection: @list, as: :hujah %>
+          <% end %>
+        <% else %>
+          <%# `ui/_empty_state`'s baked-in `p-3 bg-white` and faint tone are exactly what
+              this row spelled by hand; the only thing lost is a dead `card-body` class
+              left over from the Bootstrap SPA, which matches no rule in the bundle. %>
+          <% empty_message = {"hoojahs" => "No hoojahs yet", "responses" => "No responses yet",
+               "debates" => "No debates yet"}.fetch(@active_tab) %>
+          <%= render "ui/empty_state", message: empty_message %>
+        <% end %>
       <% end %>
     </div>
   <% end %>

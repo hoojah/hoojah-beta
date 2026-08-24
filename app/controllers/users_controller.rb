@@ -9,20 +9,15 @@ class UsersController < ApplicationController
     # name, @handle, "This account is private", follow button, follower/following
     # counts) with no hoojah list / headline / location / link / badges otherwise.
     @gated = !@user.visible_to?(current_user)
-    # Per-post visibility (2026): even a viewer who may see this profile only sees the
-    # claims their relationship permits. Self sees all; an accepted follower sees
-    # public + followers_only; everyone else public only. Preserve the existing
-    # includes/order chaining.
     unless @gated
-      scoped =
-        if current_user == @user
-          @user.hujahs
-        elsif user_signed_in? && @user.accepted_follower?(current_user)
-          @user.hujahs.where(visibility: [:visible_public, :followers_only])
-        else
-          @user.hujahs.where(visibility: :visible_public)
-        end
-      @hujahs = scoped.includes(:user).order(updated_at: :desc)
+      # Hoojah 2026 (redesign Phase 4, Task 4.5): the profile's Hoojahs / Responses /
+      # Debates count tabs. Counts are plain association counts — no new columns, no
+      # query object — and only the ACTIVE tab's list is loaded.
+      @active_tab = params[:tab].in?(%w[hoojahs responses debates]) ? params[:tab] : "hoojahs"
+      @hoojahs_count = @user.hujahs.where(parent_id: nil).count
+      @responses_count = @user.hujahs.where.not(parent_id: nil).count
+      @debates_count = @user.challenged_debates.count + @user.defended_debates.count
+      @list = profile_tab_list(@active_tab)
       # Hoojah 2026 (redesign Phase 4, Task 4.4): the profile's live-debate card.
       # LEAK PREVENTION carried forward from Phase 1.7-fix — `Hujah#active_debate`
       # is per-CLAIM and not usable here; the profile needs the OWNER's own active
@@ -79,6 +74,46 @@ class UsersController < ApplicationController
   # Email stays API-only (the HTML edit form omits it, matching the legacy SPA).
   def user_params
     params.require(:user).permit(:full_name, :username, :location, :link, :headline, :photo, :private)
+  end
+
+  # Hoojah 2026 (redesign Phase 4, Task 4.5). The list for whichever tab is active.
+  #
+  # Hoojahs: the SAME per-post-visibility scoping the profile always applied
+  # (Slice 7b / 2026), narrowed to top-level (`parent_id: nil`) — Responses below is
+  # what used to be mixed in here unfiltered.
+  #
+  # Responses: `Hujah#visible_to?` for a REPLY recurses through `parent.visible_to?`,
+  # which is not expressible as one SQL predicate (see `Hujah.visible_to`'s own
+  # comment) — so a page of the owner's replies is loaded and then filtered in Ruby.
+  # This is the LEAK surface: a reply the owner posted under someone else's
+  # followers_only/private_only claim must not surface to a viewer who cannot see
+  # that parent, even though the reply's own author (the profile owner) is visible.
+  #
+  # Debates: routed through `policy_scope`/`DebatePolicy::Scope`, never a raw list —
+  # a stranger must not learn of a debate whose OTHER participant is private/blocked
+  # to them. `hujahs_controller.rb`'s Debates lens uses the same policy_scope call
+  # unpaginated; this mirrors that rather than inventing a query object.
+  def profile_tab_list(tab)
+    case tab
+    when "responses"
+      @pagy, replies = pagy(:countless,
+        @user.hujahs.where.not(parent_id: nil).includes(:user, parent: :user).order(updated_at: :desc))
+      replies.select { |reply| reply.visible_to?(current_user) }
+    when "debates"
+      base = Debate.where(challenger_id: @user.id).or(Debate.where(opponent_id: @user.id))
+        .includes(:challenger, :opponent, :hujah).order(created_at: :desc)
+      policy_scope(base)
+    else
+      scoped =
+        if current_user == @user
+          @user.hujahs
+        elsif user_signed_in? && @user.accepted_follower?(current_user)
+          @user.hujahs.where(visibility: [:visible_public, :followers_only])
+        else
+          @user.hujahs.where(visibility: :visible_public)
+        end
+      scoped.where(parent_id: nil).includes(:user).order(updated_at: :desc)
+    end
   end
 
   # The profile owner's own active debate (they are challenger OR opponent),
