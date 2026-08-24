@@ -24,6 +24,18 @@ them.
 
 Next up: **Project 3 (Hotwire Native)** — not started.
 
+### Hoojah 2026 redesign — Track 2 backlog
+
+- **Unique index on `votes [hujah_id, user_id]` (Task 6.1 writes it).** `Hujah#cast_vote` now
+  takes a `FOR UPDATE` row lock (`votes.lock.find_by`) so a same-stance conviction upgrade can't
+  double-increment `conviction_count`. That still leaves the concurrent *first-vote* race (two
+  requests both find no row and both `votes.create!`) open. Add a concurrent unique index and
+  `rescue ActiveRecord::RecordNotUnique` (retry) to close it. Until then a race can create two vote
+  rows for one (hujah, user).
+- **Locked re-vote is a silent no-op**, not a domain error — deviation from spec §3.7. The vote
+  hero's `locked-value` makes it unreachable in the UI; the votes controller just re-renders the
+  unchanged widget.
+
 ---
 
 ## Project 2 Slice 1 — Hotwire Foundation — DONE

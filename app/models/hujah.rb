@@ -84,22 +84,41 @@ class Hujah < ApplicationRecord
     where(id: ids).includes(:user).sort_by { |h| ids.index(h.id) }
   end
 
-  def cast_vote(by:, choice:)
+  def cast_vote(by:, choice:, conviction: false)
     choice = choice.to_i
     return unless COUNTER_FOR.key?(choice)
 
     transaction do
-      existing = votes.find_by(user_id: by.id)
+      # `.lock` takes a FOR UPDATE row lock so the conviction? re-check below reads
+      # committed state — two concurrent upgrades can't both see conviction=false and
+      # double-count conviction_count. (A unique index on votes[hujah_id, user_id] is
+      # on the backlog to also close the concurrent-first-vote double-row race; see
+      # HANDOVER.)
+      existing = votes.lock.find_by(user_id: by.id)
       if existing
-        previous = existing.vote.last
-        return if previous == choice
+        return if existing.conviction? # locked forever — no stance change, no re-lock
 
-        existing.update!(vote: existing.vote + [choice])
+        previous = existing.vote.last
+        if previous == choice
+          # Same stance: allow upgrading a plain vote to a conviction (locked) vote.
+          if conviction
+            existing.update!(conviction: true)
+            increment!(:conviction_count)
+          end
+          return
+        end
+
+        # Never overwrite an existing lock with false (defensive — a locked row already
+        # early-returned above): OR the flags.
+        new_conviction = existing.conviction || conviction
+        existing.update!(vote: existing.vote + [choice], conviction: new_conviction)
+        increment!(:conviction_count) if conviction && !existing.conviction
         decrement!(COUNTER_FOR[previous]) if COUNTER_FOR.key?(previous)
         increment!(COUNTER_FOR[choice])
       else
-        votes.create!(user: by, vote: [choice])
+        votes.create!(user: by, vote: [choice], conviction: conviction)
         increment!(COUNTER_FOR[choice])
+        increment!(:conviction_count) if conviction
         # Privacy: the new_vote notification deliberately carries NO subject_user_id.
         # Votes are an effectively secret ballot; recording the first voter's id here
         # let the owner de-anonymize them via NotificationSerializer (Slice 5, Part A).
