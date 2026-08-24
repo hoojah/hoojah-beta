@@ -48,6 +48,30 @@ class Hujah < ApplicationRecord
   # word char (e.g. inside an email `foo@bar`) is NOT a mention.
   MENTION_RE = /(?<!\w)@([a-zA-Z0-9_]+)/
 
+  # #hashtag pattern — same `(?<!\w)` lookbehind guard as mentions so `a#b` (a `#`
+  # mid-word, e.g. `C#Sharp`) isn't a tag. Unicode letters allowed (Malay names);
+  # digits and underscore permitted after a leading letter. Kept in sync with the
+  # HujahsHelper#format_body linkify pass, which reuses this constant.
+  HASHTAG_RE = /(?<!\w)#(\p{L}[\p{L}0-9_]*)/
+
+  after_save_commit :sync_hashtags
+
+  # Reconcile this hoojah's hashtag joins with the tags currently in its body. Runs
+  # on create AND edit (unlike notify_mentions which is create-only) because the tag
+  # set must track body edits. Runs after_save_commit so it never executes inside
+  # cast_vote's transaction and always sees the persisted body. Canonical `name` is
+  # lower-cased; `display` keeps the first-seen casing. Capped at 10 tags/hoojah.
+  def sync_hashtags
+    raw = body.to_s.scan(HASHTAG_RE).flatten.uniq(&:downcase).first(10)
+    wanted = raw.index_by { |r| Hashtag.canonical(r) }
+    Hashtag.transaction do
+      tags = wanted.map do |name, original|
+        Hashtag.create_with(display: original).find_or_create_by!(name: name)
+      end
+      self.hashtags = tags # replaces the join set; counter_cache adjusts on add/remove
+    end
+  end
+
   # Home timeline: top-level hoojahs from the people you follow, plus your own,
   # minus any hidden (blocked/blocked-by) author. The follow-removal on block already
   # drops a blocked author from `following_ids`; the `hidden_user_ids` exclusion is

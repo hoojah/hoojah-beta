@@ -134,4 +134,33 @@ RSpec.describe Hujah, type: :model do
       end
     end
   end
+
+  describe "hashtag parsing" do
+    it "extracts and links #tags on save, case-insensitively and idempotently" do
+      h = create(:hujah, body: "Free transit for #KlangValley and #klangvalley please today")
+      expect(h.hashtags.pluck(:name)).to contain_exactly("klangvalley")
+      expect(h.hashtags.first.display).to eq "KlangValley"
+      h.update!(body: "Now about #Belanjawan spending decisions here")
+      expect(h.reload.hashtags.pluck(:name)).to contain_exactly("belanjawan")
+    end
+
+    it "does not treat a # inside a word as a tag" do
+      h = create(:hujah, body: "The C#Sharp language is not a tag here")
+      expect(h.hashtags).to be_empty
+    end
+
+    it "caps at 10 tags per hoojah" do
+      body = "Big list " + (1..15).map { |n| "#tag#{n}" }.join(" ")
+      h = create(:hujah, body: body)
+      expect(h.hashtags.count).to eq 10
+    end
+
+    it "decrements a tag's counter when the tag is removed from the body" do
+      h = create(:hujah, body: "Keep #alpha and #beta together here")
+      alpha = Hashtag.find_by(name: "alpha")
+      expect(alpha.reload.hujahs_count).to eq 1
+      h.update!(body: "Only #beta remains in this claim now")
+      expect(alpha.reload.hujahs_count).to eq 0
+    end
+  end
 end
