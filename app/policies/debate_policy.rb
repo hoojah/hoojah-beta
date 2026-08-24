@@ -59,13 +59,19 @@ class DebatePolicy < ApplicationPolicy
   def extend? = record.participant?(user) && record.active?
 
   class Scope < ApplicationPolicy::Scope
-    # The Debates lens on the hoojah page. A participant sees all their own debates;
-    # everyone else sees a concluded debate only when both participants are visible
-    # (Slice 7b, Gate 8). Visibility depends on the accepted-follower graph, so the
-    # concluded set is filtered in Ruby — the lens is one hoojah's (small) debate set.
+    # The Debates lens on the hoojah page AND the 2026 profile "Debates" tab. A
+    # participant sees all their own debates; everyone else sees a concluded debate
+    # only when both participants are visible (Slice 7b, Gate 8) AND neither
+    # participant is in the viewer's bidirectional block set (2026 Phase 4.7-fix — the
+    # profile Debates tab opened a fresh surface on a gap that `visible_to?` alone
+    # doesn't close: `User#visible_to?` covers privacy, not blocks, so a stranger who
+    # blocked a co-participant would still see their concluded debate here). Filtered in
+    # Ruby — both surfaces are small sets. `mine` is never block-filtered: you can't
+    # block yourself, and you always see debates you are a party to.
     def resolve
       concluded_visible = scope.where(status: :concluded).includes(:challenger, :opponent, :hujah).select do |d|
-        d.challenger.visible_to?(user) && d.opponent.visible_to?(user) && d.hujah.visible_to?(user)
+        d.challenger.visible_to?(user) && d.opponent.visible_to?(user) && d.hujah.visible_to?(user) &&
+          (user.nil? || (user.hidden_user_ids & [d.challenger_id, d.opponent_id]).empty?)
       end
       return concluded_visible unless user
       mine = scope.where(challenger_id: user.id).or(scope.where(opponent_id: user.id)).to_a

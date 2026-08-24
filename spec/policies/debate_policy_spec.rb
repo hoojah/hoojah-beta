@@ -91,6 +91,14 @@ RSpec.describe DebatePolicy do
       expect(resolved).to include(visible)
       expect(resolved).not_to include(hidden)
     end
+
+    it "excludes a concluded debate whose participant the viewer has blocked (2026 Phase 4.7-fix)" do
+      d = create(:debate, challenger: challenger, opponent: opponent, status: :concluded)
+      Block.create!(blocker: stranger, blocked: opponent)
+      # fresh load so hidden_user_ids isn't a stale memo (mirrors per-request loading)
+      resolved = DebatePolicy::Scope.new(User.find(stranger.id), Debate.all).resolve
+      expect(resolved).not_to include(d)
+    end
   end
 
   describe "#accept? / #decline?" do
