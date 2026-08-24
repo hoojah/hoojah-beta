@@ -29,7 +29,7 @@
   <%= render "hujahs/hujah_header", hujah: hujah %>
 
   <div class="px-4 pt-3 pb-0">
-    <%= link_to hujah_path(hujah.slug), class: "block text-black no-underline" do %>
+    <%= link_to hujah_path(hujah.slug), class: "block text-ink no-underline" do %>
       <div class="hujah-body text-lg leading-snug"><%= format_body(hujah.body) %></div>
     <% end %>
   </div>
