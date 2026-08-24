@@ -102,9 +102,19 @@ class Debate < ApplicationRecord
 
   def other(user) = (user.id == challenger_id) ? opponent : challenger
 
+  # opening_argument (nullable, set at challenge time) is the challenger's
+  # position-1 turn, posted atomically with the pending -> active transition so
+  # a debate never sits `active` with a stored opening argument still
+  # unposted. Blank opening_argument reproduces today's flow exactly: no turn,
+  # challenger still opens manually via post_turn. Either way accept! still
+  # notifies the challenger — that notification predates this column and is
+  # left as-is, per the task's "no changes beyond this" scope.
   def accept!(by:)
     return false unless pending? && by == opponent
-    update!(status: :active)
+    transaction do
+      update!(status: :active)
+      turns.create!(user: challenger, body: opening_argument, position: 1) if opening_argument.present?
+    end
     notify(challenger, :debate_your_turn)
     broadcast_state_change
     true

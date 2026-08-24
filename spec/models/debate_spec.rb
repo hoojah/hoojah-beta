@@ -5,9 +5,9 @@ RSpec.describe Debate, type: :model do
   let(:challenger) { create(:user) }
   let(:opponent) { create(:user) }
 
-  def build_debate(cs: 1, os: 3)
+  def build_debate(cs: 1, os: 3, opening_argument: nil)
     challenger.challenged_debates.create!(hujah: hujah, opponent: opponent,
-      challenger_stance: cs, opponent_stance: os)
+      challenger_stance: cs, opponent_stance: os, opening_argument: opening_argument)
   end
 
   it "notifies the opponent on challenge (pending)" do
@@ -24,6 +24,32 @@ RSpec.describe Debate, type: :model do
     expect { d.accept!(by: opponent) }.to change { Notification.where(user: challenger, category: "debate_your_turn").count }.by(1)
     expect(d).to be_active
     expect(d.current_turn_user).to eq(challenger)
+  end
+
+  it "accept! with an opening_argument posts it as the challenger's position-1 turn, so the opponent moves next" do
+    d = build_debate(opening_argument: "My opening case")
+
+    d.accept!(by: opponent)
+
+    expect(d.turns.count).to eq(1)
+    turn = d.turns.order(:position).first
+    expect(turn.position).to eq(1)
+    expect(turn.user).to eq(challenger)
+    expect(turn.body).to eq("My opening case")
+    expect(d.current_turn_user).to eq(opponent)
+    expect(d.current_round).to eq(1)
+    expect(d.current_phase).to eq(:opening)
+  end
+
+  it "accept! without an opening_argument behaves exactly as today: no auto turn, challenger moves first" do
+    d = build_debate(opening_argument: nil)
+
+    d.accept!(by: opponent)
+
+    expect(d.turns.count).to eq(0)
+    expect(d.current_turn_user).to eq(challenger)
+    expect(d.current_round).to eq(1)
+    expect(d.current_phase).to eq(:opening)
   end
 
   it "only opponent can accept/decline, only when pending" do
