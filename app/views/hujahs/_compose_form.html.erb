@@ -42,27 +42,19 @@
         <%= render "ui/avatar", user: current_user, size: :md %>
         <div class="relative leading-tight">
           <div class="text-sm font-bold text-ink"><%= current_user.full_name %></div>
-          <%= f.hidden_field :visibility, value: "visible_public", data: {composer_target: "visField"} %>
-          <button type="button" data-action="composer#toggleMenu"
-            class="mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] font-bold text-primary bg-primary-soft px-2.5 py-1 rounded-full">
-            <%= lucide_icon("globe", class: "w-3 h-3") %>
-            <span data-composer-target="visLabel">Public</span>
-            <%= lucide_icon("chevron-down", class: "w-2.5 h-2.5") %>
-          </button>
-          <div data-composer-target="menu" hidden
-            class="absolute left-0 top-full mt-1.5 z-30 w-40 bg-card border border-hairline rounded-xl shadow p-1">
-            <button type="button" data-action="composer#select" data-value="visible_public" data-label="Public"
-              class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-ink hover:bg-card-2">
-              <%= lucide_icon("globe", class: "w-3.5 h-3.5") %>Public
-            </button>
-            <button type="button" data-action="composer#select" data-value="followers_only" data-label="Followers"
-              class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-ink hover:bg-card-2">
-              <%= lucide_icon("users", class: "w-3.5 h-3.5") %>Followers
-            </button>
-            <button type="button" data-action="composer#select" data-value="private_only" data-label="Private"
-              class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-ink hover:bg-card-2">
-              <%= lucide_icon("lock", class: "w-3.5 h-3.5") %>Private
-            </button>
+          <%# Visibility (JS-off safe): a native <select> is the CANONICAL, always-submitted
+              control — the old hidden_field + JS-only menu silently shipped Public whenever
+              JS was off. Styled as the mockup's pill via `appearance-none` + an overlaid
+              chevron, dark-safe theme tokens. There is exactly one hujah[visibility] field,
+              so no double-submit; the composer controller only reads it, never adds another. %>
+          <div class="relative inline-block mt-0.5">
+            <%= f.select :visibility,
+                  [["Public", "visible_public"], ["Followers", "followers_only"], ["Private", "private_only"]],
+                  {}, data: {composer_target: "select"}, "aria-label": "Who can see this",
+                  class: "appearance-none text-[11.5px] font-bold text-primary bg-primary-soft pl-2.5 pr-7 py-1 rounded-full cursor-pointer focus:outline-none" %>
+            <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-primary">
+              <%= lucide_icon("chevron-down", class: "w-2.5 h-2.5") %>
+            </span>
           </div>
         </div>
       </div>

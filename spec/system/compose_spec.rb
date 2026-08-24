@@ -16,6 +16,20 @@ RSpec.describe "Compose", type: :system do
     expect(page).to have_current_path(%r{/hoojah/})
   end
 
+  # JS-off (rack_test, no JS): the native <select> is the canonical visibility control,
+  # so a user can still pick Private without JavaScript — the old hidden field always
+  # shipped Public here. Guards the FIX 2 regression.
+  it "posts a non-public visibility with JS off via the native select" do
+    sign_in user
+    visit new_hujah_path
+
+    fill_in "What's your hoojah?", with: "A JS-off private claim about transit"
+    select "Private", from: "hujah[visibility]"
+    click_button "Post"
+
+    expect(Hujah.order(:created_at).last.visibility).to eq "private_only"
+  end
+
   it "responds to a hoojah with a stance and notifies the parent owner" do
     parent = create(:hujah, user: create(:user), body: "Parent claim")
     # 2026 vote-to-respond gate (Task 2.6): the replier must vote on the parent first.

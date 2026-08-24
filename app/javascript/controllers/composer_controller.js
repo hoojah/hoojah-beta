@@ -1,10 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Drives both composer variants (full-page + inline feed). Progressive enhancement:
-// the <form> submits fine with JS off; this only gates the Post button, toggles the
-// visibility menu, inserts hashtag chips, and expands the inline pill.
+// the <form> submits fine with JS off; this only gates the Post button, inserts hashtag
+// chips, and expands the inline pill. Visibility is a native <select> (the `select`
+// target) — the canonical, always-submitted control, so it needs no JS to work.
 export default class extends Controller {
-  static targets = ["body", "post", "menu", "visLabel", "visField", "collapsed", "expanded"]
+  static targets = ["body", "post", "select", "collapsed", "expanded"]
   static values = { min: { type: Number, default: 8 }, requireMin: { type: Boolean, default: true } }
 
   connect() { this.sync() }
@@ -22,16 +23,6 @@ export default class extends Controller {
     const el = this.bodyTarget
     el.style.height = "auto"
     el.style.height = el.scrollHeight + "px"
-  }
-
-  toggleMenu() { this.menuTarget.hidden = !this.menuTarget.hidden }
-
-  select(event) {
-    const value = event.currentTarget.dataset.value
-    const label = event.currentTarget.dataset.label
-    this.visFieldTarget.value = value
-    if (this.hasVisLabelTarget) this.visLabelTarget.textContent = label
-    this.menuTarget.hidden = true
   }
 
   addTag(event) {

@@ -13,8 +13,8 @@ RSpec.describe "New hoojah composer", :js do
     sign_in create(:user)
     visit new_hujah_path
     fill_in "hujah[body]", with: "A claim long enough to submit here"
-    find('[data-composer-target="visLabel"]').click # open menu
-    click_on "Private"
+    # Visibility is now a native <select> (JS-off safe), the canonical hujah[visibility].
+    select "Private", from: "hujah[visibility]"
     click_on "Post"
     expect(Hujah.order(:created_at).last.visibility).to eq "private_only"
   end
