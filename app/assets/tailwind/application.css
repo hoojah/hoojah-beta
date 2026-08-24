@@ -333,6 +333,13 @@
 @keyframes hbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
 @keyframes hrise{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
 
+/* `.hrise` pairs with the keyframe above so a Stimulus controller can toggle the
+   expand animation via the classes API (`data-composer-hrise-class`) instead of
+   hardcoding the animation shorthand as a literal string in controller logic.
+   Toggling the `hidden` attribute off replays the animation each time, same as
+   the inline `style="animation:hrise …"` usage elsewhere in this file's callers. */
+.hrise{animation:hrise .3s cubic-bezier(.34,1.56,.64,1)}
+
 /* Port of docs/design-system/tokens/base.css — this is what gives the layout's
    `<body class="body">` an actual definition. */
 @layer base {
