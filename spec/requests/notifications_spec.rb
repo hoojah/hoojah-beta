@@ -24,6 +24,10 @@ RSpec.describe "Notifications", type: :request do
 
     # All four fire on every real debate, and each used to render as a bare row with
     # no icon and no "what happened" line at all.
+    #
+    # Task 4.2 wraps the actor handle in <strong>, so "@rival challenged you to a
+    # debate" is no longer one contiguous text run — assert the handle and the rest
+    # of the sentence as separate substrings instead of stitching HTML across the tag.
     it "renders copy for every debate category rather than a blank row" do
       rival = create(:user, username: "rival")
       debate = create(:debate, challenger: me, opponent: rival)
@@ -33,11 +37,11 @@ RSpec.describe "Notifications", type: :request do
       end
       sign_in me
       get "/notifications"
-      expect(response.body).to include("@rival challenged you to a debate")
-      expect(response.body).to include("@rival declined your debate challenge")
+      expect(response.body).to include("<strong>@rival</strong> challenged you to a debate")
+      expect(response.body).to include("<strong>@rival</strong> declined your debate challenge")
       # "It's" is HTML-escaped in the rendered page — assert past the apostrophe.
-      expect(response.body).to include("your turn in your debate with @rival")
-      expect(response.body).to include("Your debate with @rival has concluded")
+      expect(response.body).to include("your turn in your debate with <strong>@rival</strong>")
+      expect(response.body).to include("Your debate with <strong>@rival</strong> has concluded")
     end
 
     # Nothing creates these two — they are enum values inherited from the retired

@@ -1,114 +1,120 @@
-<%# One notification row — faithful port of the legacy SPA `Notifications/card.js`.
-    Left border colored read/unread; a category-specific Lucide icon + copy; the body
-    is a PATCH button (mark read, then redirect to whatever the row is about — the
-    DEBATE when one is attached, else the hoojah, else back to the notifications list;
-    see the precedence note on `NotificationsController#update`); a trash button DELETEs
-    it (Turbo-Stream removes this card). Locals: notification.
+<%# One notification row (Hoojah 2026, Phase 4, Task 4.2 — restyle of the Slice 9
+    version). `rounded-2xl` card, the same read/unread accent as before (`ui/_card`'s
+    `stance:`, still six-value `CARD_STANCES` — see the design-system note this used
+    to carry, unchanged), a 36px soft-tint icon tile OR a gradient avatar tile for a
+    user-actor row, the copy with the actor bolded, a trailing unread dot, and the
+    trash affordance moved off the row into an overflow menu. Locals: notification.
 
-    DESIGN SYSTEM (Slice 9, Task 4.4) —
-    docs/design-system/components/social/NotificationCard.prompt.md: "same 8px-left-border
-    shape as a compact hoojah card, but the border encodes read state instead of stance."
-    That is why `DesignSystemHelper::CARD_STANCES` is six values and not three — `read`
-    and `unread` are in the set for this file alone, and `ui/_card`'s `stance:` builds
-    `border-<state>` by the same interpolation this partial used to do inline. The two
-    colours behind those classes arrived in Task 1.1; before that the border rendered as
-    nothing at all, which is what spec/system/design_tokens_spec.rb now pins (it asserts
-    the class AND the computed colour, so a lost class and a lost token fail separately).
+    ICON/TILE MAP — `icon, tone` below is ONE case covering all fourteen categories
+    (folded from two separate cases pre-restyle: icon-only, and now icon+tile-tone
+    together, since every icon needs a tile colour to sit on). `tone` is interpolated
+    into `bg-#{tone}-soft text-#{tone}`, which is why every value used here must stay
+    in the `{agree,neutral,disagree,primary}-soft` `@source inline(...)` entry in
+    app/assets/tailwind/application.css — it already covers all four, so no Tailwind
+    config change was needed for this task. The `else` arm is the same insurance the
+    old icon case had: an unmapped future category renders a bell on a primary tile
+    rather than a blank one.
 
-    The bare Accept / Decline / Mark as read controls take
-    `ds_button_classes(variant: :link, ...)`. That variant carries no font size on
-    purpose — these sit in a 14px row and an emitted `text-base` would visibly enlarge
-    them against it. Tone is the design system's: primary for the affirmative action,
-    grey for Decline and for the trash.
+    AVATAR TILE vs ICON TILE — only `new_hoojah_response` (a known, non-anonymous
+    actor: `notify_parent_owner` always sets `subject_user_id`) swaps to the actor's
+    gradient-initials tile (`ui/_avatar`, `variant: :tile, size: :nav` — the design
+    system's 36px "nav" box, matching the icon tile's own size). `new_vote` is NOT in
+    that set even though a vote is also "by a user" — see the secret-ballot note below.
 
-    The two `link_to "View profile"` rows and the two body `button_to`s are deliberately
-    NOT buttons-by-helper. The body ones are truncating text blocks (`truncate` plus a
-    `max-w-[350px]` clamp) and the `:link` variant's `inline-flex` would break the
-    overflow they depend on; the "View profile" rows are already plain primary links.
+    SECRET BALLOT — `new_vote` never carries a `subject_user_id` at all
+    (`Hujah#cast_vote`'s `Notification.create!` omits it on purpose; pinned by
+    spec/requests/api/v1/notifications_spec.rb "omits subject_user for new_vote").
+    That already means `notification.subject_user` is nil for this category, so the
+    generic "no subject_user → icon tile, no actor line" behaviour here is not an
+    extra guard bolted on for this task — it falls out of data the model already
+    refuses to record. Do not add a lookup that reconstructs a voter identity from
+    other tables; that is exactly the leak Slice 5 Part A closed.
 
-    CATEGORY COVERAGE — both `case`es cover all fourteen `Notification` categories.
-    They used to stop at eight, so the four `debate_*` ones (which fire on every
-    challenge / decline / your-turn / conclude) plus the two legacy SPA leftovers
-    (`admin`, `flag`, which nothing in this codebase creates but which may still
-    exist as migrated rows) rendered with no icon and no copy line at all.
-    Icon choices: `swords` is the established debate motif here (challenge dialog,
-    debate card, debate header); `flag` matches the flagging UI's own uses; `bell`
-    matches the notifications empty state in `notifications/index.html.erb`.
-    The `else` arms are unreachable today — the enum rejects unknown values, so no
-    factory can exercise them. They are insurance for the fifteenth category: a new
-    enum value renders a bell and a generic line instead of a blank row.
+    WHY new_hoojah_response's OWN copy stays "posted a new argument on your hoojah"
+    rather than naming the reply's stance inline (as the mockup's "responded Agree"
+    row does): `notification.hujah` for this category is the PARENT hoojah (the one
+    that got a reply — see `notify_parent_owner`), not the reply itself, so this
+    notification carries no direct reference to the child hujah whose `vote` column
+    would supply the stance word. Reconstructing it (querying for the most recent
+    child by `parent_id`/`subject_user_id`) would be a guess dressed as a fact, and
+    would also change copy that spec/system/notifications_spec.rb and the request
+    spec's "renders copy for every debate category" pin verbatim. Not done here.
 
-    FROZEN: `dom_id(notification)` is what `destroy.turbo_stream.erb` removes.
-    Every `button_to` path and verb, and `aria-label="Delete notification"`, which
-    spec/system/notifications_spec.rb clicks by name. %>
+    DEBATE CHALLENGE ACCEPT/DECLINE — reuses the follow_request idiom directly below
+    it: bare `ds_button_classes(variant: :link)` controls, not the mockup's solid
+    pills, per this task's own instruction to match the established in-row idiom
+    rather than the mockup literally. Gated on `debate.pending?` so a challenge that
+    has already been accepted/declined/expired (`ConcludeStaleDebatesJob`, or the
+    recipient acting from the debate screen itself) does not offer dead buttons —
+    `DebatePolicy#accept?`/`#decline?` would 403 them anyway, but a stale button is a
+    worse first line of defence than no button.
+
+    OVERFLOW MENU — the trash control used to be an always-visible per-row icon
+    button; it is now the sole row inside a `<details>` + `ui/_menu`, the same
+    trigger/panel primitive as `hujahs/_card_menu`'s "More options" glyph
+    (`more-vertical`, `aria-label="More options"`). `aria-label="Delete notification"`
+    on the button itself is FROZEN — spec/system/notifications_spec.rb clicks it by
+    that name (after opening the menu; see that spec for the updated two-step click).
+
+    `dom_id(notification)` is still what `destroy.turbo_stream.erb` removes. %>
 <% read = notification.read? %>
+<% icon, tone = case notification.category
+   when "announcement" then ["megaphone", "primary"]
+   when "new_hoojah_response" then ["message-circle", "primary"]
+   when "new_vote" then ["bar-chart-3", "primary"]
+   when "mention" then ["at-sign", "primary"]
+   when "new_follower" then ["user-plus", "primary"]
+   when "follow_request" then ["user-plus", "primary"]
+   when "follow_accepted" then ["user-check", "agree"]
+   when "badge_earned" then ["award", "agree"]
+   when "debate_challenge" then ["swords", "disagree"]
+   when "debate_declined" then ["x-circle", "disagree"]
+   when "debate_your_turn" then ["reply", "disagree"]
+   when "debate_concluded" then ["gavel", "neutral"]
+   when "admin" then ["shield", "primary"]
+   when "flag" then ["flag", "disagree"]
+   else ["bell", "primary"]
+   end %>
+<% actor_tile = notification.new_hoojah_response? && notification.subject_user %>
 <%= render layout: "ui/card",
-      locals: {id: dom_id(notification),
-               stance: read ? "read" : "unread",
-               class: "pr-2 flex items-center mb-1"} do %>
-  <div class="flex items-center py-1 w-full">
-    <div class="flex items-center ml-3 shrink-0">
-      <% case notification.category %>
-      <% when "announcement" %>
-        <%= lucide_icon("megaphone", class: "w-4 h-4") %>
-      <% when "new_hoojah_response" %>
-        <%= lucide_icon("message-circle", class: "w-4 h-4") %>
-      <% when "new_vote" %>
-        <%= lucide_icon("bar-chart-3", class: "w-4 h-4") %>
-      <% when "mention" %>
-        <%= lucide_icon("at-sign", class: "w-4 h-4") %>
-      <% when "new_follower" %>
-        <%= lucide_icon("user-plus", class: "w-4 h-4") %>
-      <% when "follow_request" %>
-        <%= lucide_icon("user-plus", class: "w-4 h-4") %>
-      <% when "follow_accepted" %>
-        <%= lucide_icon("user-check", class: "w-4 h-4") %>
-      <% when "badge_earned" %>
-        <%= lucide_icon("award", class: "w-4 h-4") %>
-      <% when "debate_challenge" %>
-        <%= lucide_icon("swords", class: "w-4 h-4") %>
-      <% when "debate_declined" %>
-        <%= lucide_icon("x-circle", class: "w-4 h-4") %>
-      <% when "debate_your_turn" %>
-        <%= lucide_icon("reply", class: "w-4 h-4") %>
-      <% when "debate_concluded" %>
-        <%= lucide_icon("gavel", class: "w-4 h-4") %>
-      <% when "admin" %>
-        <%= lucide_icon("shield", class: "w-4 h-4") %>
-      <% when "flag" %>
-        <%= lucide_icon("flag", class: "w-4 h-4") %>
-      <% else %>
-        <%= lucide_icon("bell", class: "w-4 h-4") %>
-      <% end %>
-    </div>
+      locals: {id: dom_id(notification), stance: read ? "read" : "unread",
+               class: "rounded-2xl overflow-hidden mb-1"} do %>
+  <div class="flex items-start gap-3 px-3.5 py-3">
+    <% if actor_tile %>
+      <%= render "ui/avatar", user: notification.subject_user, variant: :tile, size: :nav %>
+    <% else %>
+      <span class="w-9 h-9 rounded-xl bg-<%= tone %>-soft text-<%= tone %> flex items-center justify-center shrink-0">
+        <%= lucide_icon(icon, class: "w-[18px] h-[18px]") %>
+      </span>
+    <% end %>
 
-    <div class="flex flex-col text-sm text-grey pr-1 ml-3 min-w-0">
-      <span>
+    <div class="flex-1 min-w-0 text-sm text-ink">
+      <span class="leading-snug">
         <% case notification.category %>
         <% when "announcement" %>
           Announcement
         <% when "new_hoojah_response" %>
-          @<%= notification.subject_user&.username %> posted a new argument on your hoojah
+          <strong>@<%= notification.subject_user&.username %></strong> posted a new argument on your hoojah
         <% when "new_vote" %>
           You have a new vote on your hoojah
         <% when "mention" %>
-          @<%= notification.subject_user&.username %> mentioned you in a hoojah
+          <strong>@<%= notification.subject_user&.username %></strong> mentioned you in a hoojah
         <% when "new_follower" %>
-          @<%= notification.subject_user&.username %> started following you
+          <strong>@<%= notification.subject_user&.username %></strong> started following you
         <% when "follow_request" %>
-          @<%= notification.subject_user&.username %> requested to follow you
+          <strong>@<%= notification.subject_user&.username %></strong> requested to follow you
         <% when "follow_accepted" %>
-          @<%= notification.subject_user&.username %> accepted your follow request
+          <strong>@<%= notification.subject_user&.username %></strong> accepted your follow request
         <% when "badge_earned" %>
           You earned the <strong><%= Badge::REGISTRY.dig(notification.body, :name) || "achievement" %></strong> badge
         <% when "debate_challenge" %>
-          @<%= notification.subject_user&.username %> challenged you to a debate
+          <strong>@<%= notification.subject_user&.username %></strong> challenged you to a debate
         <% when "debate_declined" %>
-          @<%= notification.subject_user&.username %> declined your debate challenge
+          <strong>@<%= notification.subject_user&.username %></strong> declined your debate challenge
         <% when "debate_your_turn" %>
-          It's your turn in your debate with @<%= notification.subject_user&.username %>
+          It's your turn in your debate with <strong>@<%= notification.subject_user&.username %></strong>
         <% when "debate_concluded" %>
-          Your debate with @<%= notification.subject_user&.username %> has concluded
+          Your debate with <strong>@<%= notification.subject_user&.username %></strong> has concluded
         <% when "admin" %>
           You have a message from the Hoojah team
         <% when "flag" %>
@@ -120,15 +126,24 @@
 
       <% if notification.category == "announcement" %>
         <%= button_to notification_path(notification), method: :patch,
-              class: "text-left p-0 bg-transparent border-0 text-grey truncate no-underline" do %>
+              class: "block text-left p-0 bg-transparent border-0 text-ink-2 truncate no-underline" do %>
           <%= notification.body %>
         <% end %>
+      <% elsif notification.debate_challenge? && notification.debate&.pending? %>
+        <%# Recipient-only: `Debate#notify_challenge` always addresses the opponent, and
+            this row is already scoped to the signed-in user's own notifications. %>
+        <div class="flex items-center gap-3 mt-1">
+          <%= button_to "Accept", accept_debate_path(notification.debate.slug), method: :patch,
+                class: ds_button_classes(variant: :link) %>
+          <%= button_to "Decline", decline_debate_path(notification.debate.slug), method: :patch,
+                class: ds_button_classes(variant: :link, tone: "grey") %>
+        </div>
       <% elsif notification.hujah && notification.hujah.visible_to?(current_user) %>
         <%# Slice 7b (Gate 9, N-1): only render the hoojah body if the recipient may
             actually see it — a private author's hoojah body must not leak through a
             mention/response notification to a non-follower. %>
         <%= button_to notification_path(notification), method: :patch,
-              class: "block text-left p-0 bg-transparent border-0 text-grey truncate no-underline max-w-[350px]" do %>
+              class: "block text-left p-0 bg-transparent border-0 text-ink-2 truncate no-underline max-w-[280px]" do %>
           <%= format_body(notification.hujah.body) %>
         <% end %>
       <% elsif notification.new_follower? && notification.subject_user %>
@@ -137,7 +152,7 @@
       <% elsif notification.follow_request? && (req_follow = Follow.find_by(follower_id: notification.subject_user_id, followed_id: notification.user_id)) %>
         <%# Accept/decline the pending request in place (Slice 7b). Both button_to's
             hit /follow_requests/:id; FollowRequestPolicy restricts them to this user. %>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 mt-1">
           <%= button_to "Accept", follow_request_path(req_follow), method: :patch,
                 class: ds_button_classes(variant: :link) %>
           <%= button_to "Decline", follow_request_path(req_follow), method: :delete,
@@ -156,10 +171,21 @@
       <% end %>
     </div>
 
-    <%= button_to notification_path(notification), method: :delete,
-          class: "#{ds_button_classes(variant: :link, tone: "grey")} ml-auto mr-2",
-          aria: {label: "Delete notification"} do %>
-      <%= lucide_icon("trash-2", class: "w-4 h-4") %>
+    <% unless read %>
+      <span aria-hidden="true" class="w-2 h-2 rounded-full bg-neutral shrink-0 mt-1.5"></span>
     <% end %>
+
+    <details class="relative shrink-0">
+      <summary class="list-none cursor-pointer text-faint" aria-label="More options">
+        <%= lucide_icon("more-vertical", class: "w-4 h-4") %>
+      </summary>
+      <%= render layout: "ui/menu", locals: {width: "w-40"} do %>
+        <%= button_to notification_path(notification), method: :delete,
+              class: ds_menu_item_classes(tone: "neutral"),
+              aria: {label: "Delete notification"} do %>
+          Delete
+        <% end %>
+      <% end %>
+    </details>
   </div>
 <% end %>
