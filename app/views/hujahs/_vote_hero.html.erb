@@ -1,0 +1,122 @@
+<%#
+  Hoojah 2026 VOTE HERO — the tall single-hoojah vote widget (mockup
+  hoojah-2026-single-hoojah.html lines ~32-137). NOT the shared `_vote_bars` (that
+  stays on the feed card, id dom_id(hujah, :vote_bars)). This partial owns
+  dom_id(hujah, :vote_hero); votes/create.turbo_stream.erb replaces BOTH ids, so an
+  absent target is a harmless no-op and feed + show both stay live.
+
+  Locals: hujah, current_user_vote (one of "agree"/"neutral"/"disagree"/nil),
+  current_vote_locked (bool — the viewer already cast a conviction vote, so the widget
+  refuses further votes; conviction_controller's locked-value makes it inert).
+
+  Progressive enhancement: each stance is its own real <form> POSTing a NORMAL vote with
+  JS off (conviction blank). conviction_controller upgrades pointer-hold to a conviction
+  vote by writing the per-form hidden `conviction` field before requestSubmit.
+
+  Colours go through the theme tokens — bg-<stance>/text-<stance>/border-<stance> (all
+  in the @source inline safelist), bg-card/text-ink/text-faint. `data-charge-color`
+  passes the runtime stance var so the charge ring/number retint per theme+scheme. The
+  hpop/hbreathe/hboom/hray keyframes are already in the bundle (Track 1).
+%>
+<%
+  agree = hujah.agree_count.to_i
+  neutral = hujah.neutral_count.to_i
+  disagree = hujah.disagree_count.to_i
+  total = agree + neutral + disagree
+  stances = [
+    ["agree", 1, agree, "thumbs-up"],
+    ["neutral", 2, neutral, "minus"],
+    ["disagree", 3, disagree, "thumbs-down"]
+  ]
+%>
+<div id="<%= dom_id(hujah, :vote_hero) %>"
+     data-controller="conviction"
+     data-conviction-locked-value="<%= current_vote_locked %>"
+     data-conviction-duration-value="900"
+     class="relative overflow-hidden bg-card shadow-lg rounded-3xl mx-1 my-3 p-4">
+
+  <div class="flex items-center justify-between mb-3">
+    <span class="text-xs font-bold uppercase tracking-wide text-ink-2">Where do you stand?</span>
+    <span class="inline-flex items-center gap-1 text-xs font-bold text-agree bg-agree-soft px-2.5 py-1 rounded-full">
+      <%= lucide_icon("zap", class: "w-3 h-3") %>
+      <%= hujah.conviction_count.to_i %> conviction
+    </span>
+  </div>
+
+  <div class="flex gap-2.5">
+    <% stances.each do |stance, choice, count, icon| %>
+      <% pct = total.zero? ? 0 : (count * 100.0 / total).round %>
+      <% voted = current_user_vote == stance %>
+      <div class="flex-1 flex flex-col gap-2">
+        <%= form_with url: hujah_votes_path(hujah.slug), method: :post, class: "contents" do %>
+          <%= hidden_field_tag :vote, choice %>
+          <%= hidden_field_tag :conviction, "" %>
+          <button type="submit"
+                  data-stance="<%= stance %>"
+                  data-charge-color="var(--<%= stance %>)"
+                  data-action="pointerdown->conviction#start pointerup->conviction#end pointerleave->conviction#leave contextmenu->conviction#noMenu"
+                  aria-label="<%= stance.capitalize %>"
+                  class="relative h-[104px] rounded-[20px] border-2 border-<%= stance %> <%= voted ? "bg-#{stance}" : "bg-card" %> flex flex-col items-center justify-center gap-2 cursor-pointer transition active:scale-95 overflow-hidden"
+                  style="touch-action:none;">
+            <% if voted %>
+              <span class="absolute inset-0 bg-<%= stance %>" style="animation:hpop .4s ease;"></span>
+            <% end %>
+            <span class="relative flex flex-col items-center gap-2 <%= voted ? "text-white" : "text-#{stance}" %>">
+              <%= lucide_icon(icon, class: "w-7 h-7") %>
+              <span class="text-xs font-bold"><%= stance.capitalize %></span>
+            </span>
+          </button>
+        <% end %>
+        <div class="flex items-baseline justify-center gap-1">
+          <span class="text-lg font-extrabold text-<%= stance %>"><%= pct %>%</span>
+          <span class="text-xs text-faint font-semibold"><%= count %></span>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-3 flex h-2.5 rounded-full overflow-hidden gap-0.5">
+    <% stances.each do |stance, _choice, count, _icon| %>
+      <% pct = total.zero? ? 0 : (count * 100.0 / total).round %>
+      <div class="bg-<%= stance %>" style="width: <%= pct %>%; transition: width .6s cubic-bezier(.2,.8,.2,1);"></div>
+    <% end %>
+  </div>
+
+  <div class="mt-3 text-center text-xs text-faint flex items-center justify-center gap-1.5">
+    <%= lucide_icon("zap", class: "w-3 h-3") %>
+    Tap to vote · <b class="text-ink-2 font-bold">hold</b> to charge a conviction vote
+  </div>
+
+  <%# CHARGE overlay — driven by conviction_controller (--charge 0->1 fills the ring;
+      chargeNum counts 3->0). Hidden until a hold starts. %>
+  <div data-conviction-target="overlay" hidden
+       class="absolute inset-0 bg-card flex flex-col items-center justify-center gap-3.5 z-20 pointer-events-none">
+    <div class="relative w-[172px] h-[172px] flex items-center justify-center">
+      <svg width="172" height="172" viewBox="0 0 172 172" class="absolute" style="transform:rotate(-90deg);">
+        <circle cx="86" cy="86" r="76" fill="none" stroke="var(--field)" stroke-width="10"></circle>
+        <circle data-conviction-target="ring" cx="86" cy="86" r="76" fill="none"
+                stroke-width="10" stroke-linecap="round" stroke-dasharray="478"
+                style="--charge:0; stroke: var(--charge-color, var(--agree)); stroke-dashoffset: calc(478 * (1 - var(--charge, 0)));"></circle>
+      </svg>
+      <div class="flex flex-col items-center" style="animation:hbreathe 1s ease-in-out infinite;">
+        <span data-conviction-target="chargeNum" class="text-6xl font-black leading-none text-agree tabular-nums">3</span>
+        <span data-conviction-target="chargeLabel" class="text-xs font-bold uppercase tracking-wide text-agree mt-1">charging</span>
+      </div>
+    </div>
+    <div class="text-xs text-ink-2 font-semibold">Release to cancel · reaches 0 to lock it in</div>
+  </div>
+
+  <%# BOOM overlay — the conviction celebration burst (mockup lines ~123-136). Kept
+      hidden: the conviction commit submits immediately and Turbo re-renders the hero,
+      so there is no client-side window to run it; the markup is here for parity and for
+      a future optimistic-animation pass. %>
+  <div hidden class="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+    <span class="absolute w-[150px] h-[150px] rounded-full bg-agree" style="opacity:.18; animation:hboom .9s ease-out forwards;"></span>
+    <span class="absolute w-[120px] h-[120px] rounded-full border-2 border-agree" style="animation:hray .9s ease-out forwards;"></span>
+    <div class="relative flex flex-col items-center gap-1" style="animation:hpop .5s ease;">
+      <div class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-agree text-white font-extrabold text-sm shadow-lg">
+        <%= lucide_icon("zap", class: "w-4 h-4") %> Conviction vote!
+      </div>
+    </div>
+  </div>
+</div>

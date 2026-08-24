@@ -7,7 +7,7 @@ RSpec.describe "Hujah show", type: :request do
     create(:hujah, user: user, parent: parent, body: "a child response")
     get "/hoojah/#{parent.slug}"
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(dom_id(parent, :vote_bars))
+    expect(response.body).to include(dom_id(parent, :vote_hero))
     expect(response.body).to include("a child response")
     expect(response.body).to include('data-controller="response-filter"')
   end

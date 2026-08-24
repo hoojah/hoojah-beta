@@ -61,9 +61,10 @@
       <h3 class="hujah-body text-xl leading-snug"><%= format_body(@hujah.body) %></h3>
     </div>
 
-    <%= render "hujahs/vote_bars",
+    <%= render "hujahs/vote_hero",
           hujah: @hujah,
-          current_user_vote: @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) %>
+          current_user_vote: @hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id),
+          current_vote_locked: (user_signed_in? && @hujah.votes.find_by(user_id: current_user.id)&.conviction) || false %>
 
     <%= render "ui/divider" %>
     <div class="px-4 py-2 flex items-center text-sm text-grey">

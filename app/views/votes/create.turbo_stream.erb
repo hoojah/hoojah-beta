@@ -1,8 +1,17 @@
-<%# Replaces the shared vote widget in place. The target id — dom_id(@hujah, :vote_bars)
-    => "vote_bars_hujah_<id>" — is the SAME scheme the _vote_bars partial wraps itself
-    in, in both the feed and the show page. %>
+<%# Replaces the vote widget in place. The show page carries the tall `_vote_hero`
+    (dom_id(@hujah, :vote_hero)) and the feed card carries the shared `_vote_bars`
+    (dom_id(@hujah, :vote_bars)); we replace BOTH ids and an absent target is a no-op,
+    so a vote from either surface updates whichever widget is on the page. The argument
+    composer bar (dom_id(@hujah, :argument_composer)) also re-renders so an inline vote
+    unlocks it (its `voted` value flips true). %>
 <%= turbo_stream.replace dom_id(@hujah, :vote_bars) do %>
   <%= render "hujahs/vote_bars",
         hujah: @hujah,
         current_user_vote: @hujah.current_user_vote(logged_in: true, current_user_id: current_user.id) %>
+<% end %>
+<%= turbo_stream.replace dom_id(@hujah, :vote_hero) do %>
+  <%= render "hujahs/vote_hero",
+        hujah: @hujah,
+        current_user_vote: @hujah.current_user_vote(logged_in: true, current_user_id: current_user.id),
+        current_vote_locked: (@hujah.votes.find_by(user_id: current_user.id)&.conviction) || false %>
 <% end %>
