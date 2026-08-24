@@ -88,6 +88,6 @@ class HujahsController < ApplicationController
   # A missing/spoofed parent_id makes `Hujah.find` raise RecordNotFound → 404,
   # which the request spec accepts.
   def compose_params
-    params.require(:hujah).permit(:body, :parent_id, :vote)
+    params.require(:hujah).permit(:body, :parent_id, :vote, :visibility, :allow_debates)
   end
 end

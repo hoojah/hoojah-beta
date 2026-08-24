@@ -31,4 +31,12 @@ RSpec.describe "Compose", type: :request do
     post "/hoojah", params: {hujah: {body: "x", parent_id: 999_999}}
     expect(response).to have_http_status(:not_found).or have_http_status(:unprocessable_content)
   end
+
+  it "persists visibility and allow_debates on create" do
+    sign_in user
+    post "/hoojah", params: {hujah: {body: "A brand new claim about transit", visibility: "private_only", allow_debates: "0"}}
+    h = Hujah.order(:created_at).last
+    expect(h.visibility).to eq "private_only"
+    expect(h.allow_debates).to be false
+  end
 end
