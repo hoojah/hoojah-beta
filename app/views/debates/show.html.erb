@@ -31,10 +31,18 @@
       different utility family from the padding so it cannot collide with the flag.
       The two children are the pinned broadcast regions and stay siblings: `:status` is
       viewer-agnostic and rides the debate stream, `:actions` is viewer-scoped and rides
-      this viewer's user-signed stream, so `viewer:` is passed EXPLICITLY here. %>
-  <%= render layout: "ui/card", locals: {padded: true, class: "flex items-center justify-between gap-2"} do %>
-    <%= render "debates/debate_status", debate: @debate %>
-    <%= render "debates/debate_actions", debate: @debate, viewer: current_user %>
+      this viewer's user-signed stream, so `viewer:` is passed EXPLICITLY here.
+
+      PENDING gets its own dedicated accept/decline screen instead (Phase 3.3,
+      `debates/_debate_pending`) — it composes these same two partials at the same
+      pinned dom_ids, so the branch below still holds for every other status. %>
+  <% if @debate.pending? %>
+    <%= render "debates/debate_pending", debate: @debate, viewer: current_user %>
+  <% else %>
+    <%= render layout: "ui/card", locals: {padded: true, class: "flex items-center justify-between gap-2"} do %>
+      <%= render "debates/debate_status", debate: @debate %>
+      <%= render "debates/debate_actions", debate: @debate, viewer: current_user %>
+    <% end %>
   <% end %>
 
   <%= render "debates/debate_transcript", debate: @debate, turns: @turns %>

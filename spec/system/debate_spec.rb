@@ -39,9 +39,23 @@ RSpec.describe "Debate", type: :system, js: true do
     expect(debate).to be_pending
     expect(debate.opening_argument).to be_blank
 
-    # 2. Opponent accepts the challenge (from the debate transcript screen).
+    # 2. Opponent accepts the challenge (from the debate transcript screen). Phase 3.3
+    # (2026 redesign): a pending debate gets a dedicated accept/decline screen — assert
+    # its content (avatar trio, headline, motion, rules card, no timer row) BEFORE
+    # accepting, still via the pinned `_debate_actions` buttons.
     login_as_system(opponent)
     visit "/debates/#{debate.slug}"
+
+    within("##{dom_id(debate, :status)}") { expect(page).to have_content(/pending/i) } # CSS-uppercased
+    expect(page).to have_css("[aria-label='#{challenger.full_name}']")
+    expect(page).to have_css("[aria-label='#{opponent.full_name}']")
+    expect(page).to have_content("@#{challenger.username}")
+    expect(page).to have_content("Should tabs beat spaces?")
+    expect(page).to have_content("#{debate.rounds_limit} rounds")
+    expect(page).to have_content("Spectators")
+    expect(page).to have_no_content("per turn")
+    within("##{dom_id(debate, :actions)}") { expect(page).to have_button("Accept") and have_button("Decline") }
+
     click_button "Accept"
 
     # Status flips to Active in place; the opponent now waits for the challenger.
@@ -89,5 +103,26 @@ RSpec.describe "Debate", type: :system, js: true do
     expect(page).to have_content("Spaces are unambiguous.")
     expect(page).to have_no_css("textarea")
     expect(page).to have_no_button("Post turn")
+  end
+
+  # Phase 3.3: the pending accept/decline screen's Decline path — still the existing
+  # `_debate_actions` `button_to`, just reached through the new layout.
+  it "opponent can decline from the pending accept/decline screen" do
+    login_as_system(challenger)
+    visit "/hoojah/#{root.slug}"
+    click_link "Challenge to debate"
+    expect(page).to have_current_path(%r{/hoojah/#{root.slug}/debates/new})
+    choose("challenger_stance", option: "1", allow_label_click: true)
+    click_button "Send challenge"
+    debate = Debate.last
+
+    login_as_system(opponent)
+    visit "/debates/#{debate.slug}"
+    within("##{dom_id(debate, :actions)}") { click_button "Decline" }
+
+    within("##{dom_id(debate, :status)}") { expect(page).to have_content(/declined/i) } # CSS-uppercased
+    expect(page).to have_no_button("Accept")
+    expect(page).to have_no_button("Decline")
+    expect(debate.reload).to be_declined
   end
 end

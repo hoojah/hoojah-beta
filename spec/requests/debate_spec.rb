@@ -183,6 +183,67 @@ RSpec.describe "Debates", type: :request do
     end
   end
 
+  # Phase 3.3 (2026 redesign): a PENDING debate gets a dedicated accept/decline screen
+  # (`debates/_debate_pending`) instead of the plain inline status row. It composes the
+  # EXISTING `_debate_status` / `_debate_actions` partials for their pinned dom_ids —
+  # this only asserts the new content around them, not a change to accept!/decline!
+  # or their Turbo Stream responses (that is `describe "synchronous actions replace"`).
+  describe "pending screen (Phase 3.3)" do
+    def dom_id(*args) = ActionView::RecordIdentifier.dom_id(*args)
+
+    it "renders the opponent's accept/decline screen: Pending pill, avatar trio, headline, motion, rules card, no timer row, buttons at the pinned :actions dom_id" do
+      d = challenge!
+      sign_in opponent
+      get "/debates/#{d.slug}"
+
+      # The state label stays at its pinned dom_id (Turbo/Cable target — unchanged).
+      expect(response.body).to include("id=\"#{dom_id(d, :status)}\"")
+      expect(response.body).to match(%r{<span[^>]*>Pending</span>})
+
+      # Avatar trio: both participants render (factory users carry no photo, so
+      # `ui/_avatar` falls back to the initials tile — `aria-label` names each one).
+      expect(response.body).to include(%(aria-label="#{challenger.full_name}"))
+      expect(response.body).to include(%(aria-label="#{opponent.full_name}"))
+
+      # Headline names the challenger.
+      expect(response.body).to include("@#{challenger.username}")
+      expect(response.body).to include("challenged")
+
+      # The motion (claim) blockquote.
+      expect(response.body).to include(hujah.body)
+
+      # Rules card: the real rounds count + a static spectators-decide row.
+      expect(response.body).to include("#{d.rounds_limit} rounds")
+      expect(response.body).to include("Spectators")
+      expect(response.body).to include("decide the winner")
+
+      # No timer row — deferred, there is no per-turn time-limit column to show.
+      expect(response.body).not_to include("per turn")
+      expect(response.body).not_to include("minutes")
+
+      # Accept/Decline via the EXISTING `_debate_actions` partial, at the pinned
+      # :actions dom_id — still posting to the real accept/decline routes.
+      expect(response.body).to include("id=\"#{dom_id(d, :actions)}\"")
+      expect(response.body).to include(">Accept<")
+      expect(response.body).to include(">Decline<")
+      expect(response.body).to include(accept_debate_path(d.slug))
+      expect(response.body).to include(decline_debate_path(d.slug))
+    end
+
+    it "does not show Accept/Decline to a non-opponent participant (the challenger, existing rule)" do
+      d = challenge!
+      sign_in challenger
+      get "/debates/#{d.slug}"
+
+      expect(response.body).not_to include(">Accept<")
+      expect(response.body).not_to include(">Decline<")
+      expect(response.body).to include("Waiting for @#{opponent.username}")
+      # Still their own pending screen — the motion and rules card still render.
+      expect(response.body).to include(hujah.body)
+      expect(response.body).to include("#{d.rounds_limit} rounds")
+    end
+  end
+
   describe "synchronous actions replace (Task 3.2)" do
     it "accept replaces both :status and :actions, and clears the opponent's Accept/Decline" do
       d = challenge!
