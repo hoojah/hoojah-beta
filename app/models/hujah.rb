@@ -4,6 +4,8 @@ class Hujah < ApplicationRecord
   has_many :flags, dependent: :destroy
   has_many :children, class_name: "Hujah", foreign_key: "parent_id", dependent: :destroy
   has_many :debates, dependent: :destroy
+  has_many :hashtag_hujahs, dependent: :destroy
+  has_many :hashtags, through: :hashtag_hujahs
   belongs_to :parent, class_name: "Hujah", optional: true
 
   # Per-post visibility for TOP-LEVEL claims (replies inherit their parent). Enum keys

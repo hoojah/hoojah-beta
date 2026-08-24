@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_24_180909) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_24_190001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -98,6 +98,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_180909) do
     t.index ["sluggable_type", "sluggable_id"], name: "index_friendly_id_slugs_on_sluggable_type_and_sluggable_id"
   end
 
+  create_table "hashtag_hujahs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "hashtag_id", null: false
+    t.bigint "hujah_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["hashtag_id", "hujah_id"], name: "index_hashtag_hujahs_on_hashtag_id_and_hujah_id", unique: true
+    t.index ["hashtag_id"], name: "index_hashtag_hujahs_on_hashtag_id"
+    t.index ["hujah_id"], name: "index_hashtag_hujahs_on_hujah_id"
+  end
+
+  create_table "hashtags", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "display", null: false
+    t.integer "hujahs_count", default: 0, null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_hashtags_on_name", unique: true
+  end
+
   create_table "hujahs", force: :cascade do |t|
     t.integer "agree_count", default: 0
     t.boolean "allow_debates", default: true, null: false
@@ -181,6 +200,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_180909) do
   add_foreign_key "flags", "users"
   add_foreign_key "follows", "users", column: "followed_id"
   add_foreign_key "follows", "users", column: "follower_id"
+  add_foreign_key "hashtag_hujahs", "hashtags"
+  add_foreign_key "hashtag_hujahs", "hujahs"
   add_foreign_key "hujahs", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "user_badges", "users"
