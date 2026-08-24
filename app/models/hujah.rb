@@ -6,6 +6,12 @@ class Hujah < ApplicationRecord
   has_many :debates, dependent: :destroy
   belongs_to :parent, class_name: "Hujah", optional: true
 
+  # Per-post visibility for TOP-LEVEL claims (replies inherit their parent). Enum keys
+  # avoid the reserved words public/private. Default = visible_public. The `prefix`
+  # makes predicates `visibility_visible_public?` / `visibility_followers_only?` /
+  # `visibility_private_only?` so they don't collide with User#private? semantics.
+  enum :visibility, {visible_public: 0, followers_only: 1, private_only: 2}, prefix: :visibility
+
   validates :body, presence: true
 
   # A hoojah inherits its author's visibility (Slice 7b). Every content surface

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_14_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_24_180908) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -100,7 +100,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_120000) do
 
   create_table "hujahs", force: :cascade do |t|
     t.integer "agree_count", default: 0
+    t.boolean "allow_debates", default: true, null: false
     t.text "body", null: false
+    t.integer "conviction_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.integer "disagree_count", default: 0
     t.integer "neutral_count", default: 0
@@ -108,6 +110,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_120000) do
     t.string "slug"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.integer "visibility", default: 0, null: false
     t.integer "vote"
     t.index ["slug"], name: "index_hujahs_on_slug", unique: true
     t.index ["user_id"], name: "index_hujahs_on_user_id"

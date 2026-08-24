@@ -1,6 +1,15 @@
 require "rails_helper"
 
 RSpec.describe Hujah, type: :model do
+  describe "new-record defaults" do
+    it "defaults to visible_public, allow_debates true, conviction_count 0" do
+      h = Hujah.new
+      expect(h.visibility_visible_public?).to be true
+      expect(h.allow_debates).to be true
+      expect(h.conviction_count).to eq 0
+    end
+  end
+
   describe "#current_user_vote" do
     let!(:user) { create(:user) }
     let!(:hujah) { create(:hujah) }
