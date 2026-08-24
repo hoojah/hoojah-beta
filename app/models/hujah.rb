@@ -89,6 +89,23 @@ class Hujah < ApplicationRecord
     end
   end
 
+  # Top-level visibility for LIST surfaces (search). Replies are excluded on purpose:
+  # Hujah#visible_to? recurses through parent.visible_to?, which is not expressible in
+  # one SQL predicate.
+  scope :visible_to, ->(viewer) {
+    base = where(parent_id: nil).joins(:user)
+    if viewer
+      ids = viewer.following_ids # accepted-only
+      base.where(
+        "(users.private = FALSE OR hujahs.user_id = :s OR hujahs.user_id IN (:f)) AND " \
+        "(hujahs.visibility = 0 OR hujahs.user_id = :s OR (hujahs.visibility = 1 AND hujahs.user_id IN (:f)))",
+        s: viewer.id, f: ids.presence || [-1]
+      ).where.not(user_id: viewer.hidden_user_ids)
+    else
+      base.where(visibility: :visible_public).where(users: {private: false})
+    end
+  }
+
   # Home timeline: top-level hoojahs from the people you follow, plus your own,
   # minus any hidden (blocked/blocked-by) author. The follow-removal on block already
   # drops a blocked author from `following_ids`; the `hidden_user_ids` exclusion is

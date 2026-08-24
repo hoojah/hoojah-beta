@@ -109,6 +109,108 @@ RSpec.describe Hujah, type: :model do
     end
   end
 
+  # Canonical SQL visibility scope for LIST surfaces (search, Phase 2). Must match
+  # Hujah#visible_to? exactly for TOP-LEVEL records only — replies are intentionally
+  # excluded (see the scope's comment in app/models/hujah.rb).
+  describe ".visible_to scope" do
+    let(:public_author) { create(:user, private: false) }
+    let(:private_author) { create(:user, private: true) }
+    let(:viewer) { create(:user) }
+    let(:follower_of_public) { create(:user) }
+    let(:follower_of_private) { create(:user) }
+    let(:stranger) { create(:user) }
+
+    before do
+      follower_of_public.active_follows.create!(followed: public_author, status: :accepted)
+      follower_of_private.active_follows.create!(followed: private_author, status: :accepted)
+    end
+
+    it "includes a visible_public post by a public author" do
+      h = create(:hujah, user: public_author, visibility: :visible_public)
+      expect(Hujah.visible_to(viewer)).to include(h)
+    end
+
+    it "excludes a public author's followers_only post from a non-follower" do
+      h = create(:hujah, user: public_author, visibility: :followers_only)
+      expect(Hujah.visible_to(stranger)).not_to include(h)
+    end
+
+    it "excludes a public author's private_only post from a non-owner" do
+      h = create(:hujah, user: public_author, visibility: :private_only)
+      expect(Hujah.visible_to(stranger)).not_to include(h)
+    end
+
+    it "includes a public author's followers_only post for an accepted follower and the owner" do
+      h = create(:hujah, user: public_author, visibility: :followers_only)
+      expect(Hujah.visible_to(follower_of_public)).to include(h)
+      expect(Hujah.visible_to(public_author)).to include(h)
+    end
+
+    it "excludes a private author's posts from a non-follower" do
+      h = create(:hujah, user: private_author, visibility: :visible_public)
+      expect(Hujah.visible_to(stranger)).not_to include(h)
+    end
+
+    it "includes a private author's posts for an accepted follower" do
+      h = create(:hujah, user: private_author, visibility: :visible_public)
+      expect(Hujah.visible_to(follower_of_private)).to include(h)
+    end
+
+    it "excludes posts by a user in viewer.hidden_user_ids (blocked or blocking)" do
+      blocked_author = create(:user, private: false)
+      h1 = create(:hujah, user: blocked_author, visibility: :visible_public)
+      viewer.blocks_made.create!(blocked: blocked_author)
+
+      blocker_author = create(:user, private: false)
+      h2 = create(:hujah, user: blocker_author, visibility: :visible_public)
+      blocker_author.blocks_made.create!(blocked: viewer)
+
+      expect(Hujah.visible_to(viewer)).not_to include(h1)
+      expect(Hujah.visible_to(viewer)).not_to include(h2)
+    end
+
+    it "returns only top-level rows -- a matching reply is excluded" do
+      parent = create(:hujah, user: public_author, visibility: :visible_public)
+      reply = create(:hujah, parent: parent, user: public_author, body: "a reply body")
+      expect(Hujah.visible_to(viewer)).to include(parent)
+      expect(Hujah.visible_to(viewer)).not_to include(reply)
+    end
+
+    context "anonymous viewer (nil)" do
+      it "returns only visible_public posts by non-private authors" do
+        h = create(:hujah, user: public_author, visibility: :visible_public)
+        expect(Hujah.visible_to(nil)).to include(h)
+      end
+
+      it "excludes a followers_only post" do
+        h = create(:hujah, user: public_author, visibility: :followers_only)
+        expect(Hujah.visible_to(nil)).not_to include(h)
+      end
+
+      it "excludes any post by a private author" do
+        h = create(:hujah, user: private_author, visibility: :visible_public)
+        expect(Hujah.visible_to(nil)).not_to include(h)
+      end
+    end
+
+    it "agrees with Hujah#visible_to? on a sample of top-level records" do
+      samples = [
+        create(:hujah, user: public_author, visibility: :visible_public),
+        create(:hujah, user: public_author, visibility: :followers_only),
+        create(:hujah, user: public_author, visibility: :private_only),
+        create(:hujah, user: private_author, visibility: :visible_public),
+        create(:hujah, user: private_author, visibility: :followers_only)
+      ]
+      [viewer, follower_of_public, follower_of_private, stranger, public_author, private_author, nil].each do |v|
+        scoped_ids = Hujah.visible_to(v).pluck(:id)
+        samples.each do |h|
+          expect(scoped_ids.include?(h.id)).to eq(h.visible_to?(v)),
+            "mismatch for hujah=#{h.id} viewer=#{v&.id.inspect} visibility=#{h.visibility}"
+        end
+      end
+    end
+  end
+
   describe "#current_user_vote" do
     let!(:user) { create(:user) }
     let!(:hujah) { create(:hujah) }

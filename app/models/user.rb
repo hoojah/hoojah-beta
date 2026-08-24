@@ -77,6 +77,18 @@ class User < ApplicationRecord
     viewer.present? && passive_follows.accepted.exists?(follower_id: viewer.id)
   end
 
+  # SQL counterpart to #visible_to? for LIST surfaces (search, Phase 2). Must match
+  # #visible_to? exactly.
+  scope :visible_to, ->(viewer) {
+    if viewer
+      where("users.private = FALSE OR users.id = :s OR users.id IN (:f)",
+        s: viewer.id, f: viewer.following_ids.presence || [-1])
+        .where.not(id: viewer.hidden_user_ids)
+    else
+      where(private: false)
+    end
+  }
+
   # The single source of truth every block filter/policy consults (bidirectional):
   # users I blocked ∪ users who blocked me. Memoized because the trending
   # post-filter consults it once per candidate — current_user is one memoized
