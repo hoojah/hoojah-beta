@@ -56,6 +56,15 @@ RSpec.describe Hujah, type: :model do
       expect(h.conviction_count).to eq 1
       expect(h.votes.find_by(user: u).conviction).to be true
     end
+
+    it "locks and counts a conviction vote cast on a DIFFERENT stance than the current vote" do
+      h.cast_vote(by: u, choice: 1) # tapped agree (not locked)
+      h.cast_vote(by: u, choice: 3, conviction: true) # hold-charge disagree → switch + lock
+      expect(h.reload.disagree_count).to eq 1
+      expect(h.agree_count).to eq 0
+      expect(h.conviction_count).to eq 1
+      expect(h.votes.find_by(user: u).conviction).to be true
+    end
   end
 
   describe "#visible_to? per-post" do

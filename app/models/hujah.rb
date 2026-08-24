@@ -124,11 +124,11 @@ class Hujah < ApplicationRecord
           return
         end
 
-        # Never overwrite an existing lock with false (defensive — a locked row already
-        # early-returned above): OR the flags.
-        new_conviction = existing.conviction || conviction
-        existing.update!(vote: existing.vote + [choice], conviction: new_conviction)
-        increment!(:conviction_count) if conviction && !existing.conviction
+        # A locked row already early-returned above, so `existing.conviction` is false
+        # here: a stance change may itself be a conviction (hold-charging a different
+        # stance than the current tap-vote), which locks the switched vote and counts once.
+        existing.update!(vote: existing.vote + [choice], conviction: conviction)
+        increment!(:conviction_count) if conviction
         decrement!(COUNTER_FOR[previous]) if COUNTER_FOR.key?(previous)
         increment!(COUNTER_FOR[choice])
       else
