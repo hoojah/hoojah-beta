@@ -28,6 +28,24 @@
     <% end %>
 
     <div class="flex items-center gap-3">
+      <%# Theme + scheme control (Hoojah 2026). A compact pill, reachable on every
+          page since the navbar is shared. Both controls fail safe with JS off:
+          the server renders the light+spectrum defaults and the page is fully
+          usable; this only flips <html>'s data-theme / data-scheme and persists
+          to localStorage (the no-FOUC head script re-applies before paint).
+          Uses the theme-aware `bg-card` / `border-hairline` / `text-ink`
+          utilities so the pill itself retints with the active theme. %>
+      <div class="flex items-center rounded-full border border-hairline bg-card" data-controller="theme">
+        <button type="button" data-action="theme#toggleTheme" data-theme-target="toggle"
+                class="flex items-center justify-center w-8 h-8 text-ink" aria-label="Toggle dark mode">
+          <%= lucide_icon("sun-moon", class: "w-4 h-4") %>
+        </button>
+        <button type="button" data-action="theme#cycleScheme" data-theme-target="scheme"
+                class="flex items-center justify-center w-8 h-8 text-ink" aria-label="Change colour scheme">
+          <%= lucide_icon("palette", class: "w-4 h-4") %>
+        </button>
+      </div>
+
       <%= link_to trending_path, class: "flex items-center text-grey hover:text-primary no-underline", aria: {label: "Trending"} do %>
         <%= lucide_icon("flame", class: "w-6 h-6") %>
         <span class="hidden lg:inline ml-1 text-sm">Trending</span>
