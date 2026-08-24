@@ -1,0 +1,38 @@
+<%# The live-debate strip that hangs off the bottom of a feed card — Hoojah 2026
+    (redesign Phase 1, Task 1.4), mockup ~248-252. Rendered by `hujahs/_hujah_card`
+    whenever `hujah.active_debate` is present; renders nothing otherwise, so the call
+    site can render it unconditionally.
+
+    Locals: hujah.
+
+    Visually this is a SECOND surface, not a continuation of the card's own padding —
+    the mockup overlaps the strip's top edge under the card's bottom edge (`-mt-4`) so
+    the two read as one continuous shape with the card's straight top corners and this
+    strip's own bottom rounding (`rounded-b-2xl`). It takes the `bg-disagree-soft`
+    accent wash rather than the mockup's plain `bg-card`, marking it as a debate zone —
+    the same "soft" stance tint `ui/_avatar`'s tile and the vote pills already use
+    elsewhere in this redesign, not a new colour.
+
+    Deliberately NOT the mockup's "Round 2 · 1,204 watching" second line: there is no
+    watcher-count data anywhere in this app, so it is not invented here. The single
+    line this renders instead — "@challenger vs @opponent · Round N" — carries
+    everything `debate.current_round` and the two usernames can actually support.
+
+    The Live pill's dot animates via the SAME `hbreathe` keyframe `application.css`
+    already defines for the mockup's other pulsing dots (no new keyframe). It is an
+    inline `style:`, not a Tailwind utility, because a bare CSS `animation` shorthand
+    referencing a bespoke `@keyframes` name has no Tailwind class to reach for. %>
+<% if (debate = hujah.active_debate) %>
+  <%= link_to debate_path(debate.slug),
+        class: "-mt-4 relative z-0 block rounded-b-2xl bg-disagree-soft shadow px-3.5 pt-6 pb-3 " \
+               "flex items-center gap-2.5 no-underline" do %>
+    <span class="inline-flex items-center gap-1 text-[10px] font-extrabold tracking-wide uppercase text-white bg-disagree px-2 py-1 rounded-full shrink-0">
+      <span class="w-1.5 h-1.5 rounded-full bg-white block" style="animation: hbreathe 2s ease-in-out infinite"></span>
+      Live
+    </span>
+    <div class="flex-1 min-w-0 text-sm font-bold text-ink truncate">
+      @<%= debate.challenger.username %> vs @<%= debate.opponent.username %> · Round <%= debate.current_round %>
+    </div>
+    <%= lucide_icon("chevron-right", class: "w-5 h-5 text-faint shrink-0") %>
+  <% end %>
+<% end %>

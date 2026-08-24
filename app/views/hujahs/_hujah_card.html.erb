@@ -11,13 +11,23 @@
       utility (`CARD_BASE = "shadow bg-card"`), so `class: "rounded-2xl"` here is not a
       same-family override fight, just this card opting into the 2026 mockup's rounding
       while `ui/_card`'s other callers (menus aside, which already round via their own
-      partial) stay square until they take their own redesign pass. (Task 1.4 revisits
-      this rounding when a live debate is present — see that task's own note.)
+      partial) stay square until they take their own redesign pass.
     - The footer's vote-count glyph is `bar-chart-3` (was `bar-chart-2`) per the redesign
       spec; when `hujah.active_debate` is present the footer also carries a `swords`
       indicator and a "Jump in →" pill to the hujah — both omitted entirely, not
       hidden, when there is no active debate. No verified badge: this product has no
       `User#verified?` concept.
+
+    HOOJAH 2026 (redesign Phase 1, Task 1.4) — mockup ~248-252's live-debate strip.
+    `hujahs/_live_debate_strip` renders unconditionally from here (it no-ops itself when
+    `hujah.active_debate` is nil, so this call site does not need its own guard) and, per
+    its own header, visually overlaps the card's bottom edge to read as one continuous
+    shape. That means the CARD's own bottom corners must square off exactly when the
+    strip is present — `rounded-t-2xl` instead of `rounded-2xl` — else the card's own
+    rounded-b-2xl would peek out from behind the strip's overlap. The 8px inter-card
+    stack gap (`mb-2`) moves from the card itself to the wrapping `<div>` for the same
+    reason: it has to trail whichever surface is visually last, and that is the strip
+    when one is rendered, the card when none is.
 
     DESIGN SYSTEM (Slice 9, Task 4.3, still true) —
     docs/design-system/components/hujah/HujahCard.prompt.md: "the primary unit of the
@@ -32,41 +42,46 @@
 
     The footer's hairline is `ui/_divider` rather than a `border-t` on the footer
     itself — the design system's "hairline `#f3f4f6` internal dividers" idiom. %>
-<%= render layout: "ui/card",
-      locals: {as: "article", data: {testid: "hujah-card"}, class: "mb-2 rounded-2xl"} do %>
-  <%= render "hujahs/hujah_header", hujah: hujah %>
+<div class="relative mb-2">
+  <%= render layout: "ui/card",
+        locals: {as: "article", data: {testid: "hujah-card"},
+                 class: "relative z-10 #{hujah.active_debate ? "rounded-t-2xl" : "rounded-2xl"}"} do %>
+    <%= render "hujahs/hujah_header", hujah: hujah %>
 
-  <div class="px-4 pt-3 pb-0">
-    <%= link_to hujah_path(hujah.slug), class: "block text-ink no-underline" do %>
-      <div class="hujah-body text-lg leading-snug"><%= format_body(hujah.body) %></div>
-    <% end %>
-  </div>
-
-  <%= render "hujahs/vote_bars",
-        hujah: hujah,
-        current_user_vote: hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) %>
-
-  <%= render "ui/divider" %>
-  <%# HujahCard.prompt.md: "the footer is always bar-chart-3 + total votes ·
-      message-circle + response count". Always both, always that order; the swords
-      indicator + Jump-in pill are additive, only when `hujah.active_debate` exists. %>
-  <div class="px-4 py-2 flex items-center text-sm text-ink-2">
-    <%= link_to hujah_path(hujah.slug), class: "flex items-center text-ink-2 no-underline" do %>
-      <%= lucide_icon("bar-chart-3", class: "w-4 h-4") %>
-      <span class="ml-1"><%= hujah.agree_count.to_i + hujah.neutral_count.to_i + hujah.disagree_count.to_i %></span>
-      <span class="mx-2">·</span>
-      <%= lucide_icon("message-circle", class: "w-4 h-4") %>
-      <span class="ml-1"><%= hujah.children.size %></span>
-    <% end %>
-
-    <% if hujah.active_debate %>
-      <span class="ml-3 flex items-center text-disagree" aria-label="Live debate on this hujah">
-        <%= lucide_icon("swords", class: "w-4 h-4") %>
-      </span>
-      <%= link_to hujah_path(hujah.slug),
-            class: "#{ds_button_classes(variant: :outline, tone: "primary", size: :sm)} ml-auto" do %>
-        Jump in <%= lucide_icon("arrow-right", class: "w-3.5 h-3.5") %>
+    <div class="px-4 pt-3 pb-0">
+      <%= link_to hujah_path(hujah.slug), class: "block text-ink no-underline" do %>
+        <div class="hujah-body text-lg leading-snug"><%= format_body(hujah.body) %></div>
       <% end %>
-    <% end %>
-  </div>
-<% end %>
+    </div>
+
+    <%= render "hujahs/vote_bars",
+          hujah: hujah,
+          current_user_vote: hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) %>
+
+    <%= render "ui/divider" %>
+    <%# HujahCard.prompt.md: "the footer is always bar-chart-3 + total votes ·
+        message-circle + response count". Always both, always that order; the swords
+        indicator + Jump-in pill are additive, only when `hujah.active_debate` exists. %>
+    <div class="px-4 py-2 flex items-center text-sm text-ink-2">
+      <%= link_to hujah_path(hujah.slug), class: "flex items-center text-ink-2 no-underline" do %>
+        <%= lucide_icon("bar-chart-3", class: "w-4 h-4") %>
+        <span class="ml-1"><%= hujah.agree_count.to_i + hujah.neutral_count.to_i + hujah.disagree_count.to_i %></span>
+        <span class="mx-2">·</span>
+        <%= lucide_icon("message-circle", class: "w-4 h-4") %>
+        <span class="ml-1"><%= hujah.children.size %></span>
+      <% end %>
+
+      <% if hujah.active_debate %>
+        <span class="ml-3 flex items-center text-disagree" aria-label="Live debate on this hujah">
+          <%= lucide_icon("swords", class: "w-4 h-4") %>
+        </span>
+        <%= link_to hujah_path(hujah.slug),
+              class: "#{ds_button_classes(variant: :outline, tone: "primary", size: :sm)} ml-auto" do %>
+          Jump in <%= lucide_icon("arrow-right", class: "w-3.5 h-3.5") %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%= render "hujahs/live_debate_strip", hujah: hujah %>
+</div>

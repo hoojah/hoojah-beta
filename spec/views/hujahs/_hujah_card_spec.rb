@@ -102,7 +102,7 @@ RSpec.describe "hujahs/_hujah_card", type: :view do
 
     context "when the hujah has an active debate" do
       it "shows a swords debate indicator and a Jump in pill linking to the hujah" do
-        debate = build_stubbed(:debate, hujah: hujah)
+        debate = create(:debate, hujah: hujah, status: :active)
         allow(hujah).to receive(:active_debate).and_return(debate)
         c = card
 
