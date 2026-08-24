@@ -170,6 +170,7 @@
   --color-faint: var(--faint);
   --color-hairline: var(--hairline);
   --color-field: var(--field);
+  --color-nav: var(--nav);
 
   /* Tailwind's own neutrals, REMAPPED onto the surface tokens (Task 1.4) so the
      legacy chrome adapts to dark without a per-view rewrite. The site-wide toggle
