@@ -87,9 +87,10 @@ end
 Run: `RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/assets/tailwind_tokens_spec.rb`
 Expected: FAIL (tokens not defined yet).
 
-- [ ] **Step 3: Edit `@theme` to indirect through runtime vars.** In the `@theme { … }` block, change the stance/surface color entries to reference runtime custom properties (keep the old fixed neutrals the views still use, e.g. `--color-gray-*`, `--color-red-*`):
+- [ ] **Step 3: Indirect the theme-aware colors through runtime vars using `@theme inline`.** Put the var-referencing (theme/scheme-aware) tokens in a SEPARATE `@theme inline { … }` block — `inline` makes Tailwind emit `var(--agree)` **directly into each utility** (`.bg-agree{background:var(--agree)}`) so it resolves per-element, instead of declaring `--color-agree` only on `:root` (which would only work because the attrs sit on `<html>` and would silently stay light under any subtree override). Keep the fixed neutrals the views still use in the ordinary `@theme` block.
 ```css
-@theme {
+/* theme/scheme-aware — inline so utilities reference the runtime var directly */
+@theme inline {
   --color-primary: var(--primary);
   --color-primary-soft: var(--primary-soft);
   --color-agree: var(--agree);
@@ -106,8 +107,10 @@ Expected: FAIL (tokens not defined yet).
   --color-faint: var(--faint);
   --color-hairline: var(--hairline);
   --color-field: var(--field);
-  /* keep existing: --color-black, --color-grey, --color-light-grey, gray-*, red-* */
+  --color-unread: var(--unread);
 }
+/* fixed — stay in the ordinary @theme block: --color-black, --color-grey,
+   --color-light-grey, --color-white, gray-*, red-*, --color-read, text sizes, radii… */
 ```
 
 - [ ] **Step 4: Define the runtime tokens (outside `@theme`, top of file after imports).** Paste the Spectrum/light `:root` block, the `[data-theme="dark"]` block, and the `signal`/`ballot` scheme blocks (light + dark) verbatim from `docs/superpowers/specs/assets/hoojah-2026-tokens.css` (spec §2.4). Also port the keyframes `hpop hfloat hboom hray hbar hbreathe hrise`.
@@ -232,6 +235,37 @@ export default class extends Controller {
 git add app/javascript/controllers/theme_controller.js app/views/shared/_navbar.html.erb spec/system/theming_spec.rb
 git commit -m "Add theme/scheme toggle controller and navbar control"
 ```
+
+### Task 1.4: Dark-mode safety for shared chrome
+
+> **Why:** the toggle is site-wide (it flips `<html data-theme>`), but the legacy app paints with **pinned-hex** utilities — `bg-white` (~30 uses), `bg-gray-50/100/200`, `text-black` — so in dark mode, body-inherited text goes light inside cards that stay white → invisible text. We make the SHARED primitives + common chrome theme-aware here, and explicitly DEFER full per-screen dark polish of non-focus screens (auth, profile, notifications, debate room) to a HANDOVER follow-up. We do NOT claim full dark coverage.
+
+**Files:**
+- Modify: `app/assets/tailwind/application.css` (neutral remap), `app/helpers/design_system_helper.rb` (`ds_card_classes`/button surfaces if they bake `bg-white`), `app/views/ui/_card.html.erb`, `app/views/ui/_menu.html.erb`, `app/views/shared/_navbar.html.erb`, `app/views/hujahs/_vote_bars.html.erb`, `app/views/hujahs/_stance_picker.html.erb`
+- Test: `spec/system/theming_spec.rb` (computed-style assertion)
+
+- [ ] **Step 1: Remap the neutral surface tokens (not white).** In `@theme inline`, chain the Tailwind neutrals the chrome leans on onto theme vars so borders/fills adapt: `--color-gray-50: var(--card-2); --color-gray-100: var(--hairline); --color-gray-200: var(--field);`. **Keep `--color-white` FIXED** — `text-white` carries the stance-button glyph inversion (safelisted) and must stay white. Keep `--color-black` fixed but note `text-black` won't adapt (handled by the sweep below).
+
+- [ ] **Step 2: Sweep the SHARED surfaces from `bg-white`→`bg-card` and `text-black`→`text-ink`.** Only in the primitives/chrome that appear on the redesigned surfaces: `ui/_card` (or `ds_card_classes` if the white is baked there — read `app/helpers/design_system_helper.rb` first), `ui/_menu`, `shared/_navbar`, `hujahs/_vote_bars`, `hujahs/_stance_picker`. Do NOT chase every legacy screen. If `bg-white` is produced by `ds_card_classes`, change it there once (covers all cards). Preserve `text-white` glyph inversions.
+
+- [ ] **Step 3: Add a computed-style assertion** to `spec/system/theming_spec.rb` proving the cascade actually wins (not just that strings exist):
+```ruby
+it "resolves --agree per theme+scheme at runtime" do
+  visit root_path
+  spectrum_light = page.evaluate_script("getComputedStyle(document.documentElement).getPropertyValue('--agree').trim()")
+  expect(spectrum_light).to eq("#0ea5a4")
+  find('[data-theme-target="toggle"]').click # -> dark
+  dark = page.evaluate_script("getComputedStyle(document.documentElement).getPropertyValue('--agree').trim()")
+  expect(dark).to eq("#2dd4cf")
+end
+```
+
+- [ ] **Step 4: Run the theming system spec, expect PASS; commit.**
+```bash
+git add app/assets/tailwind/application.css app/helpers/design_system_helper.rb app/views/ui app/views/shared/_navbar.html.erb app/views/hujahs/_vote_bars.html.erb app/views/hujahs/_stance_picker.html.erb spec/system/theming_spec.rb
+git commit -m "Make shared chrome theme-aware for dark mode"
+```
+> HANDOVER note (Task 6.1 Step 4): auth, profile, notifications, and the debate room are NOT dark-polished this pass — they inherit the tokens but may show residual light surfaces in dark mode. Follow-up.
 
 ---
 
@@ -379,14 +413,18 @@ end
 
 - [ ] **Step 2: Run, expect FAIL.**
 
-- [ ] **Step 3: Rewrite `cast_vote`** to accept `conviction:` and honor the lock:
+- [ ] **Step 3: Rewrite `cast_vote`** to accept `conviction:` and honor the lock. **Use a row lock** (`votes.lock.find_by`) so a concurrent same-stance upgrade can't double-increment `conviction_count`, and NEVER let the stance-change branch write `conviction` back to false over a committed lock (a locked row early-returns under the lock anyway, but write it defensively):
 ```ruby
 def cast_vote(by:, choice:, conviction: false)
   choice = choice.to_i
   return unless COUNTER_FOR.key?(choice)
 
   transaction do
-    existing = votes.find_by(user_id: by.id)
+    # `.lock` takes a FOR UPDATE row lock so the conviction? re-check below reads
+    # committed state — two concurrent upgrades can't both see conviction=false and
+    # double-count. (A unique index on votes[hujah_id,user_id] is on the backlog to
+    # also close the concurrent-first-vote double-row race; see HANDOVER.)
+    existing = votes.lock.find_by(user_id: by.id)
     if existing
       return if existing.conviction? # locked forever — no stance change, no re-lock
 
@@ -400,8 +438,11 @@ def cast_vote(by:, choice:, conviction: false)
         return
       end
 
-      existing.update!(vote: existing.vote + [choice], conviction: conviction)
-      increment!(:conviction_count) if conviction
+      # Never overwrite an existing lock with false (defensive — locked rows already
+      # early-returned above): OR the flags.
+      new_conviction = existing.conviction || conviction
+      existing.update!(vote: existing.vote + [choice], conviction: new_conviction)
+      increment!(:conviction_count) if conviction && !existing.conviction
       decrement!(COUNTER_FOR[previous]) if COUNTER_FOR.key?(previous)
       increment!(COUNTER_FOR[choice])
     else
@@ -414,6 +455,7 @@ def cast_vote(by:, choice:, conviction: false)
   end
 end
 ```
+> A locked re-vote is a **silent** no-op (not a domain error) — the vote hero's `locked-value` makes it unreachable in the UI, and the votes controller renders its normal Turbo Stream (the widget just re-renders unchanged). Documented deviation from spec §3.7. Add a concurrent unique index on `votes [hujah_id, user_id]` (+ `rescue ActiveRecord::RecordNotUnique`) to `HANDOVER.md` backlog.
 
 - [ ] **Step 4: Run, expect PASS; run the full model spec to catch regressions.**
 Run: `RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/models/hujah_spec.rb`
@@ -426,9 +468,11 @@ git commit -m "Support conviction-lock votes in Hujah#cast_vote"
 
 ### Task 2.5: Per-post visibility scoping
 
+> **SECURITY-CRITICAL.** Per-post visibility must be closed on EVERY surface that renders a claim, not just the HTML feed/show. The Fable architecture audit found five additional leak surfaces; all are included below. Missing any one serves a `followers_only`/`private_only` claim to strangers.
+
 **Files:**
-- Modify: `app/models/hujah.rb` (`visible_to?`), `app/controllers/hujahs_controller.rb` (`index`, `show` children), `app/policies/hujah_policy.rb` (`show?`)
-- Test: `spec/models/hujah_spec.rb`, `spec/requests/hujahs_spec.rb`
+- Modify: `app/models/hujah.rb` (`visible_to?`, `self.trending`), `app/controllers/hujahs_controller.rb` (`index` both branches), `app/policies/hujah_policy.rb` (`show?`, `vote?`), `app/controllers/api/v1/hujahs_controller.rb` (`index`), `app/controllers/users_controller.rb` (`show`)
+- Test: `spec/models/hujah_spec.rb`, `spec/requests/hujahs_spec.rb`, `spec/requests/api/v1/hujahs_spec.rb`, `spec/requests/users_spec.rb`, `spec/requests/trending_spec.rb` (add/extend as they exist)
 
 - [ ] **Step 1: Write failing specs** covering the matrix: `private_only` claim visible only to author; `followers_only` visible to accepted followers + author; `visible_public` unchanged (still gated by author account privacy).
 ```ruby
@@ -459,10 +503,12 @@ end
 - [ ] **Step 3: Extend `Hujah#visible_to?`** to AND the per-post rule with the account-level rule:
 ```ruby
 # A hoojah is visible when BOTH the author is visible to the viewer (account privacy,
-# Slice 7b) AND the per-post visibility permits it. Replies (parent_id present) inherit
-# the parent's gate rather than carrying their own.
+# Slice 7b) AND the per-post visibility permits it. A REPLY (parent_id present) is gated
+# by the parent AND by the reply author's OWN account privacy — dropping the latter
+# regresses Slice 7b Gate 6 (a private user's reply under a public claim must stay hidden
+# from non-followers; the API show + notification cards rely on this).
 def visible_to?(viewer)
-  return parent.visible_to?(viewer) if parent_id
+  return parent.visible_to?(viewer) && user.visible_to?(viewer) if parent_id
   return false unless user.visible_to?(viewer)
 
   case visibility
@@ -473,30 +519,54 @@ def visible_to?(viewer)
   end
 end
 ```
-> Confirm `User#accepted_follower?` exists (the map/User grep shows `accepted_follower?(viewer)` used inside `visible_to?`). If it's private, expose it or add a thin predicate.
+> Confirm `User#accepted_follower?` exists (the map/User grep shows `accepted_follower?(viewer)` used inside `visible_to?`). If it's private, expose it or add a thin predicate. **Add a spec** pinning: a `private` user's reply under a public claim is NOT visible to a stranger, IS visible to an accepted follower.
 
-- [ ] **Step 4: Scope the feed and children.** In `HujahsController#index`, after the existing `users: {private: false}` filter on the global branch, add per-post exclusion of non-public claims from anonymous/stranger feeds:
+- [ ] **Step 4: Scope the HTML feed.** In `HujahsController#index`, on the GLOBAL/anonymous branch, after the existing `users: {private: false}` filter add:
 ```ruby
 # Per-post visibility (2026): the global/anonymous feed shows only visible_public claims.
 global = global.where(visibility: :visible_public)
 ```
-For the `following` branch, followers may see `followers_only` too:
+On the FOLLOWING branch, followers may see `followers_only` too, AND the viewer must still see their OWN `private_only` claims (don't over-hide — `timeline_for` already includes `user.id`):
 ```ruby
 Hujah.timeline_for(current_user)
-  .where(visibility: [:visible_public, :followers_only])
+  .where("hujahs.visibility IN (0, 1) OR hujahs.user_id = ?", current_user.id)
   .includes(:user).order(updated_at: :desc)
 ```
-In `#show`, gate the whole action via the policy (below); children inherit and are already visibility-filtered by author — no change needed unless children carry their own visibility (they don't; replies inherit).
 
-- [ ] **Step 5: `HujahPolicy#show?`** — replace with the model gate so per-post rules apply:
+- [ ] **Step 5: `HujahPolicy#show?` and `#vote?`** — gate both through the model rule so a stranger can't read OR vote on (bump counters / probe existence of) a non-public claim by guessing its slug:
 ```ruby
 def show? = record.visible_to?(user)
+def vote? = user.present? && record.visible_to?(user)
 ```
 
-- [ ] **Step 6: Run model + request specs, expect PASS.** Update any existing feed/show specs that assumed all claims are public. Commit.
+- [ ] **Step 6: Close the JSON API index (CRITICAL leak).** `app/controllers/api/v1/hujahs_controller.rb#index` currently serves every public-author hujah. Add the same per-post filter:
+```ruby
+# Per-post visibility (2026): the public API index is a hard boundary — visible_public only.
+.where(visibility: :visible_public)
+```
+Add a request spec: `GET /api/v1/...index` never includes a `private_only`/`followers_only` claim. (Api show already gates via `visible_to?`, now fixed for replies in Step 3.)
+
+- [ ] **Step 7: Close trending (HIGH leak).** In `Hujah.trending` (`hujah.rb`), the candidate query filters only `users: {private: false}`. Add `.where(visibility: :visible_public)` to the candidate scope so a `followers_only` claim with activity never lands on public `/trending`. Add/extend a trending spec.
+
+- [ ] **Step 8: Scope the profile page (HIGH leak).** `UsersController#show` sets `@hujahs = @user.hujahs…` for any viewer. Scope per viewer:
+```ruby
+# Self sees all; an accepted follower sees public + followers_only; everyone else public only.
+@hujahs =
+  if current_user == @user
+    @user.hujahs
+  elsif user_signed_in? && @user.accepted_follower?(current_user)
+    @user.hujahs.where(visibility: [:visible_public, :followers_only])
+  else
+    @user.hujahs.where(visibility: :visible_public)
+  end
+# …preserve any existing parent_id/order/includes chaining on @hujahs.
+```
+Read the current `UsersController#show` first and keep its existing scoping (top-level only, ordering, pagination). Add a request spec.
+
+- [ ] **Step 9: Run all touched model + request specs, expect PASS.** Update existing feed/show/api/profile/trending specs that assumed all claims are public. Commit.
 ```bash
-git add app/models/hujah.rb app/controllers/hujahs_controller.rb app/policies/hujah_policy.rb spec/
-git commit -m "Enforce per-post visibility in feed, show, and policy"
+git add app/models/hujah.rb app/controllers/hujahs_controller.rb app/controllers/api/v1/hujahs_controller.rb app/controllers/users_controller.rb app/policies/hujah_policy.rb spec/
+git commit -m "Enforce per-post visibility across feed, show, API, trending, profile, and vote"
 ```
 
 ### Task 2.6: allow_debates gate + vote-to-respond gate in policies
@@ -535,6 +605,14 @@ def create? = user.present? &&
   record.hujah.allow_debates?
 ```
 > Confirm `Debate belongs_to :hujah` (the map shows `@hujah.debates`, so yes). If the association name differs, use it.
+
+- [ ] **Step 3b: Close the concluded-debate transcript leak (MEDIUM).** `debates/show.html.erb` renders `@debate.hujah.body`, so a concluded public debate on a `followers_only` claim shows that claim to anyone. In `DebatePolicy`, the NON-participant branch of `show?` and the concluded set in `Scope#resolve` must also require the claim be visible:
+```ruby
+def show? = record.participant?(user) ||
+  (record.concluded? && record.challenger.visible_to?(user) &&
+   record.opponent.visible_to?(user) && record.hujah.visible_to?(user))
+```
+And in `Scope#resolve`, add `&& d.hujah.visible_to?(user)` to the `concluded_visible` select. Add a policy spec: a concluded debate on a `followers_only` claim is not visible to a stranger.
 
 - [ ] **Step 4: `HujahPolicy#create?`** — require a prior vote on the parent for replies:
 ```ruby
