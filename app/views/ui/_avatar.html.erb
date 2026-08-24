@@ -1,4 +1,5 @@
-<%# Locals: `user`; `size:` one of lg md row nav sm (default md); `class:` extra utilities.
+<%# Locals: `user`; `size:` one of lg md row nav sm (default md); `variant:` :photo
+     (default) or :tile; `class:` extra utilities.
 
      `size:` IS the pixel box — lg 96 · md 44 · row 40 · nav 36 · sm 32. A `w-*` passed
      through `class:` does not override that, it competes with it, and the winner is
@@ -6,10 +7,20 @@
      intent: `class: "w-8"` against `size: :lg` loses. Pass margins and other
      layout-neutral utilities through `class:`; to change the box, change `size:`.
 
+     `variant:` is the SHAPE and is ORTHOGONAL to `size:` (Hoojah 2026, redesign Phase
+     0 Task 0.2) — a tile still needs a size, so it is its own local rather than a
+     sixth AVATAR_SIZES key. `:photo` (default) shows the user's round photo, falling
+     back to initials on the gradient tile when there isn't one — same as before this
+     local existed. `:tile` is the gradient-initials TREATMENT itself
+     (docs/design-system/components/core/Avatar.jsx): it renders initials on
+     `.avatar-tile` even for a user who has a photo, for surfaces (navbar, feed cards)
+     that want the tile look on purpose, not merely as a fallback.
+
      Deliberately NOT a Rails strict-locals signature: one of the locals is `class`, which
      cannot be a Ruby parameter name, so the whole signature is unavailable to this partial.
 
-     A user's round photo, or their initials on primary when there isn't one.
+     A user's round photo, or their initials on the gradient tile when there isn't one
+     (or when `variant: :tile` asks for the tile outright).
 
      The fallback is not decoration. `photo` is nullable and `image_tag nil` raises,
      so every `image_tag user.photo` in the app is a 500 waiting for a user without a
@@ -28,10 +39,11 @@
      - The same name on both branches, as in Avatar.jsx. Announcing one person two
        different ways depending on whether they uploaded a photo is a bug; the handle
        is not always adjacent either (see shared/_navbar).
-%><% box = "rounded-full shrink-0 #{ds_avatar_classes(size: local_assigns[:size])} #{local_assigns[:class]}".squish %>
-<% if user.photo.present? %>
-  <%= image_tag user.photo, alt: user.full_name, class: "#{box} block object-cover" %>
-<% else %>
+%><% tile = local_assigns[:variant] == :tile || user.photo.blank? %>
+<% box = "#{ds_avatar_classes(size: local_assigns[:size], variant: (tile ? :tile : :photo))} shrink-0 #{local_assigns[:class]}".squish %>
+<% if tile %>
   <span role="img" aria-label="<%= user.full_name %>"
-        class="<%= box %> flex items-center justify-center bg-primary text-white font-medium tracking-wide"><%= ds_initials(user.full_name) %></span>
+        class="<%= box %> flex items-center justify-center text-white font-medium tracking-wide"><%= ds_initials(user.full_name) %></span>
+<% else %>
+  <%= image_tag user.photo, alt: user.full_name, class: "#{box} block object-cover" %>
 <% end %>

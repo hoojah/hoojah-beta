@@ -296,11 +296,38 @@ RSpec.describe DesignSystemHelper, type: :helper do
       DesignSystemHelper::AVATAR_SIZES.each do |size, classes|
         tokens = helper.ds_avatar_classes(size: size).split
 
-        expect(tokens).to eq(classes.split)
+        expect(tokens).to eq(["rounded-full"] + classes.split)
         expect(tokens.grep(/\Aw-/).size).to eq(1), "#{size} has no single width"
         expect(tokens.grep(/\Ah-/).size).to eq(1), "#{size} has no single height"
         expect(tokens.grep(/\Atext-/).size).to eq(1), "#{size} has no font size"
       end
+    end
+
+    # Hoojah 2026 (redesign Phase 0, Task 0.2): `variant:` is the SHAPE and `size:` is
+    # the PIXELS — orthogonal parameters. A tile still needs a size, so `:tile` must
+    # never become a key in AVATAR_SIZES; it is a separate axis entirely.
+    it "keeps AVATAR_SIZES keyed by pixel sizes only — :tile is a variant, not a size" do
+      expect(DesignSystemHelper::AVATAR_SIZES.keys).to contain_exactly(:lg, :md, :row, :nav, :sm)
+      expect(DesignSystemHelper::AVATAR_SIZES.keys).not_to include(:tile)
+    end
+
+    # `.avatar-tile` (app/assets/tailwind/application.css `@layer components`) supplies
+    # the gradient fill and white ink; this helper only needs to swap the shape.
+    it "swaps rounded-full for rounded-xl avatar-tile when variant: :tile, keeping the same dims" do
+      DesignSystemHelper::AVATAR_SIZES.each do |size, dims|
+        tokens = helper.ds_avatar_classes(size: size, variant: :tile).split
+
+        expect(tokens).to eq(["rounded-xl", "avatar-tile"] + dims.split)
+      end
+    end
+
+    it "treats a nil variant as unset and takes the :photo default" do
+      expect(helper.ds_avatar_classes(variant: nil)).to eq(helper.ds_avatar_classes)
+    end
+
+    it "raises on a misspelled variant rather than silently rendering the wrong shape" do
+      expect { helper.ds_avatar_classes(variant: :square) }
+        .to raise_error(ArgumentError, /square.*photo.*tile/m)
     end
 
     it "renders square circles — width and height always agree" do

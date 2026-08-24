@@ -126,6 +126,17 @@
   .debate-composer-field {
     field-sizing: content;
   }
+
+  /* Hoojah 2026's initials-avatar treatment (`ui/_avatar`'s `variant: :tile`, backed
+     by `ds_avatar_classes`). `#7d92ff` is a fixed gradient companion stop from the
+     mockup, not a stance colour — `--primary` still carries the theme. A component
+     class rather than a `bg-gradient-to-br` utility because Tailwind's gradient
+     utilities resolve against `--color-*` stops, and this gradient's second stop is
+     an intentionally-literal hex with no token of its own. */
+  .avatar-tile {
+    background: linear-gradient(135deg, var(--primary), #7d92ff);
+    color: #fff;
+  }
 }
 
 @theme inline {
