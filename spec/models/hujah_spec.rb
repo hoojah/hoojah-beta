@@ -163,4 +163,61 @@ RSpec.describe Hujah, type: :model do
       expect(alpha.reload.hujahs_count).to eq 0
     end
   end
+
+  # Every SQL SELECT the block issues against the `debates` table.
+  def debate_selects
+    seen = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*args|
+      sql = ActiveSupport::Notifications::Event.new(*args).payload[:sql].to_s
+      seen << sql if sql =~ /\ASELECT/i && sql =~ /\bdebates\b/i
+    end
+    yield
+    seen
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+  end
+
+  describe "#active_debate" do
+    it "returns nil when the hoojah has no debates at all" do
+      h = create(:hujah, parent_id: nil)
+      expect(h.active_debate).to be_nil
+    end
+
+    it "falls back to a live lookup for the active debate, ignoring other statuses" do
+      h = create(:hujah, parent_id: nil)
+      create(:debate, hujah: h, status: :declined)
+      active = create(:debate, hujah: h, status: :active)
+      expect(h.active_debate).to eq(active)
+    end
+
+    it "returns nil off the feed when the only debate is pending, not active" do
+      h = create(:hujah, parent_id: nil)
+      create(:debate, hujah: h, status: :pending)
+      expect(h.active_debate).to be_nil
+    end
+
+    it "returns the preloaded debate with no query once the controller has set it" do
+      h = create(:hujah, parent_id: nil)
+      active = create(:debate, hujah: h, status: :active)
+      h.preloaded_active_debate = active
+
+      result = nil
+      selects = debate_selects { result = h.active_debate }
+
+      expect(result).to eq(active)
+      expect(selects).to be_empty
+    end
+
+    it "trusts an explicit preloaded nil rather than falling back to a live lookup" do
+      h = create(:hujah, parent_id: nil)
+      create(:debate, hujah: h, status: :active)
+      h.preloaded_active_debate = nil # the controller preloaded and found none for this id
+
+      result = :untouched
+      selects = debate_selects { result = h.active_debate }
+
+      expect(result).to be_nil
+      expect(selects).to be_empty
+    end
+  end
 end

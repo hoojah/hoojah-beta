@@ -26,6 +26,7 @@ class HujahsController < ApplicationController
       global
     end
     @pagy, @hujahs = pagy(:countless, base)
+    preload_active_debates(@hujahs)
 
     respond_to do |format|
       format.html
@@ -94,6 +95,18 @@ class HujahsController < ApplicationController
   end
 
   private
+
+  # Phase 1.5 (2026): the feed's live-debate strip needs to know, per top-level
+  # hujah, whether it has an active debate — WITHOUT an N+1. One bulk query for
+  # every id on the page, indexed by hujah_id, then assigned onto each record via
+  # Hujah#preloaded_active_debate= so #active_debate reads it for free. `@hujahs`
+  # may still be an unloaded pagy relation here; `.each` after `.map(&:id)` reuses
+  # the same loaded records rather than re-querying.
+  def preload_active_debates(hujahs)
+    ids = hujahs.map(&:id)
+    active_by_hujah_id = Debate.active.where(hujah_id: ids).includes(:challenger, :opponent).index_by(&:hujah_id)
+    hujahs.each { |h| h.preloaded_active_debate = active_by_hujah_id[h.id] }
+  end
 
   # Body is stored RAW (no <br> hack); it renders via the `format_body` helper.
   # A missing/spoofed parent_id makes `Hujah.find` raise RecordNotFound → 404,

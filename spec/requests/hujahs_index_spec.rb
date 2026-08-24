@@ -71,4 +71,28 @@ RSpec.describe "Hujahs index", type: :request do
     expect(combined.uniq).to eq(combined)
     expect(page2_ids.size).to eq(5)
   end
+
+  # Phase 1.5 (data only — the live-debate strip UI lands in a later task): the
+  # controller must preload each page's active debates in ONE bulk query, not one
+  # per card, so a future per-card render of `hujah.active_debate` is N+1-free.
+  it "preloads active debates for the page's hujahs in a single query" do
+    hujahs = create_list(:hujah, 3, parent_id: nil)
+    hujahs.each { |h| create(:debate, hujah: h, status: :active) }
+    # A declined debate on its own hujah must not add a second preload query.
+    create(:debate, hujah: create(:hujah, parent_id: nil), status: :declined)
+
+    debate_selects = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*args|
+      payload = ActiveSupport::Notifications::Event.new(*args).payload
+      sql = payload[:sql].to_s
+      debate_selects << sql if sql =~ /\ASELECT/i && sql =~ /\bdebates\b/i
+    end
+    get "/"
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+
+    expect(response).to have_http_status(:ok)
+    # One bulk `Debate.active.where(hujah_id: [...])` for the whole page — not one
+    # query per card (which would scale with the number of hujahs on the page).
+    expect(debate_selects.size).to eq(1)
+  end
 end
