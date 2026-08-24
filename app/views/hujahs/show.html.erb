@@ -121,11 +121,19 @@
       (policy_scope in HujahsController#show — concluded to everyone, plus the viewer's
       own live ones). The container dom_id is the Turbo-Stream append target when a new
       challenge is created, so it must always be present. %>
-  <section class="mb-2">
-    <h2 class="px-1 mb-1 flex items-center gap-1 text-sm font-medium text-grey">
-      <%= lucide_icon("swords", class: "w-4 h-4") %> Debates
-    </h2>
-    <div id="<%= dom_id(@hujah, :debates) %>" class="flex flex-col gap-1">
+  <% debates_list = @debates.to_a %>
+  <section class="mt-6 mb-2">
+    <div class="flex items-center justify-between mb-2 px-1">
+      <h2 class="flex items-center gap-1.5 text-sm font-extrabold text-ink">
+        <%= lucide_icon("swords", class: "w-4 h-4 text-ink-2") %> Debates
+      </h2>
+      <% if debates_list.any? %>
+        <span class="text-xs text-faint font-semibold">
+          <%= debates_list.count(&:active?) %> live · <%= debates_list.count(&:concluded?) %> concluded
+        </span>
+      <% end %>
+    </div>
+    <div id="<%= dom_id(@hujah, :debates) %>" class="flex flex-col gap-2">
       <%= render partial: "debates/debate_card", collection: @debates, as: :debate %>
     </div>
     <% if @debates.none? %>

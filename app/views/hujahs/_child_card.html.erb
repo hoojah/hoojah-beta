@@ -1,63 +1,70 @@
-<%# Port of the legacy SPA `Hujah/card_small.js` — a threaded child response. The left border
-    is colored by the responder's stance, and the element is a response-filter item
-    tagged with that stance so the Stimulus filter can show/hide it.
+<%# Hoojah 2026 threaded response card (mockup hoojah-2026-single-hoojah.html lines
+    ~176-231): a rounded `bg-card` card with a 6px stance-coloured LEFT border strip —
+    the signature Hoojah motif — the responder's byline (name · @handle · stance · time),
+    the argument body, and a stance-tally footer.
 
-    DESIGN SYSTEM (Slice 9, Task 4.3) —
-    docs/design-system/components/hujah/CompactHujahCard.prompt.md: "the 8px left border
-    is the responder's stance — this is the signature Hoojah motif. Tallies below the
-    body are faint light-grey, all three stances always shown."
+    FROZEN (response filter): the whole card is the filter's item anchor —
+    `data-response-filter-target="item"` / `data-response-filter-vote="<stance>"` on the
+    <a>. `response_filter_controller` matches those by string against `_response_filter`
+    and `_challenge_dialog`; they stay spelled exactly. Stance names are interpolated into
+    `bg-<stance>` / `text-<stance>` (all in the @source inline safelist); the `-soft`
+    pairs come from a literal lookup (below) so no new interpolated prefix ships.
 
-    That border now comes from `ui/_card`'s `stance:` rather than from interpolating the
-    stance into `border-<...>` here. The interpolation LOOKED harmless — every stance is
-    in the `@source inline` safelist — but it had no guard: `ds_card_classes` raises on a
-    value outside CARD_STANCES, whereas raw interpolation of a typo yields a class with no
-    rule behind it and renders as a card that merely looks unstanced. Neither review nor
-    CI sees that. The `|| "primary"` fallback for an unvoted response is in the set for
-    exactly this reason.
+    Locals: child (the response hoojah), hujah (the root claim), and the optional
+    `live_debate_keys` set (from `_response_filter`) used to show the "In debate" badge.
 
-    `padded:` stays unset (the inner rows own their padding) and `pr-2 flex items-center
-    mb-1` rides in `class:`. `mb-1` is 4px, not the feed's 8px, deliberately: the
-    challenge row below hangs off it with `-mt-1`, and threaded children stack tighter
-    than top-level cards.
-
-    FROZEN: `data-response-filter-target="item"` / `data-response-filter-vote` are the
-    response-filter controller's whole API and are matched by string against the copies
-    documented in `_response_filter` and repeated in `_challenge_dialog`. They stay on
-    the anchor, spelled exactly as they were. %>
+    The "Challenge to debate" affordance and the "In debate" badge render OUTSIDE the card
+    anchor (a <dialog>/<form> can't nest in an <a>) — CompactHujahCard.prompt.md:
+    "renders below the card, never inside it". Each carries the same response-filter
+    item+vote so it hides in sync with its card. The challenge affordance is gated to a
+    signed-in non-author AND `hujah.allow_debates?` (2026). When the response already has a
+    live/pending debate the badge replaces the challenge trigger. %>
 <% stance = {1 => "agree", 2 => "neutral", 3 => "disagree"}[child.vote] || "primary" %>
+<% soft = {
+     "agree" => "bg-agree-soft text-agree",
+     "neutral" => "bg-neutral-soft text-neutral",
+     "disagree" => "bg-disagree-soft text-disagree",
+     "primary" => "bg-primary-soft text-primary"
+   }[stance] %>
+<% in_debate = local_assigns[:live_debate_keys]&.include?([child.user_id, child.vote]) %>
 <%= link_to hujah_path(child.slug),
-      class: "block no-underline",
+      class: "block no-underline mb-2.5",
       data: { "response-filter-target": "item", "response-filter-vote": stance } do %>
-  <%= render layout: "ui/card",
-        locals: {stance: stance, class: "pr-2 flex items-center mb-1"} do %>
-    <div class="flex py-1">
-      <%# 32px — the design system's compact-card avatar. Via the partial because
-          `image_tag user.photo` raises on a photoless responder and would take the
-          whole thread down with it. %>
-      <%= render "ui/avatar", user: child.user, size: :sm, class: "mx-2" %>
-      <div class="flex flex-col min-w-0">
-        <div>
-          <span class="mr-1 text-primary"><%= child.user.full_name %></span>
-          <small class="text-sm text-grey">@<%= child.user.username %></small>
-        </div>
-        <div class="mb-0 text-black break-words"><%= format_body(child.body) %></div>
-        <div class="flex items-center text-sm text-light-grey">
-          <%= stance_icon("agree", class: "w-4 h-4") %><span class="ml-1"><%= child.agree_count.to_i %></span>
-          <span class="mx-2">·</span>
-          <%= stance_icon("neutral", class: "w-4 h-4") %><span class="ml-1"><%= child.neutral_count.to_i %></span>
-          <span class="mx-2">·</span>
-          <%= stance_icon("disagree", class: "w-4 h-4") %><span class="ml-1"><%= child.disagree_count.to_i %></span>
+  <div class="flex overflow-hidden rounded-2xl bg-card shadow">
+    <div class="w-1.5 shrink-0 bg-<%= stance %>"></div>
+    <div class="flex-1 min-w-0 p-3.5">
+      <div class="flex items-center gap-2.5">
+        <%= render "ui/avatar", user: child.user, size: :sm %>
+        <div class="flex flex-col min-w-0 leading-tight">
+          <div class="text-sm font-bold text-ink truncate"><%= child.user.full_name %></div>
+          <div class="text-xs text-ink-2">
+            @<%= child.user.username %>
+            <% if child.vote %>
+              <span class="mx-0.5">·</span>
+              <span class="font-bold text-<%= stance %>"><%= stance.capitalize %></span>
+            <% end %>
+            <span class="mx-0.5">·</span>
+            <time datetime="<%= child.created_at.iso8601 %>" data-local="time-ago"><%= child.created_at.strftime("%b %-d") %></time>
+          </div>
         </div>
       </div>
+      <div class="mt-2 text-sm leading-relaxed text-ink break-words"><%= format_body(child.body) %></div>
+      <div class="mt-3 flex items-center gap-4 text-xs text-ink-2 font-semibold">
+        <span class="inline-flex items-center gap-1"><%= stance_icon("agree", class: "w-3.5 h-3.5") %><%= child.agree_count.to_i %></span>
+        <span class="inline-flex items-center gap-1"><%= stance_icon("neutral", class: "w-3.5 h-3.5") %><%= child.neutral_count.to_i %></span>
+        <span class="inline-flex items-center gap-1"><%= stance_icon("disagree", class: "w-3.5 h-3.5") %><%= child.disagree_count.to_i %></span>
+      </div>
     </div>
-  <% end %>
+  </div>
 <% end %>
 
-<%# "Challenge to debate" escalates this argument into a one-on-one debate. Shown
-    only to a signed-in viewer who is not the argument's author. Rendered OUTSIDE the
-    card anchor (a <dialog>/<form> can't nest in an <a>) — CompactHujahCard.prompt.md
-    says the same thing about `ChallengeLink`: "renders below the card, never inside it".
-    It carries the same response-filter item+vote so it hides in sync with the card. %>
-<% if user_signed_in? && current_user.id != child.user_id %>
+<% if in_debate %>
+  <div data-response-filter-target="item" data-response-filter-vote="<%= stance %>"
+       class="flex justify-end -mt-1 mb-2.5 pr-2">
+    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold <%= soft %>">
+      <%= lucide_icon("swords", class: "w-3.5 h-3.5") %> In debate
+    </span>
+  </div>
+<% elsif user_signed_in? && current_user.id != child.user_id && hujah.allow_debates? %>
   <%= render "hujahs/challenge_dialog", argument: child, hujah: hujah, stance: stance %>
 <% end %>
