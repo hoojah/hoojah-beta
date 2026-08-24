@@ -48,4 +48,35 @@ RSpec.describe "Compose", type: :request do
     # Pundit#NotAuthorizedError → HTML redirect back with an alert.
     expect(response).to have_http_status(:forbidden).or have_http_status(:found)
   end
+
+  # SECURITY: the respond composer renders the parent claim's body via _parent_card, so
+  # #new must authorize(@parent, :show?) — otherwise a signed-in non-follower reads the
+  # body of a followers_only / private_only claim just by guessing its slug.
+  it "does not leak a followers_only parent's body to a non-follower on the respond page" do
+    author = create(:user)
+    parent = create(:hujah, user: author, visibility: :followers_only, body: "FOLLOWERS_ONLY_SECRET body")
+    sign_in user # a non-follower
+    get respond_hujah_path(parent.slug)
+    expect(response).to have_http_status(:redirect)
+    expect(response.body).not_to include("FOLLOWERS_ONLY_SECRET body")
+  end
+
+  it "does not leak a private_only parent's body to a stranger on the respond page" do
+    author = create(:user)
+    parent = create(:hujah, user: author, visibility: :private_only, body: "PRIVATE_ONLY_SECRET body")
+    sign_in user # a stranger
+    get respond_hujah_path(parent.slug)
+    expect(response).to have_http_status(:redirect)
+    expect(response.body).not_to include("PRIVATE_ONLY_SECRET body")
+  end
+
+  it "still lets an accepted follower open the respond page for a followers_only parent" do
+    author = create(:user)
+    parent = create(:hujah, user: author, visibility: :followers_only, body: "FOLLOWERS_ONLY_VISIBLE body")
+    user.active_follows.create!(followed: author, status: :accepted)
+    sign_in user
+    get respond_hujah_path(parent.slug)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("FOLLOWERS_ONLY_VISIBLE body")
+  end
 end

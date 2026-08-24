@@ -56,8 +56,12 @@ class HujahsController < ApplicationController
   end
 
   def new
-    skip_authorization
+    # SECURITY: the respond composer renders the parent claim's body via _parent_card,
+    # so a parent must be authorized for #show? here — otherwise a non-follower reads a
+    # followers_only/private_only claim's body by guessing its slug. Top-level compose
+    # has no parent, so it stays skip_authorization to satisfy verify_authorized.
     @parent = params[:slug] && Hujah.friendly.find(params[:slug])
+    @parent ? authorize(@parent, :show?) : skip_authorization
     @hujah = Hujah.new
     @suggested_tags = Hashtag.order(hujahs_count: :desc).limit(6) # trending, for chips
   end
