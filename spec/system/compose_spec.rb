@@ -10,7 +10,7 @@ RSpec.describe "Compose", type: :system do
     visit new_hujah_path
 
     fill_in "What's your hoojah?", with: "Composed from a system test"
-    click_button "Post hoojah"
+    click_button "Post"
 
     expect(page).to have_content("Composed from a system test")
     expect(page).to have_current_path(%r{/hoojah/})
@@ -18,13 +18,15 @@ RSpec.describe "Compose", type: :system do
 
   it "responds to a hoojah with a stance and notifies the parent owner" do
     parent = create(:hujah, user: create(:user), body: "Parent claim")
+    # 2026 vote-to-respond gate (Task 2.6): the replier must vote on the parent first.
+    parent.cast_vote(by: user, choice: 1)
     sign_in user
     visit respond_hujah_path(parent.slug)
 
     expect(page).to have_content("Post this response hoojah as:")
     fill_in "What's your hoojah?", with: "A neutral reply"
     choose(name: "hujah[vote]", option: "2", allow_label_click: true)
-    click_button "Post hoojah"
+    click_button "Post"
 
     expect(page).to have_content("A neutral reply")
     reply = Hujah.find_by(body: "A neutral reply")

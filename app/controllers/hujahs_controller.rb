@@ -59,6 +59,7 @@ class HujahsController < ApplicationController
     skip_authorization
     @parent = params[:slug] && Hujah.friendly.find(params[:slug])
     @hujah = Hujah.new
+    @suggested_tags = Hashtag.order(hujahs_count: :desc).limit(6) # trending, for chips
   end
 
   def create

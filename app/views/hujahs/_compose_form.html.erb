@@ -1,59 +1,119 @@
-<%# Port of `Hujah/form.js` render(): a fixed subnav (back + submit), the optional
-    parent card + stance picker (reply only), then the avatar + textarea.
-    Posts to `hujahs#create` (POST /hoojah). `body` is stored raw.
+<%# The 2026 "New hoojah" composer (Track 4, Task 4.3). Visual target:
+    docs/superpowers/specs/assets/hoojah-2026-newpost.html (the full-screen overlay).
+    Server-rendered form_with over the composer Stimulus controller — the whole screen
+    still POSTs a valid hoojah with JS off (the Post button is NOT server-disabled; the
+    composer controller disables it on connect until 8 chars, and the model's 8-char
+    validation is the real guard). Theme-token utilities only (bg-card/text-ink/…), no
+    raw hex, so the screen follows the runtime theme/scheme (Track 1).
 
-    DESIGN SYSTEM (Slice 9, Task 4.3) — the composer is spec'd by the readme's CONTENT
-    and VISUAL FOUNDATIONS rather than by a component prompt of its own:
+    TOP-LEVEL compose (parent nil): author row + visibility dropdown + suggested-hashtag
+    chips + the "How people will weigh in" preview + the Allow-debates toggle.
+    REPLY (parent present): keeps the legacy parent card + stance picker; the visibility
+    control, suggested tags, and allow-debates toggle are top-level-only per the contract.
 
-    - The textarea is BARE. No border, no ring, no background — 18px `leading-snug`
-      beside the 44px avatar, so the compose screen reads as a sheet of paper and not as
-      a form field. `border-0 p-0 bg-transparent focus:ring-0` is that, stated four ways
-      because Tailwind's preflight and the browser default each supply a piece of it.
-    - The placeholder is exactly "What's your hoojah?" — the product's own voice, and it
-      is repeated as the `aria-label` because a placeholder is not an accessible name.
-    - The submit is the house pill, so it goes through `ds_button_classes` instead of
-      the hand-typed string that was here. That is the whole point of the helper: the
-      same nine utilities were spelled out in roughly 75 views and drifted every time.
-      It resolves to `px-5 py-2` (the DS `md` size) where this had `px-4 py-2`, and adds
-      `bg-white`, `transition active:scale-95` and the disabled treatment — the press
-      state the design system assigns to every button.
-    - The bar itself is the navbar idiom: fixed, 56px (`h-14`), `bg-white/90
-      backdrop-blur` over a hairline, with the spacer div beneath it. The only blur in
-      the product. The back arrow is 24px, matching the navbar's icons rather than the
-      16px used inline.
-
-    The avatar is `ui/_avatar` at `md` — the design system's 44px composer box, and the
-    same partial the navbar uses. `image_tag current_user.photo` raises when `photo` is
-    blank, which is reachable: `:photo` is permitted in `user_params` and
-    `assign_random_photo` only backfills on create. Here that would 500 the compose
-    screen for the one user who cleared their photo. %>
-<%= form_with model: hujah, url: "/hoojah", method: :post, local: true, class: "block" do |f| %>
+    The avatar is `ui/_avatar` at `md`; `image_tag current_user.photo` raises on a blank
+    photo, so the partial's fallback matters here. %>
+<%= form_with model: hujah, url: "/hoojah", method: :post, local: true,
+      data: {controller: "composer", composer_require_min_value: parent.nil?},
+      class: "min-h-screen flex flex-col bg-surface" do |f| %>
   <% if parent.present? %>
     <%= f.hidden_field :parent_id, value: parent.id %>
   <% end %>
 
-  <nav class="fixed top-0 inset-x-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100">
-    <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
-      <%= link_to((parent.present? ? hujah_path(parent.slug) : root_path),
-            class: "text-primary no-underline", aria: {label: "Back"}) do %>
-        <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
-      <% end %>
-      <%= f.submit "Post hoojah", class: ds_button_classes %>
-    </div>
-  </nav>
-  <div class="h-14"></div>
+  <header class="sticky top-0 z-20 flex items-center justify-between px-3 py-2 bg-card backdrop-blur border-b border-hairline">
+    <%= link_to((parent.present? ? hujah_path(parent.slug) : root_path),
+          class: "w-10 h-10 rounded-2xl flex items-center justify-center text-ink no-underline", aria: {label: "Cancel"}) do %>
+      <%= lucide_icon("x", class: "w-5 h-5") %>
+    <% end %>
+    <span class="text-[15px] font-extrabold text-ink">New hoojah</span>
+    <%= f.submit "Post", data: {composer_target: "post"},
+          class: "px-5 py-2 rounded-full border-2 border-primary text-primary bg-card font-bold text-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-default" %>
+  </header>
 
-  <main class="max-w-xl mx-auto px-4 py-4">
+  <main class="flex-1 w-full max-w-xl mx-auto px-4 py-4 flex flex-col">
     <% if parent.present? %>
       <%= render "hujahs/parent_card", parent: parent %>
       <%= render "hujahs/stance_picker", form: f, parent: parent %>
+    <% else %>
+      <div class="flex items-center gap-2.5">
+        <%= render "ui/avatar", user: current_user, size: :md %>
+        <div class="relative leading-tight">
+          <div class="text-sm font-bold text-ink"><%= current_user.full_name %></div>
+          <%= f.hidden_field :visibility, value: "visible_public", data: {composer_target: "visField"} %>
+          <button type="button" data-action="composer#toggleMenu"
+            class="mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] font-bold text-primary bg-primary-soft px-2.5 py-1 rounded-full">
+            <%= lucide_icon("globe", class: "w-3 h-3") %>
+            <span data-composer-target="visLabel">Public</span>
+            <%= lucide_icon("chevron-down", class: "w-2.5 h-2.5") %>
+          </button>
+          <div data-composer-target="menu" hidden
+            class="absolute left-0 top-full mt-1.5 z-30 w-40 bg-card border border-hairline rounded-xl shadow p-1">
+            <button type="button" data-action="composer#select" data-value="visible_public" data-label="Public"
+              class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-ink hover:bg-card-2">
+              <%= lucide_icon("globe", class: "w-3.5 h-3.5") %>Public
+            </button>
+            <button type="button" data-action="composer#select" data-value="followers_only" data-label="Followers"
+              class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-ink hover:bg-card-2">
+              <%= lucide_icon("users", class: "w-3.5 h-3.5") %>Followers
+            </button>
+            <button type="button" data-action="composer#select" data-value="private_only" data-label="Private"
+              class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-ink hover:bg-card-2">
+              <%= lucide_icon("lock", class: "w-3.5 h-3.5") %>Private
+            </button>
+          </div>
+        </div>
+      </div>
     <% end %>
 
-    <div class="flex mt-4">
-      <%= render "ui/avatar", user: current_user, size: :md, class: "mr-3" %>
-      <%= f.text_area :body, rows: 10, placeholder: "What's your hoojah?",
-            class: "flex-1 border-0 p-0 bg-transparent text-lg leading-snug focus:ring-0 resize-none",
-            "aria-label": "What's your hoojah?" %>
-    </div>
+    <%= f.text_area :body, rows: 4, placeholder: "What's your hoojah?",
+          data: {composer_target: "body", action: "input->composer#input"},
+          "aria-label": "What's your hoojah?",
+          class: "w-full mt-4 border-0 p-0 bg-transparent resize-none focus:ring-0 text-xl font-semibold leading-snug text-ink" %>
+
+    <% if parent.nil? %>
+      <div class="mt-auto pt-4">
+        <% if Array(@suggested_tags).any? %>
+          <div class="text-[11px] font-bold uppercase tracking-wide text-faint mb-2">Suggested hashtags</div>
+          <div class="flex gap-2 flex-wrap">
+            <% @suggested_tags.each do |tag| %>
+              <button type="button" data-action="composer#addTag" data-tag="<%= tag.display %>"
+                class="text-[12.5px] font-semibold px-3 py-1.5 rounded-full bg-card-2 text-ink-2">+ #<%= tag.display %></button>
+            <% end %>
+          </div>
+        <% end %>
+
+        <div class="mt-3.5 rounded-2xl bg-card shadow p-3.5">
+          <div class="text-xs font-bold text-ink-2 mb-2.5">How people will weigh in</div>
+          <div class="flex gap-2.5">
+            <% {agree: "Agree", neutral: "Neutral", disagree: "Disagree"}.each do |stance, label| %>
+              <div class="flex-1 flex flex-col items-center gap-1.5 text-<%= stance %>">
+                <span class="w-9 h-9 rounded-full border-2 border-<%= stance %> flex items-center justify-center">
+                  <%= stance_icon(stance.to_s, class: "w-4 h-4") %>
+                </span>
+                <span class="text-[11px] font-bold"><%= label %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
   </main>
+
+  <% if parent.nil? %>
+    <footer class="flex items-center gap-3.5 px-4 py-3 bg-card backdrop-blur border-t border-hairline">
+      <button type="button" aria-label="Add image"
+        class="w-10 h-10 rounded-xl bg-card-2 flex items-center justify-center text-ink-2">
+        <%= lucide_icon("image", class: "w-5 h-5") %>
+      </button>
+      <label class="flex items-center gap-2 text-[12.5px] font-semibold text-ink-2 cursor-pointer">
+        Allow debates
+        <span class="relative inline-block w-[38px] h-[22px]">
+          <%= f.check_box :allow_debates, class: "sr-only peer" %>
+          <span class="absolute inset-0 rounded-full bg-field peer-checked:bg-primary transition-colors"></span>
+          <span class="absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white peer-checked:translate-x-4 transition-transform"></span>
+        </span>
+      </label>
+      <span class="ml-auto text-[12.5px] font-bold text-faint">Draft</span>
+    </footer>
+  <% end %>
 <% end %>
