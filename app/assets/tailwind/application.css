@@ -137,6 +137,16 @@
     background: linear-gradient(135deg, var(--primary), #7d92ff);
     color: #fff;
   }
+
+  /* Trending page (Phase 2.5), rank-1 hero card
+     (`trending/_trending_rich.html.erb`). Same rationale as `.avatar-tile` above:
+     `#5b74f0` is a fixed gradient companion stop straight from the mockup, not a
+     stance colour, so it can't be expressed as a `bg-gradient-to-*` utility (those
+     resolve against `--color-*` theme stops, and this second stop has none). */
+  .trending-hero {
+    background: linear-gradient(120deg, var(--primary), #5b74f0);
+    color: #fff;
+  }
 }
 
 @theme inline {
