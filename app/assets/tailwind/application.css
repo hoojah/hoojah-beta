@@ -99,6 +99,7 @@
  * so it needs the same treatment.
  */
 @source inline("{bg,text,border}-{agree,neutral,disagree,primary}");
+@source inline("{bg,text,border}-{agree,neutral,disagree,primary}-soft");
 @source inline("border-{read,unread}");
 @source inline("text-white bg-white");
 

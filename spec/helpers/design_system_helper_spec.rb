@@ -647,3 +647,27 @@ RSpec.describe "Debate state colour utilities reach the compiled bundle" do
       "add them to the `@source inline(...)` safelist: #{missing.join(", ")}"
   end
 end
+
+# Hoojah 2026's soft-tint icon tiles (notifications, search results) build their
+# background/foreground pair by interpolating the stance into `bg-#{stance}-soft
+# text-#{stance}` — the same blind spot as every other interpolated pairing above.
+# The bare stance utilities already have an `@source inline` entry; the `-soft`
+# variants are a separate token family (`--color-<stance>-soft` in the `@theme
+# inline` block) and need their own line, or a tile renders with no tint at all.
+#
+# `bg-agree-soft` / `bg-neutral-soft` / `bg-disagree-soft` / `bg-primary-soft` and
+# `text-agree` / `text-disagree` already reach the bundle today without any new
+# safelist entry — `_child_card.html.erb` spells them as a literal Ruby hash rather
+# than interpolating, specifically to dodge this gap (see its own comment: "the
+# `-soft` pairs come from a literal lookup … so no new interpolated prefix ships").
+# `border-agree-soft` has no such stand-in anywhere in the app, so it is the member
+# that actually proves the safelist line below is doing something.
+RSpec.describe "Stance soft-tint utilities reach the compiled bundle" do
+  before(:all) { TailwindBuild.once! }
+
+  it "emits the interpolated soft-tint tile utilities" do
+    %w[bg-agree-soft text-agree bg-neutral-soft bg-disagree-soft text-disagree bg-primary-soft border-agree-soft].each do |u|
+      expect(TailwindBuild.emitted?(u)).to be(true), "expected #{u} in the bundle"
+    end
+  end
+end
