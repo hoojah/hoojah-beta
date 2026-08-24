@@ -14,10 +14,16 @@ RSpec.describe "Tailwind 2026 tokens" do
 
   let(:css) { TailwindBuild.bundle }
 
+  # `@theme inline` emits the runtime var DIRECTLY into each utility rule
+  # (`.bg-agree{background-color:var(--agree)}`) rather than declaring a
+  # `--color-agree: var(--agree)` indirection on :root — that is what makes the
+  # utility re-resolve per element, so the cascade retints wherever data-theme /
+  # data-scheme sits below <html> rather than only on :root. Assert the emitted
+  # rules, not the (now-absent) --color-* declaration.
   it "chains stance utilities onto runtime --agree/--neutral/--disagree vars" do
-    expect(css).to match(/--color-agree:\s*var\(--agree\)/)
-    expect(css).to match(/--color-neutral:\s*var\(--neutral\)/)
-    expect(css).to match(/--color-disagree:\s*var\(--disagree\)/)
+    expect(css).to match(/\.bg-agree\s*\{\s*background-color:\s*var\(--agree\)\s*\}/)
+    expect(css).to match(/\.text-neutral\s*\{\s*color:\s*var\(--neutral\)\s*\}/)
+    expect(css).to match(/\.border-disagree\s*\{\s*border-color:\s*var\(--disagree\)\s*\}/)
   end
 
   # Tailwind's minifier strips the quotes from attribute selectors

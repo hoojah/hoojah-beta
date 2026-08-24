@@ -127,15 +127,21 @@
   }
 }
 
-@theme {
-  /* Hoojah 2026 bridge — stance/surface utilities indirect through runtime
-     custom properties (the `--agree`, `--card`, `--ink`, … defined on
-     :root / [data-theme] / [data-scheme] below), so `bg-agree`, `text-ink`,
-     `border-hairline`, etc. compile once and retint per theme+scheme at
-     runtime. This MUST stay a plain `@theme` (not `@theme inline`): only the
-     non-inline form emits `--color-x: var(--x)` into the theme layer, keeping
-     the indirection live; `inline` would bake the Spectrum/light value at build
-     and freeze dark mode out. */
+@theme inline {
+  /* Hoojah 2026 bridge — theme/scheme-aware colours, emitted `inline` so each
+     utility references the runtime var DIRECTLY
+     (`.bg-agree{background:var(--agree)}`) instead of routing through a
+     `--color-agree` declared only on :root. `inline` is load-bearing here: the
+     plain `@theme` form declares `--color-agree: var(--agree)` on :root, which
+     computes ONCE against the :root value and is then inherited already-resolved
+     — so a subtree that overrides `--agree`, or the data-theme/data-scheme
+     attribute applied anywhere below <html>, would keep painting the light value.
+     `inline` substitutes `var(--agree)` into the utility itself, so it re-resolves
+     at every element and the whole cascade (bg-agree / text-ink / border-hairline
+     …) retints per theme+scheme wherever the attribute sits. The `--agree`,
+     `--card`, `--ink`, … values themselves live on :root / [data-theme] /
+     [data-scheme] below; the fixed neutrals stay in the ordinary `@theme` that
+     follows. */
   --color-primary: var(--primary);
   --color-primary-soft: var(--primary-soft);
   --color-agree: var(--agree);
@@ -153,6 +159,13 @@
   --color-hairline: var(--hairline);
   --color-field: var(--field);
 
+  /* Notification unread border follows the active scheme's neutral (see :root
+     --unread). Inline for the same per-element reason as the stance colours;
+     --color-read (below) is fixed. */
+  --color-unread: var(--unread);
+}
+
+@theme {
   /* Fixed neutrals the views still spell directly — theme-independent, kept
      as literals so they do NOT swing with the runtime scheme. */
   --color-black: #343a40;
@@ -172,10 +185,9 @@
   --color-red-50: #fef2f2;
   --color-red-700: #b91c1c;
 
-  /* `border-read` / `border-unread` are used by
-     app/views/notifications/_notification_card.html.erb and were defined nowhere,
-     so the 8px left border rendered as nothing. */
-  --color-unread: var(--unread);  /* chains to the active scheme's neutral (see :root --unread) */
+  /* `border-read` / `border-unread` back
+     app/views/notifications/_notification_card.html.erb; --color-unread chains to
+     the scheme neutral in the @theme inline block above, --color-read is fixed. */
   --color-read: #bac2ca;          /* light-grey */
 
   /* Size steps the views actually use. `--spacing` is deliberately NOT redefined:
