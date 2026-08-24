@@ -1,0 +1,62 @@
+<%# Minimal search results page (Phase 2.2 — backend + safety). Rich result cards
+    land in the NEXT task; this placeholder exists only so the route is
+    non-erroring and the leak specs have something to assert against (each
+    result's slug/username/display must appear in the body so a request spec can
+    prove presence/absence without depending on final markup). %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <%= render "hujahs/feed_tabs" %>
+
+  <h1 class="text-lg font-semibold mt-4">Search</h1>
+
+  <%= form_with url: search_path, method: :get, class: "mt-2" do %>
+    <input type="text" name="q" value="<%= @query %>" placeholder="Search Hoojah"
+           class="w-full border border-hairline rounded-none px-3 py-2 text-sm" />
+  <% end %>
+
+  <% if @query.present? %>
+    <p class="text-grey text-sm mt-4">
+      Results for &ldquo;<%= @query %>&rdquo;
+      &mdash; <%= @hujahs&.size.to_i %> hoojahs,
+      <%= @users&.size.to_i %> people,
+      <%= @hashtags&.size.to_i %> tags
+    </p>
+
+    <section class="mt-4">
+      <h2 class="text-sm font-semibold text-grey">Hoojahs</h2>
+      <ul>
+        <% (@hujahs || []).each do |h| %>
+          <li><%= link_to h.body.to_s.truncate(80), hujah_path(h.slug) %></li>
+        <% end %>
+      </ul>
+    </section>
+
+    <section class="mt-4">
+      <h2 class="text-sm font-semibold text-grey">People</h2>
+      <ul>
+        <% (@users || []).each do |u| %>
+          <li><%= link_to "@#{u.username}", profile_path(u.username) %></li>
+        <% end %>
+      </ul>
+    </section>
+
+    <section class="mt-4">
+      <h2 class="text-sm font-semibold text-grey">Tags</h2>
+      <ul>
+        <% (@hashtags || []).each do |t| %>
+          <li><%= link_to "##{t.display}", tag_path(t.name) %></li>
+        <% end %>
+      </ul>
+    </section>
+  <% else %>
+    <section class="mt-4">
+      <h2 class="text-sm font-semibold text-grey">Browse tags</h2>
+      <ul>
+        <% @browse_hashtags.each do |t| %>
+          <li><%= link_to "##{t.display}", tag_path(t.name) %></li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+</main>

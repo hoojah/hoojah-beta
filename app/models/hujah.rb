@@ -106,6 +106,15 @@ class Hujah < ApplicationRecord
     end
   }
 
+  # Full-text search (Phase 2.2). Reuses .visible_to (top-level only, which is why
+  # a reply's body can never surface here — see that scope's comment) so a search
+  # result can never leak content the feed/profile wouldn't already show. `?` bind
+  # PLUS `sanitize_sql_like` on the term: the bind alone stops SQL injection but
+  # NOT a `%`/`_` in the user's own query being (mis)read as a wildcard.
+  scope :search, ->(q, viewer:) {
+    visible_to(viewer).where("hujahs.body ILIKE ?", "%#{sanitize_sql_like(q)}%").limit(8)
+  }
+
   # Home timeline: top-level hoojahs from the people you follow, plus your own,
   # minus any hidden (blocked/blocked-by) author. The follow-removal on block already
   # drops a blocked author from `following_ids`; the `hidden_user_ids` exclusion is

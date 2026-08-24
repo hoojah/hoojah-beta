@@ -107,6 +107,11 @@ Rails.application.routes.draw do
   # (canonical lower-cased). A hand-written path (no `resources`) addressed by tag
   # name — not id — like the rest of the app; mirrors the feed's per-post visibility.
   get "/t/:name", to: "tags#show", as: :tag
+  # Search (2026 Phase 2.2). Public, read-only — a MAIN route (NOT Api::V1) so CSRF
+  # stays on for the app's writes elsewhere; this action never writes. Results are
+  # filtered through Hujah.visible_to / User.visible_to (SearchController), so it
+  # can never surface content a normal feed/profile visit wouldn't already show.
+  get "/search", to: "search#index", as: :search
   get "/notifications", to: "notifications#index", as: :notifications
   patch "/notifications/:id", to: "notifications#update", as: :notification
   delete "/notifications/:id", to: "notifications#destroy"

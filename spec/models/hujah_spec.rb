@@ -322,4 +322,40 @@ RSpec.describe Hujah, type: :model do
       expect(selects).to be_empty
     end
   end
+
+  # Phase 2.2 search scope — reuses .visible_to (proven above) then filters by body.
+  # These specs cover the ILIKE/sanitize behaviour; the visibility re-use itself is
+  # leak-tested end-to-end in spec/requests/search_spec.rb.
+  describe ".search" do
+    let(:viewer) { create(:user) }
+
+    it "matches a case-insensitive substring of the body" do
+      h = create(:hujah, body: "Cheaper FARES on the MRT line please")
+      expect(Hujah.search("fares", viewer: viewer)).to include(h)
+    end
+
+    it "excludes a non-matching body" do
+      h = create(:hujah, body: "totally unrelated content here")
+      expect(Hujah.search("zzz-no-match", viewer: viewer)).not_to include(h)
+    end
+
+    it "excludes a reply (parent_id present) even when the body matches" do
+      parent = create(:hujah, body: "a parent claim body")
+      reply = create(:hujah, parent: parent, body: "UNIQUEREPLYTERM in a reply")
+      expect(Hujah.search("UNIQUEREPLYTERM", viewer: viewer)).not_to include(reply)
+    end
+
+    it "treats % and _ as literal characters, not SQL wildcards (sanitize_sql_like)" do
+      literal = create(:hujah, body: "this claim literally contains a % percent sign")
+      no_percent = create(:hujah, body: "totally unrelated content with no percent sign at all")
+      results = Hujah.search("%", viewer: viewer)
+      expect(results).to include(literal)
+      expect(results).not_to include(no_percent)
+    end
+
+    it "caps results at 8" do
+      9.times { |n| create(:hujah, body: "CAPTERM number #{n} in the body") }
+      expect(Hujah.search("CAPTERM", viewer: viewer).size).to eq(8)
+    end
+  end
 end

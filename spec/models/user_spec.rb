@@ -106,4 +106,38 @@ RSpec.describe User, type: :model do
       end
     end
   end
+
+  # Phase 2.2 search scope — reuses .visible_to (proven above) then filters by
+  # username/full_name. Leak coverage lives end-to-end in spec/requests/search_spec.rb.
+  describe ".search" do
+    let(:viewer) { create(:user) }
+
+    it "matches a case-insensitive substring of the username" do
+      u = create(:user, username: "klangvalleyfan")
+      expect(User.search("KLANGVALLEY", viewer: viewer)).to include(u)
+    end
+
+    it "matches a case-insensitive substring of the full_name" do
+      u = create(:user, full_name: "Siti Rahman")
+      expect(User.search("rahman", viewer: viewer)).to include(u)
+    end
+
+    it "excludes a non-matching account" do
+      u = create(:user, username: "nomatchhere", full_name: "Nobody Related")
+      expect(User.search("zzz-no-match", viewer: viewer)).not_to include(u)
+    end
+
+    it "treats % and _ as literal characters, not SQL wildcards (sanitize_sql_like)" do
+      literal = create(:user, username: "has_underscore")
+      no_underscore = create(:user, username: "hasXunderscore")
+      results = User.search("has_underscore", viewer: viewer)
+      expect(results).to include(literal)
+      expect(results).not_to include(no_underscore)
+    end
+
+    it "caps results at 8" do
+      9.times { |n| create(:user, username: "capuser#{n}") }
+      expect(User.search("capuser", viewer: viewer).size).to eq(8)
+    end
+  end
 end
