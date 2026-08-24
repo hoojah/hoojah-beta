@@ -13,6 +13,30 @@ RSpec.describe "Hujahs index", type: :request do
     expect(response.body).to include('turbo-stream action="append"')
   end
 
+  # ── Per-post visibility (2026): global feed is visible_public only ──────────────
+  it "never shows a followers_only or private_only claim in the global feed" do
+    author = create(:user)
+    create(:hujah, user: author, visibility: :followers_only, body: "FOLLOWERS ONLY secret claim")
+    create(:hujah, user: author, visibility: :private_only, body: "PRIVATE ONLY secret claim")
+    create(:hujah, user: author, visibility: :visible_public, body: "PUBLIC visible claim here")
+    get "/"
+    expect(response.body).to include("PUBLIC visible claim here")
+    expect(response.body).not_to include("FOLLOWERS ONLY secret claim")
+    expect(response.body).not_to include("PRIVATE ONLY secret claim")
+  end
+
+  it "shows followers_only claims to accepted followers in the Following feed, and the viewer's own private_only claims" do
+    author = create(:user)
+    viewer = create(:user)
+    viewer.active_follows.create!(followed: author, status: :accepted)
+    create(:hujah, user: author, visibility: :followers_only, body: "FOLLOWERS ONLY for my fans")
+    create(:hujah, user: viewer, visibility: :private_only, body: "MY OWN private note here")
+    sign_in viewer
+    get "/", params: {filter: "following"}
+    expect(response.body).to include("FOLLOWERS ONLY for my fans")
+    expect(response.body).to include("MY OWN private note here")
+  end
+
   it "shows the Login control to logged-out visitors" do
     get "/"
     expect(response.body).to include("Login")

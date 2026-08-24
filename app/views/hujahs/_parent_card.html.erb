@@ -28,7 +28,7 @@
   stance = parent.current_user_vote(logged_in: true, current_user_id: current_user.id)
   verb = {"agree" => "agreed", "neutral" => "were neutral", "disagree" => "disagreed"}[stance]
 %>
-<div class="bg-white pb-2">
+<div class="bg-card pb-2">
   <small class="text-sm text-grey">
     You
     <% if verb %>
@@ -40,5 +40,5 @@
   </small>
 </div>
 <%= render layout: "ui/card", locals: {stance: stance || "primary", class: "pl-2"} do %>
-  <h6 class="text-black pt-1 leading-snug"><%= format_body(parent.body) %></h6>
+  <h6 class="text-ink pt-1 leading-snug"><%= format_body(parent.body) %></h6>
 <% end %>

@@ -21,6 +21,20 @@ RSpec.describe "Api::V1::Hujahs", type: :request do
       expect(body["data"].size).to eq(Hujah.count)
       expect(body["data"].size).to be >= 2
     end
+
+    # Per-post visibility (2026): the public JSON index is a hard boundary.
+    it "never includes a followers_only or private_only claim" do
+      public_author = create(:user)
+      create(:hujah, user: public_author, visibility: :visible_public, body: "PUBLIC api claim body")
+      create(:hujah, user: public_author, visibility: :followers_only, body: "FOLLOWERSONLY api claim")
+      create(:hujah, user: public_author, visibility: :private_only, body: "PRIVATEONLY api claim")
+
+      get "/api/v1/hoojah/index"
+
+      expect(response.body).to include("PUBLIC api claim body")
+      expect(response.body).not_to include("FOLLOWERSONLY api claim")
+      expect(response.body).not_to include("PRIVATEONLY api claim")
+    end
   end
 
   describe "GET /api/v1/hoojah/:slug" do

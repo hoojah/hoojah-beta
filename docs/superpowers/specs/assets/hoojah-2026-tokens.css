@@ -1,0 +1,47 @@
+/* Hoojah 2026 runtime tokens — verbatim from `Hoojah 2026.dc.html`.
+ * Base scheme = Spectrum (defined on the bare root, no data-scheme needed).
+ * Reference only — implemented into app/assets/tailwind/application.css in Track 1.
+ * In the app these live on :root / :root[data-theme="dark"] / :root[data-scheme="…"]
+ * (the mockup scoped them to [data-hoojah="app"]; drop that wrapper — <html> carries
+ * the attributes app-wide). */
+
+/* ── Spectrum · light (default / :root) ── */
+:root {
+  --primary:#415de6; --primary-soft:#eaeeff;
+  --agree:#0ea5a4; --neutral:#e8930c; --disagree:#8b5cf6;
+  --agree-soft:#e0f5f4; --neutral-soft:#fdf1de; --disagree-soft:#efeafe;
+  --surface:#f4f5f9; --card:#ffffff; --card-2:#f6f7fb;
+  --ink:#191c22; --ink-2:#5b616e; --faint:#a2a9b6;
+  --hairline:#edeef3; --field:#e6e8ef; --read:#d4d8e2; --unread:var(--neutral);
+  --nav:rgba(255,255,255,0.82); --shadow:0 8px 30px -12px rgba(20,24,54,.28);
+  --stance-shadow:0 10px 26px -12px;
+}
+
+/* ── dark (any scheme) ── */
+:root[data-theme="dark"] {
+  --primary:#7d92ff; --primary-soft:#1c2140;
+  --agree:#2dd4cf; --neutral:#fbbf24; --disagree:#a78bfa;
+  --agree-soft:#0c2a29; --neutral-soft:#2c2410; --disagree-soft:#221b3a;
+  --surface:#0d0e13; --card:#16181f; --card-2:#1c1f28;
+  --ink:#f3f4f7; --ink-2:#a7adba; --faint:#6a7180;
+  --hairline:#242732; --field:#2a2e39; --read:#39404e; --unread:var(--neutral);
+  --nav:rgba(18,20,26,0.82); --shadow:0 12px 34px -14px rgba(0,0,0,.7);
+  --stance-shadow:0 12px 30px -12px;
+}
+
+/* ── Scheme: Signal (emerald / amber / rose) ── */
+:root[data-scheme="signal"]{--agree:#12b981;--neutral:#f59e0b;--disagree:#f43f5e;--agree-soft:#e6f7f0;--neutral-soft:#fdf2df;--disagree-soft:#fdeaed;}
+:root[data-scheme="signal"][data-theme="dark"]{--agree:#2ee6a6;--neutral:#fbbf24;--disagree:#ff6b83;--agree-soft:#0e2b22;--neutral-soft:#2e2611;--disagree-soft:#33141b;}
+
+/* ── Scheme: Ballot (sage / ochre / clay) ── */
+:root[data-scheme="ballot"]{--agree:#4c956c;--neutral:#c98a3c;--disagree:#b5546a;--agree-soft:#e9f1ec;--neutral-soft:#f6efe4;--disagree-soft:#f3e7ea;}
+:root[data-scheme="ballot"][data-theme="dark"]{--agree:#7cc79a;--neutral:#e0a95e;--disagree:#d97e93;--agree-soft:#16241c;--neutral-soft:#2a2214;--disagree-soft:#2c1a1f;}
+
+/* ── Keyframes to port ── */
+@keyframes hpop{0%{transform:scale(.6);opacity:0}55%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+@keyframes hfloat{0%{transform:translateY(6px);opacity:0}18%{opacity:1}100%{transform:translateY(-30px);opacity:0}}
+@keyframes hboom{0%{transform:scale(.3);opacity:0}40%{transform:scale(1.15);opacity:1}100%{transform:scale(2.1);opacity:0}}
+@keyframes hray{0%{transform:scale(.4);opacity:.9}100%{transform:scale(1.7);opacity:0}}
+@keyframes hbar{from{width:0}}
+@keyframes hbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes hrise{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}

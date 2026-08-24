@@ -27,4 +27,20 @@ RSpec.describe HujahsHelper, type: :helper do
   it "escapes hostile handles (no live tag)" do
     expect(helper.format_body('@evil"><script>')).not_to include("<script>")
   end
+
+  it "linkifies #hashtags to the tag feed and preserves @mentions" do
+    html = helper.format_body("hey @nurul about #KlangValley transit")
+    expect(html).to include('href="/u/nurul"')
+    expect(html).to include('href="/t/klangvalley"')
+    expect(html).to include(">#KlangValley</a>")
+  end
+
+  it "does not linkify a # inside a URL" do
+    html = helper.format_body("see https://x.com/page#frag now")
+    expect(html).not_to include('href="/t/frag"')
+  end
+
+  it "escapes a hostile hashtag (no live tag)" do
+    expect(helper.format_body('#evil"><script>')).not_to include("<script>")
+  end
 end

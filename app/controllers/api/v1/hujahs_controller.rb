@@ -5,7 +5,10 @@ class Api::V1::HujahsController < Api::V1::BaseController
     skip_authorization
     # Slice 7b (Gate 11, A-1): private authors are a hard boundary — never expose them
     # through the JSON index (full follower-aware parity is deferred to Project 3).
-    hujahs = Hujah.joins(:user).where(users: {private: false}).order(updated_at: :desc)
+    # Per-post visibility (2026): the public API index is a hard boundary —
+    # visible_public only (follower-aware parity is deferred to Project 3).
+    hujahs = Hujah.joins(:user).where(users: {private: false})
+      .where(visibility: :visible_public).order(updated_at: :desc)
     serialized_hujahs = HujahSerializer.new(hujahs, params: {logged_in: user_signed_in?, current_user_id: current_user&.id}).serializable_hash
     render json: serialized_hujahs
   end

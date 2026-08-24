@@ -9,7 +9,21 @@ class UsersController < ApplicationController
     # name, @handle, "This account is private", follow button, follower/following
     # counts) with no hoojah list / headline / location / link / badges otherwise.
     @gated = !@user.visible_to?(current_user)
-    @hujahs = @user.hujahs.includes(:user).order(updated_at: :desc) unless @gated
+    # Per-post visibility (2026): even a viewer who may see this profile only sees the
+    # claims their relationship permits. Self sees all; an accepted follower sees
+    # public + followers_only; everyone else public only. Preserve the existing
+    # includes/order chaining.
+    unless @gated
+      scoped =
+        if current_user == @user
+          @user.hujahs
+        elsif user_signed_in? && @user.accepted_follower?(current_user)
+          @user.hujahs.where(visibility: [:visible_public, :followers_only])
+        else
+          @user.hujahs.where(visibility: :visible_public)
+        end
+      @hujahs = scoped.includes(:user).order(updated_at: :desc)
+    end
   end
 
   # Follower / following lists. Public by default; Slice 7b (Gate 7) gates the lists of

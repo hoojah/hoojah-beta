@@ -12,6 +12,32 @@ RSpec.describe "Profile", type: :request do
     expect(response.body).to include("@rudz").and include("hello world")
   end
 
+  # ── Per-post visibility (2026): profile hoojah list is scoped per viewer ─────────
+  it "hides a public user's followers_only and private_only claims from a stranger" do
+    create(:hujah, user: user, visibility: :visible_public, body: "PUBLIC profile claim body")
+    create(:hujah, user: user, visibility: :followers_only, body: "FOLLOWERS profile secret")
+    create(:hujah, user: user, visibility: :private_only, body: "PRIVATE profile secret")
+    get "/u/rudz"
+    expect(response.body).to include("PUBLIC profile claim body")
+    expect(response.body).not_to include("FOLLOWERS profile secret")
+    expect(response.body).not_to include("PRIVATE profile secret")
+  end
+
+  it "shows followers_only claims to an accepted follower, private_only only to self" do
+    create(:hujah, user: user, visibility: :followers_only, body: "FOLLOWERS profile secret")
+    create(:hujah, user: user, visibility: :private_only, body: "PRIVATE profile secret")
+    fan = create(:user, username: "profilefan")
+    fan.active_follows.create!(followed: user, status: :accepted)
+    sign_in fan
+    get "/u/rudz"
+    expect(response.body).to include("FOLLOWERS profile secret")
+    expect(response.body).not_to include("PRIVATE profile secret")
+
+    sign_in user
+    get "/u/rudz"
+    expect(response.body).to include("PRIVATE profile secret")
+  end
+
   it "lets the owner update and rejects a bad link (M7) / bad photo host" do
     sign_in user
     patch "/u/rudz", params: {user: {headline: "hi", link: "javascript:alert(1)"}},

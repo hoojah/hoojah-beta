@@ -1,0 +1,45 @@
+require "rails_helper"
+
+RSpec.describe "Tag feed", type: :request do
+  it "lists public claims carrying the tag" do
+    tagged = create(:hujah, body: "Cheaper fares on the #MRT line for everyone please")
+    create(:hujah, body: "Unrelated claim with enough length here")
+    get "/t/mrt"
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(tagged.slug)
+  end
+
+  it "404s on an unknown tag" do
+    get "/t/nosuchtag"
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it "is case-insensitive on the tag name" do
+    tagged = create(:hujah, body: "Support the #KlangValley transit plan today")
+    get "/t/klangvalley"
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(tagged.slug)
+  end
+
+  describe "per-post visibility" do
+    it "excludes a followers_only claim carrying the tag" do
+      hidden = create(:hujah, visibility: :followers_only,
+        body: "Private plan for the #MRT extension route here")
+      shown = create(:hujah, visibility: :visible_public,
+        body: "Open plan for the #MRT extension route here")
+      get "/t/mrt"
+      expect(response.body).to include(shown.slug)
+      expect(response.body).not_to include(hidden.slug)
+    end
+
+    it "excludes a private author's claim carrying the tag" do
+      private_author = create(:user, private: true)
+      hidden = create(:hujah, user: private_author,
+        body: "Locked account posting about #MRT plans here")
+      shown = create(:hujah, body: "Public account posting about #MRT plans here")
+      get "/t/mrt"
+      expect(response.body).to include(shown.slug)
+      expect(response.body).not_to include(hidden.slug)
+    end
+  end
+end

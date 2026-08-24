@@ -1,69 +1,81 @@
-<%# Port of the legacy SPA response-filter tab group. The filtering itself is driven by
-    `response_filter_controller.js` (Task 4.4) — purely client-side show/hide, no
-    fetch/re-render. Markup contract:
+<%# Hoojah 2026 responses section (mockup lines ~162-233): a "Responses · N" heading, a
+    horizontally-scrollable row of stance filter pills, then the stance-bordered response
+    cards. The filtering is pure client-side show/hide (`response_filter_controller.js`) —
+    no fetch, no re-render.
+
+    FROZEN — the controller's whole API, matched by string in `_child_card` and
+    `_challenge_dialog`:
       root:  data-controller="response-filter"
-      tabs:  role="group", data-action="response-filter#filter",
+      tabs:  role="group", data-response-filter-target="tab",
+             data-action="response-filter#filter",
              data-response-filter-filter-param="all|agree|neutral|disagree"
       items: data-response-filter-target="item" data-response-filter-vote="<stance>"
+    Change a name here and half the thread stops hiding, silently. The tabs' active fill
+    is driven by the built-in `aria-pressed:` variant the controller already toggles, so
+    it needs no extra JS. Stance active-fills are spelled literally per stance (a loop
+    would interpolate `aria-pressed:bg-<stance>` which the scanner can't see).
 
-    Those data attributes are the controller's whole API and are matched by string in
-    `_child_card` and `_challenge_dialog` (the items) — change a name here and half the
-    thread stops hiding, silently. `data:` on `ui/_card` below dasherizes exactly as the
-    hand-written attributes did.
-
-    DESIGN SYSTEM (Slice 9, Task 4.2) —
-    docs/design-system/components/voting/ResponseFilterTabs.prompt.md: "four equal cells
-    inside one light-grey-bordered, `shadow`ed, 4px-rounded group: 'All' + message-circle,
-    then the three stance glyphs in their stance colors. It filters what is already on the
-    page — it never refetches." `flex-1` is what makes the cells equal; `overflow-hidden`
-    is what lets the group's `rounded` clip the square-cornered cells inside it.
-
-    The cells are deliberately NOT `ds_button_classes`: the DS Button is a free-standing
-    pill with a 2px border, and these are square segments of one bordered group. Making
-    them pills would dissolve the segmented control into four floating buttons. And the
-    `rounded` on the group is not a contradiction of "never round a card" (ui/_card):
-    the card is the white surface underneath, this is a control sitting on it.
-
-    The surface underneath IS the card idiom, so it goes through `ui/_card` (white,
-    square, `shadow`) rather than repeating `shadow bg-white`. `pb-3` rides in `class:`
-    and `padded:` is left unset — passing both would be the same-family padding trap
-    documented in ui/_card. %>
-<%= render layout: "ui/card",
-      locals: {class: "pb-3",
-               data: {controller: "response-filter", "response-filter-active-value": "all"}} do %>
-  <div class="p-4">
-    <div class="flex shadow rounded overflow-hidden" role="group" aria-label="Filter responses">
-      <button type="button"
-              data-action="response-filter#filter"
-              data-response-filter-filter-param="all"
-              data-response-filter-target="tab"
-              aria-pressed="true"
-              class="flex-1 py-2 flex items-center justify-center gap-1 border border-light-grey text-primary">
-        All <%= lucide_icon("message-circle", class: "w-4 h-4") %>
-      </button>
-      <% %w[agree neutral disagree].each do |stance| %>
-        <button type="button"
-                data-action="response-filter#filter"
-                data-response-filter-filter-param="<%= stance %>"
-                data-response-filter-target="tab"
-                aria-pressed="false"
-                aria-label="<%= stance.capitalize %>"
-                class="flex-1 py-2 flex items-center justify-center border border-light-grey text-<%= stance %>">
-          <%= stance_icon(stance, class: "w-4 h-4") %>
-        </button>
-      <% end %>
-    </div>
+    `live_debate_keys` — the [opponent_id, opponent_stance] pairs of this claim's
+    live/pending debates — is computed ONCE here and threaded to each `_child_card` so the
+    "In debate" badge costs no per-card query. %>
+<% live_debate_keys = hujah.debates.where(status: [:pending, :active]).pluck(:opponent_id, :opponent_stance).to_set %>
+<div data-controller="response-filter" data-response-filter-active-value="all">
+  <div class="flex items-center justify-between mt-6 mb-2 px-1">
+    <span class="text-base font-extrabold text-ink">
+      Responses <span class="text-faint font-semibold">· <%= children.size %></span>
+    </span>
   </div>
 
-  <% if children.any? %>
-    <% children.each do |child| %>
-      <%= render "hujahs/child_card", child: child, hujah: hujah %>
+  <div role="group" aria-label="Filter responses" class="flex gap-2 overflow-x-auto pb-1 px-1">
+    <button type="button"
+            data-action="response-filter#filter"
+            data-response-filter-filter-param="all"
+            data-response-filter-target="tab"
+            aria-pressed="true"
+            class="shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-bold bg-card-2 text-ink-2 aria-pressed:bg-primary aria-pressed:text-white">
+      All <%= lucide_icon("message-circle", class: "w-3.5 h-3.5") %>
+    </button>
+    <button type="button"
+            data-action="response-filter#filter"
+            data-response-filter-filter-param="agree"
+            data-response-filter-target="tab"
+            aria-pressed="false"
+            aria-label="Agree"
+            class="shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-bold bg-card border-2 border-agree text-agree aria-pressed:bg-agree aria-pressed:text-white">
+      <%= stance_icon("agree", class: "w-3.5 h-3.5") %> Agree
+    </button>
+    <button type="button"
+            data-action="response-filter#filter"
+            data-response-filter-filter-param="neutral"
+            data-response-filter-target="tab"
+            aria-pressed="false"
+            aria-label="Neutral"
+            class="shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-bold bg-card border-2 border-neutral text-neutral aria-pressed:bg-neutral aria-pressed:text-white">
+      <%= stance_icon("neutral", class: "w-3.5 h-3.5") %> Neutral
+    </button>
+    <button type="button"
+            data-action="response-filter#filter"
+            data-response-filter-filter-param="disagree"
+            data-response-filter-target="tab"
+            aria-pressed="false"
+            aria-label="Disagree"
+            class="shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-bold bg-card border-2 border-disagree text-disagree aria-pressed:bg-disagree aria-pressed:text-white">
+      <%= stance_icon("disagree", class: "w-3.5 h-3.5") %> Disagree
+    </button>
+  </div>
+
+  <%# id is the append target for a freshly-posted argument (create.turbo_stream.erb).
+      Always rendered — even when empty — so the first reply has somewhere to land; the
+      empty-state placeholder carries its own id and is removed by that same stream. %>
+  <div id="<%= dom_id(hujah, :responses) %>" class="mt-3 flex flex-col">
+    <% if children.any? %>
+      <% children.each do |child| %>
+        <%= render "hujahs/child_card", child: child, hujah: hujah, live_debate_keys: live_debate_keys %>
+      <% end %>
+    <% else %>
+      <div id="<%= dom_id(hujah, :responses_empty) %>">
+        <%= render "ui/empty_state", message: "No response yet", class: "px-4" %>
+      </div>
     <% end %>
-  <% else %>
-    <%# The house empty state — faint grey, one Lucide glyph, one plain sentence.
-        `class:` overrides the partial's baked-in `p-3`: Tailwind emits the shorthand
-        before the longhands, so `px-4 pt-0 pb-0` wins and reproduces the padding this
-        row had when it was spelled out here. %>
-    <%= render "ui/empty_state", message: "No response yet", class: "px-4 pt-0 pb-0" %>
-  <% end %>
-<% end %>
+  </div>
+</div>

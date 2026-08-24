@@ -1,0 +1,7 @@
+<%# The tag feed's pagination control. Mirrors hujahs/_load_more but points back at
+    this tag's path (the shared feed partial hardcodes root_path). `data-turbo-stream`
+    requests show.turbo_stream.erb, which appends the next page and replaces this row. %>
+<%= link_to "Load more",
+      tag_path(@tag.name, page: @pagy.next),
+      data: { turbo_stream: true },
+      class: "block text-center text-primary font-medium py-3" %>

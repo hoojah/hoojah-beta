@@ -6,13 +6,20 @@ class HujahsController < ApplicationController
     # Anonymous `?filter=following` must fall back to the global feed (no 500 on
     # current_user being nil), so the branch also requires user_signed_in?.
     base = if params[:filter] == "following" && user_signed_in?
-      Hujah.timeline_for(current_user).includes(:user).order(updated_at: :desc)
+      # Per-post visibility (2026): followers may see visible_public + followers_only
+      # from people they follow, PLUS the viewer's own private_only claims (don't
+      # over-hide — timeline_for already includes current_user.id).
+      Hujah.timeline_for(current_user)
+        .where("hujahs.visibility IN (0, 1) OR hujahs.user_id = ?", current_user.id)
+        .includes(:user).order(updated_at: :desc)
     else
       global = Hujah.where(parent_id: nil).includes(:user).order(updated_at: :desc)
       # Slice 7b (Gate 1): the global feed NEVER shows a private author — UNCONDITIONAL
       # (anonymous too). A private user's content lives on their gated profile and in
       # their accepted followers' Following feed, never the public feed.
       global = global.joins(:user).where(users: {private: false})
+      # Per-post visibility (2026): the global/anonymous feed shows only visible_public.
+      global = global.where(visibility: :visible_public)
       # Slice 7: signed-in viewers never see a hidden (blocked/blocked-by) author's
       # top-level hoojahs; anonymous is deliberately unfiltered.
       global = global.where.not(user_id: current_user.hidden_user_ids) if user_signed_in?
@@ -49,9 +56,14 @@ class HujahsController < ApplicationController
   end
 
   def new
-    skip_authorization
+    # SECURITY: the respond composer renders the parent claim's body via _parent_card,
+    # so a parent must be authorized for #show? here — otherwise a non-follower reads a
+    # followers_only/private_only claim's body by guessing its slug. Top-level compose
+    # has no parent, so it stays skip_authorization to satisfy verify_authorized.
     @parent = params[:slug] && Hujah.friendly.find(params[:slug])
+    @parent ? authorize(@parent, :show?) : skip_authorization
     @hujah = Hujah.new
+    @suggested_tags = Hashtag.order(hujahs_count: :desc).limit(6) # trending, for chips
   end
 
   def create
@@ -64,7 +76,13 @@ class HujahsController < ApplicationController
     @hujah = current_user.hujahs.new(compose_params)
     authorize @hujah
     if @hujah.save
-      redirect_to hujah_path(@hujah.slug), status: :see_other
+      respond_to do |format|
+        # The inline feed composer is a Turbo form and gets a stream that prepends the
+        # new card to #hujah-feed (create.turbo_stream.erb). The full-page composer form
+        # submits with turbo:false, so it lands here as HTML and redirects to the hoojah.
+        format.turbo_stream
+        format.html { redirect_to hujah_path(@hujah.slug), status: :see_other }
+      end
     else
       @parent ||= nil
       render :new, status: :unprocessable_content
@@ -81,6 +99,6 @@ class HujahsController < ApplicationController
   # A missing/spoofed parent_id makes `Hujah.find` raise RecordNotFound → 404,
   # which the request spec accepts.
   def compose_params
-    params.require(:hujah).permit(:body, :parent_id, :vote)
+    params.require(:hujah).permit(:body, :parent_id, :vote, :visibility, :allow_debates)
   end
 end

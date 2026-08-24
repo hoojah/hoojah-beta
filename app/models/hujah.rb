@@ -4,17 +4,73 @@ class Hujah < ApplicationRecord
   has_many :flags, dependent: :destroy
   has_many :children, class_name: "Hujah", foreign_key: "parent_id", dependent: :destroy
   has_many :debates, dependent: :destroy
+  has_many :hashtag_hujahs, dependent: :destroy
+  has_many :hashtags, through: :hashtag_hujahs
   belongs_to :parent, class_name: "Hujah", optional: true
 
-  validates :body, presence: true
+  # Per-post visibility for TOP-LEVEL claims (replies inherit their parent). Enum keys
+  # avoid the reserved words public/private. Default = visible_public. The `prefix`
+  # makes predicates `visibility_visible_public?` / `visibility_followers_only?` /
+  # `visibility_private_only?` so they don't collide with User#private? semantics.
+  enum :visibility, {visible_public: 0, followers_only: 1, private_only: 2}, prefix: :visibility
 
-  # A hoojah inherits its author's visibility (Slice 7b). Every content surface
-  # that renders a hoojah gates through this.
-  def visible_to?(viewer) = user.visible_to?(viewer)
+  validates :body, presence: true
+  # 2026: a top-level claim must be a substantial statement (>= 8 chars); replies
+  # (parent_id present) stay unconstrained so a terse "Agreed." still posts.
+  validates :body, length: {minimum: 8}, if: -> { parent_id.nil? }
+
+  # Has this user cast any vote on this hoojah? Used to gate replying (must vote first,
+  # HujahPolicy#create?) and to render the argument composer's locked state.
+  def voted_by?(user)
+    user.present? && votes.exists?(user_id: user.id)
+  end
+
+  # A hoojah is visible when BOTH the author is visible to the viewer (account
+  # privacy, Slice 7b) AND the per-post visibility (2026) permits it. A REPLY
+  # (parent_id present) is gated by the parent AND by the reply author's OWN account
+  # privacy — dropping the latter regresses Slice 7b Gate 6 (a private user's reply
+  # under a public claim must stay hidden from non-followers; the API show +
+  # notification cards rely on this). Every content surface that renders a hoojah
+  # gates through this.
+  def visible_to?(viewer)
+    return parent.visible_to?(viewer) && user.visible_to?(viewer) if parent_id
+    return false unless user.visible_to?(viewer)
+
+    case visibility
+    when "visible_public" then true
+    when "followers_only" then viewer == user || user.accepted_follower?(viewer)
+    when "private_only" then viewer == user
+    else false
+    end
+  end
 
   # @handle mention pattern. The `(?<!\w)` lookbehind means an `@` preceded by a
   # word char (e.g. inside an email `foo@bar`) is NOT a mention.
   MENTION_RE = /(?<!\w)@([a-zA-Z0-9_]+)/
+
+  # #hashtag pattern — same `(?<!\w)` lookbehind guard as mentions so `a#b` (a `#`
+  # mid-word, e.g. `C#Sharp`) isn't a tag. Unicode letters allowed (Malay names);
+  # digits and underscore permitted after a leading letter. Kept in sync with the
+  # HujahsHelper#format_body linkify pass, which reuses this constant.
+  HASHTAG_RE = /(?<!\w)#(\p{L}[\p{L}0-9_]*)/
+
+  after_save_commit :sync_hashtags
+
+  # Reconcile this hoojah's hashtag joins with the tags currently in its body. Runs
+  # on create AND edit (unlike notify_mentions which is create-only) because the tag
+  # set must track body edits. Runs after_save_commit so it never executes inside
+  # cast_vote's transaction and always sees the persisted body. Canonical `name` is
+  # lower-cased; `display` keeps the first-seen casing. Capped at 10 tags/hoojah.
+  def sync_hashtags
+    raw = body.to_s.scan(HASHTAG_RE).flatten.uniq(&:downcase).first(10)
+    wanted = raw.index_by { |r| Hashtag.canonical(r) }
+    Hashtag.transaction do
+      tags = wanted.map do |name, original|
+        Hashtag.create_with(display: original).find_or_create_by!(name: name)
+      end
+      self.hashtags = tags # replaces the join set; counter_cache adjusts on add/remove
+    end
+  end
 
   # Home timeline: top-level hoojahs from the people you follow, plus your own,
   # minus any hidden (blocked/blocked-by) author. The follow-removal on block already
@@ -59,6 +115,7 @@ class Hujah < ApplicationRecord
       # Slice 7b: trending candidates exclude a private author's hoojahs (with the
       # User#after_update_commit cache-bust so the flip is reflected immediately).
       where(parent_id: nil).where("hujahs.updated_at > ?", 48.hours.ago)
+        .where(visibility: :visible_public) # 2026: a non-public claim never trends
         .joins(:user).where(users: {private: false}).to_a
         .map { |h|
           [h.id, ((h.agree_count + h.neutral_count + h.disagree_count + h.children.size).to_f /
@@ -69,22 +126,41 @@ class Hujah < ApplicationRecord
     where(id: ids).includes(:user).sort_by { |h| ids.index(h.id) }
   end
 
-  def cast_vote(by:, choice:)
+  def cast_vote(by:, choice:, conviction: false)
     choice = choice.to_i
     return unless COUNTER_FOR.key?(choice)
 
     transaction do
-      existing = votes.find_by(user_id: by.id)
+      # `.lock` takes a FOR UPDATE row lock so the conviction? re-check below reads
+      # committed state — two concurrent upgrades can't both see conviction=false and
+      # double-count conviction_count. (A unique index on votes[hujah_id, user_id] is
+      # on the backlog to also close the concurrent-first-vote double-row race; see
+      # HANDOVER.)
+      existing = votes.lock.find_by(user_id: by.id)
       if existing
-        previous = existing.vote.last
-        return if previous == choice
+        return if existing.conviction? # locked forever — no stance change, no re-lock
 
-        existing.update!(vote: existing.vote + [choice])
+        previous = existing.vote.last
+        if previous == choice
+          # Same stance: allow upgrading a plain vote to a conviction (locked) vote.
+          if conviction
+            existing.update!(conviction: true)
+            increment!(:conviction_count)
+          end
+          return
+        end
+
+        # A locked row already early-returned above, so `existing.conviction` is false
+        # here: a stance change may itself be a conviction (hold-charging a different
+        # stance than the current tap-vote), which locks the switched vote and counts once.
+        existing.update!(vote: existing.vote + [choice], conviction: conviction)
+        increment!(:conviction_count) if conviction
         decrement!(COUNTER_FOR[previous]) if COUNTER_FOR.key?(previous)
         increment!(COUNTER_FOR[choice])
       else
-        votes.create!(user: by, vote: [choice])
+        votes.create!(user: by, vote: [choice], conviction: conviction)
         increment!(COUNTER_FOR[choice])
+        increment!(:conviction_count) if conviction
         # Privacy: the new_vote notification deliberately carries NO subject_user_id.
         # Votes are an effectively secret ballot; recording the first voter's id here
         # let the owner de-anonymize them via NotificationSerializer (Slice 5, Part A).

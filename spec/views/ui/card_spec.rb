@@ -23,7 +23,7 @@ RSpec.describe "ui/_card", type: :view do
 
   describe "the surface" do
     it "is a white shadowed box" do
-      expect(card).to have_css("div.shadow.bg-white")
+      expect(card).to have_css("div.shadow.bg-card")
     end
 
     # Card.prompt.md: "Never round a feed card." A stray `rounded` here would round
@@ -90,7 +90,7 @@ RSpec.describe "ui/_card", type: :view do
 
   describe "the element" do
     it "becomes whatever `as:` names, so a feed row can be an <article>" do
-      expect(card(as: "article")).to have_css("article.shadow.bg-white")
+      expect(card(as: "article")).to have_css("article.shadow.bg-card")
       expect(card(as: "article")).to have_no_css("div")
     end
 
@@ -103,7 +103,7 @@ RSpec.describe "ui/_card", type: :view do
     end
 
     it "appends caller classes, for the margins that vary by call site" do
-      expect(card(class: "mb-2")).to have_css("div.shadow.bg-white.mb-2")
+      expect(card(class: "mb-2")).to have_css("div.shadow.bg-card.mb-2")
     end
 
     # Not decoration. `hujahs/_hujah_card` — the flagship feed card — is selected by
@@ -128,7 +128,7 @@ RSpec.describe "ui/_card", type: :view do
     end
 
     it "nests the block inside the card element, not beside it" do
-      expect(card("Hello Malaysia")).to have_css("div.bg-white", text: "Hello Malaysia")
+      expect(card("Hello Malaysia")).to have_css("div.bg-card", text: "Hello Malaysia")
     end
 
     # Executable documentation of the call form for the eight Phase 4 refactors, and

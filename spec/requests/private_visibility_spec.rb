@@ -207,6 +207,8 @@ RSpec.describe "Private-account visibility gates", type: :request do
 
     it "allows an accepted follower to reply" do
       sign_in_fresh follower
+      # 2026 vote-to-respond gate: the follower must vote on the parent before replying.
+      owner_hoojah.cast_vote(by: follower, choice: 1)
       expect {
         post "/hoojah", params: {hujah: {body: "welcome reply", parent_id: owner_hoojah.id}}
       }.to change(Hujah, :count).by(1)

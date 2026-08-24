@@ -1,10 +1,29 @@
 <!DOCTYPE html>
-<html>
+<%# Server default: light + spectrum, so the page is fully themed with JS off.
+    <html> is NOT replaced by Turbo, so the no-FOUC script's overrides (and the
+    theme_controller's) persist across Turbo visits. %>
+<html data-theme="light" data-scheme="spectrum">
   <head>
     <title>Hoojah</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <%# No-FOUC: re-apply the persisted theme/scheme BEFORE the stylesheet paints,
+        so a dark-mode user never flashes light on first load. Reads localStorage
+        only and sets attributes — it contains NO Tailwind utility strings, so the
+        source scanner can't mint stray rules from it. Nonce'd for the CSP (same
+        mechanism the Drift snippet uses); no 'unsafe-inline'. %>
+    <script nonce="<%= content_security_policy_nonce %>">
+      (function () {
+        try {
+          var t = localStorage.getItem("hoojah-theme");
+          var s = localStorage.getItem("hoojah-scheme");
+          var el = document.documentElement;
+          if (t === "light" || t === "dark") el.setAttribute("data-theme", t);
+          if (s === "spectrum" || s === "signal" || s === "ballot") el.setAttribute("data-scheme", s);
+        } catch (e) {}
+      })();
+    </script>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>

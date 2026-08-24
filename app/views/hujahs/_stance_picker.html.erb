@@ -53,7 +53,7 @@
   }
   default_value = stances.dig(parent.current_user_vote(logged_in: true, current_user_id: current_user.id), :value)
 %>
-<div class="bg-white mt-2 pt-1 pb-3">
+<div class="bg-card mt-2 pt-1 pb-3">
   <small class="text-grey">Post this response hoojah as:</small>
   <div class="flex justify-around mt-2" role="radiogroup" aria-label="Response stance">
     <% stances.each do |stance, spec| %>
@@ -62,7 +62,7 @@
               checked: (default_value == spec[:value]),
               class: "sr-only peer",
               aria: {label: stance.capitalize} %>
-        <span class="w-12 h-12 rounded-full border-2 bg-white <%= spec[:colours] %> flex items-center justify-center shadow transition peer-checked:text-white">
+        <span class="w-12 h-12 rounded-full border-2 bg-card <%= spec[:colours] %> flex items-center justify-center shadow transition peer-checked:text-white">
           <%= stance_icon(stance, class: "w-4 h-4") %>
         </span>
       </label>

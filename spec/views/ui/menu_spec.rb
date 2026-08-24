@@ -29,7 +29,7 @@ RSpec.describe "ui/_menu", type: :view do
   end
 
   it "is the white shadowed surface the design system specifies" do
-    expect(tokens).to include("bg-white", "shadow")
+    expect(tokens).to include("bg-card", "shadow")
   end
 
   # The one place this partial parts company with `ui/_card`, whose first rule is
