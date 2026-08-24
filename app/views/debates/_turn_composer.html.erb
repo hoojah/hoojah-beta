@@ -23,9 +23,16 @@
     (spec/support/capybara.rb) is what keeps every existing `click_button "Post turn"`
     in the system specs working unchanged against this button.
 
-    Two non-form states, unchanged from before this task: the other participant sees
-    "Waiting for @mover…" while active, and everyone sees "This debate has concluded."
-    once it is. %>
+    Three non-form states, viewer-scoped by participancy (Task 3.5 adds the middle one):
+      - the OTHER participant, mid-debate: "Waiting for @mover…" (unchanged copy).
+      - a SPECTATOR (a present-but-non-participant viewer, or nil/logged-out) on an
+        ACTIVE debate: "The verdict opens when the debate concludes." — the read-only
+        affordance the spectator view (Task 3.5) needs in place of a turn form. A
+        concluded debate's verdict is a SEPARATE, later task (3.6); this note only
+        promises it opens, it does not render it.
+      - CONCLUDED, any viewer: "This debate has concluded." (unchanged copy).
+    All three stay plain 14px-muted centred sentences with no card behind them, exactly
+    as before this task. %>
 <% viewer = local_assigns.fetch(:viewer) { current_user } %>
 <div id="<%= dom_id(debate, :composer) %>" class="my-4">
   <% if debate.active? && debate.current_turn_user == viewer %>
@@ -41,8 +48,10 @@
         <% end %>
       <% end %>
     <% end %>
-  <% elsif debate.active? %>
+  <% elsif debate.active? && debate.participant?(viewer) %>
     <p class="text-grey text-center py-3">Waiting for @<%= debate.current_turn_user&.username %>…</p>
+  <% elsif debate.active? %>
+    <p class="text-grey text-center py-3">The verdict opens when the debate concludes.</p>
   <% elsif debate.concluded? %>
     <p class="text-grey text-center py-3">This debate has concluded.</p>
   <% end %>

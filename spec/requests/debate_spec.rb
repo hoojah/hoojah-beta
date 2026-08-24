@@ -42,15 +42,37 @@ RSpec.describe "Debates", type: :request do
     expect(d.reload.turns.count).to eq(1)
   end
 
-  it "active debate hidden from non-participant; concluded public" do
+  # 2026 (Task 3.5): the spectator view reads a LIVE transcript, so a visible
+  # non-participant may now watch an active debate too, not only a concluded one —
+  # DebatePolicy#show? extends the exact same visibility clause (both participants +
+  # the claim) from concluded to active, so this introduces no new leak surface (see
+  # that policy's own comment). A PENDING debate is still participants-only: it has no
+  # spectator layout (`_debate_pending` is Phase 3.3's accept/decline screen).
+  it "an active debate is visible to a spectator when both participants and the claim are public; still true once concluded" do
     d = challenge!
     d.accept!(by: opponent)
     sign_in create(:user)
     get "/debates/#{d.slug}"
-    expect(response).to have_http_status(:forbidden)
+    expect(response).to have_http_status(:ok)
     d.conclude!(by: challenger)
     get "/debates/#{d.slug}"
     expect(response).to have_http_status(:ok)
+  end
+
+  it "hides an active debate from a spectator when a participant is private" do
+    d = challenge!
+    d.accept!(by: opponent)
+    challenger.update!(private: true)
+    sign_in create(:user)
+    get "/debates/#{d.slug}"
+    expect(response).to have_http_status(:forbidden)
+  end
+
+  it "still hides a pending debate from a non-participant" do
+    d = challenge!
+    sign_in create(:user)
+    get "/debates/#{d.slug}"
+    expect(response).to have_http_status(:forbidden)
   end
 
   describe "views (Phase 4)" do

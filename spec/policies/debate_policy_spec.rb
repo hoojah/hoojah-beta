@@ -17,12 +17,34 @@ RSpec.describe DebatePolicy do
       expect(DebatePolicy.new(challenger, d).show?).to be(true)
     end
 
-    it "limits an active debate to its participants" do
+    # 2026 (Task 3.5): the spectator view reads a LIVE transcript, so a visible
+    # non-participant may watch an active debate too — the same clause that already
+    # admitted a stranger to a CONCLUDED transcript now also admits an ACTIVE one. A
+    # PENDING debate is unaffected: it stays participants-only below.
+    it "lets a visible spectator (incl. a nil user) watch an active debate, same as a concluded one" do
       d = debate(status: :active)
+      expect(DebatePolicy.new(challenger, d).show?).to be(true)
+      expect(DebatePolicy.new(opponent, d).show?).to be(true)
+      expect(DebatePolicy.new(stranger, d).show?).to be(true)
+      expect(DebatePolicy.new(nil, d).show?).to be(true)
+    end
+
+    it "still limits a pending debate to its participants" do
+      d = debate(status: :pending)
       expect(DebatePolicy.new(challenger, d).show?).to be(true)
       expect(DebatePolicy.new(opponent, d).show?).to be(true)
       expect(DebatePolicy.new(stranger, d).show?).to be_falsey
       expect(DebatePolicy.new(nil, d).show?).to be_falsey
+    end
+
+    it "hides an active debate from a stranger when a participant is private" do
+      challenger.update!(private: true)
+      d = debate(status: :active)
+      expect(DebatePolicy.new(stranger, d).show?).to be_falsey
+      expect(DebatePolicy.new(nil, d).show?).to be_falsey
+      # participants still see their own debate
+      expect(DebatePolicy.new(challenger, d).show?).to be(true)
+      expect(DebatePolicy.new(opponent, d).show?).to be(true)
     end
   end
 

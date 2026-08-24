@@ -136,6 +136,43 @@ RSpec.describe "Debate", type: :system, js: true do
     expect(page).to have_no_button("Post turn")
   end
 
+  # Phase 3.5: a signed-in non-participant watching a LIVE debate — the scoreboard and
+  # the chat bubbles render exactly as they do for a participant (both are
+  # viewer-agnostic), but the composer's turn-form never appears for them: they get the
+  # read-only "verdict opens when concluded" note instead. No watcher stack, no typing
+  # indicator (both deferred) — DebatePolicy#show? now admits this spectator to an
+  # ACTIVE debate the same way it already admitted one to a concluded transcript.
+  it "lets a signed-in non-participant watch an active debate read-only" do
+    login_as_system(challenger)
+    visit "/hoojah/#{root.slug}"
+    click_link "Challenge to debate"
+    choose("challenger_stance", option: "1", allow_label_click: true)
+    click_button "Send challenge"
+    debate = Debate.last
+
+    login_as_system(opponent)
+    visit "/debates/#{debate.slug}"
+    click_button "Accept"
+    expect(debate.reload).to be_active
+
+    spectator = create(:user, username: "spectatorx")
+    login_as_system(spectator)
+    visit "/debates/#{debate.slug}"
+
+    within(".debate-scoreboard") do
+      expect(page).to have_content("@challengerx")
+      expect(page).to have_content("@opponentx")
+      expect(page).to have_content(/round 1 of #{debate.rounds_limit}/i) # CSS-uppercased
+    end
+    within("##{dom_id(debate, :composer)}") do
+      expect(page).to have_content("The verdict opens when the debate concludes.")
+    end
+    expect(page).to have_no_css("textarea")
+    expect(page).to have_no_button("Post turn")
+    # No participant-only affordances leak to the spectator either.
+    within("##{dom_id(debate, :actions)}") { expect(page).to have_no_button("Conclude") }
+  end
+
   # Phase 3.3: the pending accept/decline screen's Decline path — still the existing
   # `_debate_actions` `button_to`, just reached through the new layout.
   it "opponent can decline from the pending accept/decline screen" do
