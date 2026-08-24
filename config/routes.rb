@@ -116,6 +116,12 @@ Rails.application.routes.draw do
   # can never surface content a normal feed/profile visit wouldn't already show.
   get "/search", to: "search#index", as: :search
   get "/notifications", to: "notifications#index", as: :notifications
+  # Scope-only mark-all-read (Task 4.1) — no id/ids param, so there is nothing here
+  # for a forged param to select; it can only ever touch the signed-in user's own
+  # unread rows via policy_scope. Declared BEFORE the `:id` routes below: both are
+  # `/notifications/<segment>`, and Rails matches in declaration order, so
+  # "read_all" would otherwise be swallowed as `params[:id] == "read_all"`.
+  patch "/notifications/read_all", to: "notifications#read_all", as: :read_all_notifications
   patch "/notifications/:id", to: "notifications#update", as: :notification
   delete "/notifications/:id", to: "notifications#destroy"
 end

@@ -1,12 +1,41 @@
-<%# Notifications screen — faithful port of the legacy SPA `NotificationsIndex.jsx`.
-    Always the current user's own list (policy_scope), newest first. %>
+<%# Notifications screen (Hoojah 2026, Phase 4, Task 4.1) — sticky header with a
+    mark-all-read control plus three filter pills (All / Mentions / Debates), then the
+    card list. Always the current user's own list (policy_scope), newest first.
+
+    The header is hand-rolled rather than `shared/_screen_header`: that partial's
+    contract is a single title row with one right-hand action slot, and this screen
+    needs a SECOND row (the filter pills) beneath it — mirrors the mockup's own
+    two-row `bg-nav` block (Hoojah-2026.dc.html ~1295-1305) more directly than
+    stretching the shared partial to fit a shape it was not built for.
+
+    `id="notifications-list"` is the Turbo Stream target `read_all.turbo_stream.erb`
+    replaces — the mark-all-read action re-renders the whole list rather than pilfering
+    every dot/border because there is no cheap DOM-only "read" flip: the accent color
+    change lives in `ui/_card`'s `stance:` class, which is server-rendered per row. %>
 <%= render "shared/navbar" %>
 
+<header class="sticky top-0 z-10 bg-nav backdrop-blur border-b border-hairline">
+  <div class="max-w-xl mx-auto px-4 pt-2 pb-3">
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-extrabold text-ink tracking-tight">Notifications</h1>
+      <%= button_to "Mark all read", read_all_notifications_path, method: :patch,
+            class: "bg-transparent border-0 p-0 cursor-pointer text-sm font-bold text-primary" %>
+    </div>
+
+    <nav class="flex items-center gap-2 mt-3" aria-label="Filter notifications">
+      <% {"all" => notifications_path, "mentions" => notifications_path(filter: "mentions"), "debates" => notifications_path(filter: "debates")}.each do |key, path| %>
+        <% active = @filter == key %>
+        <%= link_to key.capitalize, path,
+              class: "px-3.5 py-1.5 rounded-full text-sm font-bold no-underline transition #{active ? "bg-primary text-white" : "bg-card-2 text-ink-2"}" %>
+      <% end %>
+    </nav>
+  </div>
+</header>
+
 <main class="max-w-xl mx-auto px-4 py-6">
-  <div class="flex flex-col">
-    <% if @notifications.any? %>
-      <%= render partial: "notification_card", collection: @notifications, as: :notification %>
-    <% else %>
+  <div id="notifications-list" class="flex flex-col gap-2">
+    <%= render partial: "notification_card", collection: @notifications, as: :notification %>
+    <% if @notifications.empty? %>
       <%= render "ui/empty_state", message: "You have no notifications", icon: "bell" %>
     <% end %>
   </div>

@@ -1,0 +1,12 @@
+<%# Replaces the whole list in place after mark-all-read (Task 4.1) — every row's
+    left-border accent flips read/unread server-side (`ui/_card`'s `stance:`), so a
+    full re-render of the list is the only way to pick that up; there is no cheap
+    DOM-only toggle for a class computed per row. %>
+<%= turbo_stream.replace "notifications-list" do %>
+  <div id="notifications-list" class="flex flex-col gap-2">
+    <%= render partial: "notification_card", collection: @notifications, as: :notification %>
+    <% if @notifications.empty? %>
+      <%= render "ui/empty_state", message: "You have no notifications", icon: "bell" %>
+    <% end %>
+  </div>
+<% end %>

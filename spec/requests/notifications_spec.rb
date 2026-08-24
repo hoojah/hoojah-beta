@@ -57,6 +57,76 @@ RSpec.describe "Notifications", type: :request do
       get "/notifications"
       expect(response.body).to include("Mark as read")
     end
+
+    it "renders a sticky header with a mark-all-read control and the three filter pills" do
+      sign_in me
+      get "/notifications"
+      expect(response.body).to include("Mark all read")
+      expect(response.body).to include(">All<")
+      expect(response.body).to include(">Mentions<")
+      expect(response.body).to include(">Debates<")
+    end
+
+    describe "?filter=" do
+      it "defaults to every category with no filter param" do
+        mention = create(:notification, user: me, category: :mention)
+        debate = create(:debate, challenger: me)
+        challenge = create(:notification, user: me, category: :debate_challenge, debate:, hujah: debate.hujah)
+        sign_in me
+        get "/notifications"
+        expect(response.body).to include(dom_id(mention))
+        expect(response.body).to include(dom_id(challenge))
+      end
+
+      it "filter=mentions scopes to the mention category only" do
+        mention = create(:notification, user: me, category: :mention)
+        other_category = create(:notification, user: me, category: :new_follower)
+        sign_in me
+        get "/notifications", params: {filter: "mentions"}
+        expect(response.body).to include(dom_id(mention))
+        expect(response.body).not_to include(dom_id(other_category))
+      end
+
+      it "filter=debates scopes to all four debate_* categories" do
+        debate = create(:debate, challenger: me)
+        debate_notifications = %i[debate_challenge debate_declined debate_your_turn debate_concluded].map do |category|
+          create(:notification, user: me, category:, debate:, hujah: debate.hujah)
+        end
+        non_debate = create(:notification, user: me, category: :mention)
+        sign_in me
+        get "/notifications", params: {filter: "debates"}
+        debate_notifications.each { |n| expect(response.body).to include(dom_id(n)) }
+        expect(response.body).not_to include(dom_id(non_debate))
+      end
+    end
+  end
+
+  describe "PATCH /notifications/read_all" do
+    it "marks only the current user's unread notifications read, via a Turbo Stream" do
+      mine_unread = create(:notification, user: me, read: false)
+      mine_already_read = create(:notification, user: me, read: true)
+      sign_in me
+      patch "/notifications/read_all", headers: {"Accept" => "text/vnd.turbo-stream.html"}
+      expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+      expect(mine_unread.reload.read).to be(true)
+      expect(mine_already_read.reload.read).to be(true)
+    end
+
+    # IDOR / scope-only: the action takes no id/ids param at all, so a forged one
+    # in params has literally nothing to bind to — it can only ever update rows
+    # already scoped to the signed-in user via policy_scope(Notification).unread.
+    it "never marks another user's notification read, even if its id is forged in params" do
+      theirs_unread = create(:notification, user: other, read: false)
+      sign_in me
+      patch "/notifications/read_all", params: {id: theirs_unread.id, ids: [theirs_unread.id]},
+        headers: {"Accept" => "text/vnd.turbo-stream.html"}
+      expect(theirs_unread.reload.read).to be(false)
+    end
+
+    it "requires login" do
+      patch "/notifications/read_all"
+      expect(response).to redirect_to(new_user_session_path)
+    end
   end
 
   describe "PATCH /notifications/:id" do
