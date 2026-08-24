@@ -81,6 +81,9 @@ Rails.application.routes.draw do
   # RESTful member actions only (no generic PATCH /debates/:slug); every write
   # derives the actor from `current_user`. `create` is nested under the hoojah so
   # the argument can be validated against the URL's :slug. Turns POST to the debate.
+  # `new` (2026 Phase 3.2) is the create PAGE — rounds picker + opening argument —
+  # that replaced the old stance-only <dialog>; same nesting, same reason.
+  get "/hoojah/:slug/debates/new", to: "debates#new", as: :new_hujah_debate
   post "/hoojah/:slug/debates", to: "debates#create"
   get "/debates/:slug", to: "debates#show", as: :debate
   patch "/debates/:slug/accept", to: "debates#accept", as: :accept_debate

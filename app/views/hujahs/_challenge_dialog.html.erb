@@ -1,4 +1,11 @@
-<%# "Challenge to debate" control on an argument (child) card. Only rendered for a
+<%# ORPHANED as of 2026 Phase 3.2: `hujahs/_child_card` no longer renders this partial —
+    the "Challenge to debate" affordance now links straight to the `debates#new` create
+    page (rounds picker + opening argument), which also collects the stance this dialog
+    used to. Left on disk rather than deleted per the Phase 3.2 task brief; nothing in
+    `app/` currently references it. The rest of this comment describes the flow as it
+    worked while it WAS wired up, kept for history rather than rewritten to a fiction.
+
+    "Challenge to debate" control on an argument (child) card. Only rendered for a
     signed-in viewer who is NOT the argument's author (guarded by the caller).
 
     The <dialog> exists BEFORE any Debate does, so its element id is scoped to the

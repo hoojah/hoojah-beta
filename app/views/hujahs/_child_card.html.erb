@@ -14,11 +14,17 @@
     `live_debate_keys` set (from `_response_filter`) used to show the "In debate" badge.
 
     The "Challenge to debate" affordance and the "In debate" badge render OUTSIDE the card
-    anchor (a <dialog>/<form> can't nest in an <a>) — CompactHujahCard.prompt.md:
-    "renders below the card, never inside it". Each carries the same response-filter
-    item+vote so it hides in sync with its card. The challenge affordance is gated to a
-    signed-in non-author AND `hujah.allow_debates?` (2026). When the response already has a
-    live/pending debate the badge replaces the challenge trigger. %>
+    anchor (a nested <a> is invalid HTML) — CompactHujahCard.prompt.md: "renders below the
+    card, never inside it". Each carries the same response-filter item+vote so it hides in
+    sync with its card. The challenge affordance is gated to a signed-in non-author AND
+    `hujah.allow_debates?` (2026). When the response already has a live/pending debate the
+    badge replaces the challenge trigger.
+
+    2026 Phase 3.2: the affordance is a plain LINK to the debate create page
+    (`new_hujah_debate_path`), not the stance-only `hujahs/_challenge_dialog` <dialog> it
+    used to open — that partial is kept on disk (its FROZEN block documents what still
+    points at it) but nothing renders it from here any more. The create page collects the
+    stance itself, so this link carries no `challenger_stance`. %>
 <% stance = {1 => "agree", 2 => "neutral", 3 => "disagree"}[child.vote] || "primary" %>
 <% soft = {
      "agree" => "bg-agree-soft text-agree",
@@ -66,5 +72,11 @@
     </span>
   </div>
 <% elsif user_signed_in? && current_user.id != child.user_id && hujah.allow_debates? %>
-  <%= render "hujahs/challenge_dialog", argument: child, hujah: hujah, stance: stance %>
+  <div data-response-filter-target="item" data-response-filter-vote="<%= stance %>"
+       class="flex justify-end -mt-1 mb-1 pr-2">
+    <%= link_to new_hujah_debate_path(hujah, argument_id: child.id),
+          class: "#{ds_button_classes(variant: :link, tone: "neutral")} text-xs" do %>
+      <%= lucide_icon("swords", class: "w-3.5 h-3.5") %> Challenge to debate
+    <% end %>
+  </div>
 <% end %>

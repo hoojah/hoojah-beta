@@ -65,17 +65,17 @@ RSpec.describe "Debates", type: :request do
       expect(response.body).to include("id=\"#{dom_id(d, :card)}\"")
     end
 
-    it "argument card shows a Challenge action + dialog for a signed-in non-author" do
+    it "argument card shows a Challenge link to the create page for a signed-in non-author (Phase 3.2)" do
       sign_in challenger # challenger is not the argument's author (opponent is)
       get "/hoojah/#{hujah.slug}"
       expect(response.body).to include("Challenge to debate")
-      expect(response.body).to include("id=\"#{dom_id(argument, :challenge_dialog)}\"")
+      expect(response.body).to include(new_hujah_debate_path(hujah, argument_id: argument.id))
     end
 
-    it "argument card hides the Challenge action from its own author" do
+    it "argument card hides the Challenge link from its own author" do
       sign_in opponent # opponent authored the argument
       get "/hoojah/#{hujah.slug}"
-      expect(response.body).not_to include("id=\"#{dom_id(argument, :challenge_dialog)}\"")
+      expect(response.body).not_to include(new_hujah_debate_path(hujah, argument_id: argument.id))
     end
 
     it "argument card hides the Challenge action from anonymous visitors" do
@@ -98,6 +98,91 @@ RSpec.describe "Debates", type: :request do
   # split out of `_debate_status` (:status). The synchronous turbo_stream RESPONSE
   # must still replace the actor's OWN buttons in place — otherwise, with no job
   # worker running (dev) the buttons stay stale until reload. These lock that in.
+  # Phase 3.2 (2026 redesign): the create page replaces the stance-only dialog.
+  # `GET .../debates/new` renders the picker; `POST` gains :rounds_limit and
+  # :opening_argument on the SAME flat permit — argument_id/challenger_stance
+  # behaviour (the 422 paths, the instance-authorize, RecordNotUnique) is
+  # unchanged and covered above.
+  describe "create page (Phase 3.2)" do
+    it "renders the opponent card, the motion, a 2/3/5 rounds picker, and the opening-argument field" do
+      sign_in challenger
+      get "/hoojah/#{hujah.slug}/debates/new", params: {argument_id: argument.id}
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("@#{argument.user.username}")
+      expect(response.body).to include(hujah.body)
+      expect(response.body).to include(argument.body)
+      # The rounds picker offers 2/3/5, defaulting to 3 (model default is 4 —
+      # the picker's default must not silently ride on that).
+      %w[2 3 5].each do |n|
+        expect(response.body).to include(%(value="#{n}"))
+      end
+      expect(response.body).to match(/name="rounds_limit" id="rounds_limit_3" value="3"[^>]*checked/)
+      expect(response.body).to include(%(name="opening_argument"))
+      # Static, informational only (deferred) — no input that persists either.
+      expect(response.body).to include("Spectators decide")
+      expect(response.body).to include("Turn timer")
+    end
+
+    it "POSTs rounds_limit + opening_argument and creates a pending debate with them" do
+      sign_in challenger
+      post "/hoojah/#{hujah.slug}/debates",
+        params: {argument_id: argument.id, challenger_stance: 1, rounds_limit: 5, opening_argument: "Free transit shifts costs unfairly."}
+      d = Debate.last
+      expect(d.rounds_limit).to eq(5)
+      expect(d.opening_argument).to eq("Free transit shifts costs unfairly.")
+      expect(d).to be_pending
+    end
+
+    # Debate::MAX_ROUNDS is 10 and the model validates 2..10 inclusive — the task
+    # brief's "1 or 6" example is inconsistent with that (6 is a legal, if
+    # un-offered, value), so the boundary cases exercised here are 1 (below the
+    # floor) and 11 (above Debate::MAX_ROUNDS), matching the model's own comment
+    # ("validated 2..10 — so 1 is INVALID").
+    it "rejects a server-side-invalid rounds_limit even though the UI never offers one (422)" do
+      sign_in challenger
+      post "/hoojah/#{hujah.slug}/debates", params: {argument_id: argument.id, challenger_stance: 1, rounds_limit: 1}
+      expect(response).to have_http_status(:unprocessable_content)
+
+      post "/hoojah/#{hujah.slug}/debates", params: {argument_id: argument.id, challenger_stance: 1, rounds_limit: 11}
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "still 422s a forged argument_id not belonging to the URL hoojah, from the new page's own params" do
+      other = create(:hujah)
+      foreign = create(:hujah, parent: other, user: opponent, vote: 3)
+      sign_in challenger
+      post "/hoojah/#{hujah.slug}/debates",
+        params: {argument_id: foreign.id, challenger_stance: 1, rounds_limit: 5, opening_argument: "x"}
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "GET new 422s on a forged argument_id too (skip_authorization before the guarded return)" do
+      other = create(:hujah)
+      foreign = create(:hujah, parent: other, user: opponent, vote: 3)
+      sign_in challenger
+      get "/hoojah/#{hujah.slug}/debates/new", params: {argument_id: foreign.id}
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "the argument's own author cannot challenge themselves (existing rule, 422)" do
+      sign_in opponent # opponent authored `argument`
+      post "/hoojah/#{hujah.slug}/debates",
+        params: {argument_id: argument.id, challenger_stance: 1, rounds_limit: 3, opening_argument: "x"}
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "authorizes the built @debate INSTANCE, not the class, on GET new" do
+      sign_in challenger
+      # DebatePolicy#create? (new? defaults to it) checks record.hujah.allow_debates? —
+      # an instance-only predicate. Flipping the claim's toggle off and getting a 403
+      # proves the policy ran against the CONCRETE built debate, not `DebatePolicy`
+      # applied to the class/nil.
+      hujah.update!(allow_debates: false)
+      get "/hoojah/#{hujah.slug}/debates/new", params: {argument_id: argument.id}
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
   describe "synchronous actions replace (Task 3.2)" do
     it "accept replaces both :status and :actions, and clears the opponent's Accept/Decline" do
       d = challenge!

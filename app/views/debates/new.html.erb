@@ -1,0 +1,150 @@
+<%# Hoojah 2026 debate CREATE page (Phase 3.2, mockup "Debate · create" ~lines
+    945-1019): rounds picker + opening argument, replacing the old stance-only
+    <dialog> (`hujahs/_challenge_dialog`, still on disk but no longer the primary
+    CTA — see `_child_card`). POSTs to the SAME `/hoojah/:slug/debates` `create`
+    action as the old dialog did, on the SAME flat top-level params
+    (DebatesController#challenge_params) — so this is plain `*_tag` helpers, not
+    `form_with model: @debate`, which would nest everything under `debate[...]`
+    and silently stop matching what the controller permits.
+
+    `data: {turbo: false}` mirrors `hujahs/_compose_form`'s full-page composer: a
+    successful POST is a plain HTML round-trip that follows `create`'s
+    `redirect_to debate_path(...)`, rather than being intercepted by Turbo (which
+    would prefer the turbo_stream response built for the old dialog's in-page
+    append + close_dialog and leave this page showing no result).
+
+    The rounds picker and the (still-needed) stance picker are native radios with
+    `peer-checked:` styling — CSS-only, JS-off safe, no controller — following the
+    exact precedent `hujahs/_stance_picker` sets: the checked-state colours are
+    spelled out LITERALLY per stance below (never built by interpolating the stance
+    name into a `peer-checked:bg-` prefix at render time) because Tailwind's
+    scanner only ever sees a class it can read as literal text;
+    an interpolated one has no rule in the bundle unless separately safelisted, and
+    `_stance_picker`'s giant comment documents exactly this bug once shipped. The
+    "Turn timer" and "Spectators decide" rows are STATIC info only (deferred — no
+    schema, no persisted value, no toggle): the mockup draws a toggle switch on
+    "Spectators decide", but this build does not wire one up.
+
+    Locals (set by DebatesController#new): @hujah (root claim), @argument (the
+    child hoojah being challenged), @debate (built, unsaved — challenger/opponent/
+    opponent_stance already derived; challenger_stance is picked on this page). %>
+<% opponent_stance_map = {
+     1 => {name: "agree", label: "Agree"},
+     2 => {name: "neutral", label: "Neutral"},
+     3 => {name: "disagree", label: "Disagree"}
+   } %>
+<% opponent_stance = opponent_stance_map.fetch(@argument.vote, {name: "primary", label: "their side"}) %>
+<% stance_choice_specs = {
+     1 => {label: "Agree", colours: "border-agree text-agree peer-checked:bg-agree"},
+     2 => {label: "Neutral", colours: "border-neutral text-neutral peer-checked:bg-neutral"},
+     3 => {label: "Disagree", colours: "border-disagree text-disagree peer-checked:bg-disagree"}
+   } %>
+
+<%= render "shared/screen_header", title: "New debate", back: hujah_path(@hujah.slug) %>
+
+<%= form_with url: "/hoojah/#{@hujah.slug}/debates", method: :post, local: true,
+      data: {turbo: false}, class: "max-w-xl mx-auto px-4 py-4 flex flex-col gap-4" do %>
+  <%= hidden_field_tag :argument_id, @argument.id %>
+
+  <div>
+    <div class="text-xs font-bold uppercase tracking-wide text-faint mb-2">Challenging</div>
+    <div class="flex overflow-hidden rounded-2xl bg-card shadow">
+      <div class="w-1.5 shrink-0 bg-<%= opponent_stance[:name] %>"></div>
+      <div class="flex-1 min-w-0 p-3.5">
+        <div class="flex items-center gap-2.5">
+          <%= render "ui/avatar", user: @argument.user, size: :sm %>
+          <div class="flex-1 min-w-0 leading-tight">
+            <div class="text-sm font-bold text-ink truncate"><%= @argument.user.full_name %></div>
+            <div class="text-xs text-ink-2">@<%= @argument.user.username %></div>
+          </div>
+          <span class="shrink-0 inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-<%= opponent_stance[:name] %>-soft text-<%= opponent_stance[:name] %>">
+            <%= stance_icon(opponent_stance[:name], class: "w-3 h-3") if opponent_stance[:name] != "primary" %>
+            <%= opponent_stance[:label] %>
+          </span>
+        </div>
+        <div class="mt-2 text-sm leading-relaxed text-ink break-words"><%= format_body(@argument.body) %></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="text-xs font-bold uppercase tracking-wide text-faint mb-2">The motion</div>
+    <blockquote class="m-0 rounded-2xl bg-card-2 p-3.5 border-l-4 border-primary text-sm font-semibold leading-relaxed text-ink">
+      <%= @hujah.body %>
+    </blockquote>
+  </div>
+
+  <div>
+    <div class="text-xs font-bold uppercase tracking-wide text-faint mb-2">Your stance</div>
+    <div class="flex gap-2" role="radiogroup" aria-label="Your stance">
+      <% ([1, 2, 3] - [@argument.vote]).each do |cs| %>
+        <% spec = stance_choice_specs.fetch(cs) %>
+        <label class="flex-1 cursor-pointer">
+          <%= radio_button_tag :challenger_stance, cs, false, class: "sr-only peer" %>
+          <span class="flex items-center justify-center gap-1.5 h-10 rounded-xl border-2 bg-card font-bold text-sm transition peer-checked:text-white <%= spec[:colours] %>">
+            <%= spec[:label] %>
+          </span>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="rounded-2xl bg-card shadow p-3.5 flex flex-col gap-3.5">
+    <div>
+      <div class="flex items-center gap-2 text-sm font-bold text-ink mb-2.5">
+        <%= lucide_icon("list", class: "w-3.5 h-3.5 text-primary") %> Rounds
+      </div>
+      <div class="flex gap-2" role="radiogroup" aria-label="Rounds">
+        <% [2, 3, 5].each do |n| %>
+          <label class="flex-1 cursor-pointer">
+            <%= radio_button_tag :rounds_limit, n, (n == 3), class: "sr-only peer" %>
+            <span class="block text-center h-10 leading-10 rounded-xl border-2 border-field bg-card text-ink-2 font-bold text-sm transition peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white">
+              <%= n %>
+            </span>
+          </label>
+        <% end %>
+      </div>
+    </div>
+
+    <%= render "ui/divider" %>
+
+    <%# Static info only (deferred) — no input, no persisted value. %>
+    <div class="flex items-center gap-2.5">
+      <span class="w-9 h-9 rounded-xl bg-primary-soft text-primary flex items-center justify-center shrink-0">
+        <%= lucide_icon("clock", class: "w-4 h-4") %>
+      </span>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-bold text-ink">Turn timer</div>
+        <div class="text-xs text-ink-2">Coming soon — no time limit yet</div>
+      </div>
+    </div>
+
+    <%= render "ui/divider" %>
+
+    <%# Static info only (deferred) — no toggle, no persisted value. %>
+    <div class="flex items-center gap-2.5">
+      <span class="w-9 h-9 rounded-xl bg-primary-soft text-primary flex items-center justify-center shrink-0">
+        <%= lucide_icon("users", class: "w-4 h-4") %>
+      </span>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-bold text-ink">Spectators decide</div>
+        <div class="text-xs text-ink-2">The crowd casts a verdict when it ends</div>
+      </div>
+    </div>
+  </div>
+
+  <div data-controller="char-counter">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs font-bold uppercase tracking-wide text-faint">Your opening argument</span>
+      <span class="text-xs font-bold text-faint" data-char-counter-target="count">0 / 500</span>
+    </div>
+    <%= text_area_tag :opening_argument, nil, rows: 4, maxlength: 500,
+          placeholder: "Lay out your case in a sentence or two…",
+          data: {"char-counter-target": "input", action: "input->char-counter#update"},
+          "aria-label": "Your opening argument",
+          class: "w-full rounded-2xl bg-card shadow p-3.5 resize-none text-sm leading-relaxed text-ink focus:outline-none" %>
+  </div>
+
+  <%= submit_tag "Send challenge to @#{@argument.user.username}",
+        class: "w-full h-12 rounded-2xl border-none bg-primary text-white font-extrabold text-sm cursor-pointer shadow-lg transition active:scale-95" %>
+<% end %>

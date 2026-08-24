@@ -20,25 +20,24 @@ RSpec.describe "Debate", type: :system, js: true do
   let!(:argument) { create(:hujah, parent: root, user: opponent, vote: 3, body: "Spaces win, obviously") }
 
   it "drives challenge → accept → alternating turns → conclude → read-only transcript" do
-    # 1. Challenger opens the challenge dialog on the argument and picks a stance.
+    # 1. Challenger follows the "Challenge to debate" link to the create page (Phase
+    # 3.2 — no more stance-only dialog), picks the opposing stance, and leaves the
+    # opening argument blank so `accept!` behaves exactly as before this page existed
+    # (no auto-posted opening turn) — the rest of this flow is otherwise unchanged.
     login_as_system(challenger)
     visit "/hoojah/#{root.slug}"
 
     expect(page).to have_content("Spaces win, obviously")
-    click_button "Challenge to debate"
+    click_link "Challenge to debate"
 
-    dialog = find("dialog##{dom_id(argument, :challenge_dialog)}", visible: true)
-    expect(dialog).to be_visible
-    within(dialog) { click_button "Argue Agree" } # challenger_stance 1 opposes the argument's 3
-
-    # create.turbo_stream.erb appends the debate card to the lens and closes the dialog.
-    within "##{dom_id(root, :debates)}" do
-      expect(page).to have_content("@challengerx vs @opponentx")
-    end
-    expect(page).to have_no_selector("dialog##{dom_id(argument, :challenge_dialog)}", visible: true)
+    expect(page).to have_current_path(%r{/hoojah/#{root.slug}/debates/new})
+    choose("challenger_stance", option: "1", allow_label_click: true) # opposes the argument's stance (3, Disagree)
+    click_button "Send challenge"
 
     debate = Debate.last
+    expect(page).to have_current_path("/debates/#{debate.slug}")
     expect(debate).to be_pending
+    expect(debate.opening_argument).to be_blank
 
     # 2. Opponent accepts the challenge (from the debate transcript screen).
     login_as_system(opponent)
