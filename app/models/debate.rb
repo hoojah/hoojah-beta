@@ -162,7 +162,7 @@ class Debate < ApplicationRecord
     # the turn form — or both to "concluded" on the capping turn) on their
     # user-signed stream.
     broadcast_append_later_to self, target: dom_id(self, :transcript),
-      partial: "debates/debate_turn", locals: {debate_turn: turn, debate: self}
+      partial: "debates/debate_turn", locals: {debate_turn: turn, debate: self, entering: true}
     broadcast_to_each_participant(target: :composer, partial: "debates/turn_composer")
     # Slice 9: the status region carries "Round n of N" and the actions region carries
     # the Extend affordance, and EVERY transition of either is a post_turn — the round

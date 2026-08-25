@@ -313,6 +313,7 @@
   --hairline:#edeef3; --field:#e6e8ef; --read:#d4d8e2; --unread:var(--neutral);
   --nav:rgba(255,255,255,0.82); --shadow:0 8px 30px -12px rgba(20,24,54,.28);
   --stance-shadow:0 10px 26px -12px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* strong ease-out for UI transitions */
 
   /* Semantic aliases (var()-only — they generate no utilities). Rewired onto
      the runtime tokens above so dark mode and the schemes actually paint
@@ -377,6 +378,56 @@
    Toggling the `hidden` attribute off replays the animation each time, same as
    the inline `style="animation:hrise …"` usage elsewhere in this file's callers. */
 .hrise{animation:hrise .3s cubic-bezier(.34,1.56,.64,1)}
+
+/* Entrance for a turn that ARRIVES after first paint — the synchronous post
+   response and the Action Cable broadcast both add `debate-turn-enter` via the
+   `entering:` local (debate_turns/create.turbo_stream.erb and Debate#post_turn).
+   The transcript's first-paint collection render does NOT pass it, so existing
+   turns never animate on load. Reuses the `hrise` keyframe (translateY(10px)+fade)
+   with a calm ease-out instead of `.hrise`'s back-overshoot — this is content the
+   reader is about to read, not a playful expand. */
+.debate-turn-enter { animation: hrise 220ms cubic-bezier(0.23, 1, 0.32, 1); }
+
+@keyframes hfade { from { opacity: 0 } to { opacity: 1 } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keep the fade (it still signals "new"), drop the positional movement. */
+  .debate-turn-enter { animation: hfade 200ms ease; }
+}
+
+/* Modal entrance. All native <dialog>s in the app share `data-dialog-target="dialog"`
+   (flag, challenge, profile-edit), so this one rule covers every modal with no markup
+   change. showModal() flips display none→block and sets [open]; @starting-style supplies
+   the first-frame values the transition animates FROM. Centered — modals do not scale
+   from a trigger (audit: transform-origin at the trigger is for popovers, not modals). */
+dialog[data-dialog-target="dialog"] {
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+dialog[data-dialog-target="dialog"][open] {
+  opacity: 1;
+  transform: scale(1);
+}
+@starting-style {
+  dialog[data-dialog-target="dialog"][open] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+dialog[data-dialog-target="dialog"]::backdrop {
+  transition: opacity 200ms var(--ease-out);
+}
+@starting-style {
+  dialog[data-dialog-target="dialog"][open]::backdrop {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keep the fade, drop the scale. */
+  @starting-style {
+    dialog[data-dialog-target="dialog"][open] { transform: none; }
+  }
+}
 
 /* Port of docs/design-system/tokens/base.css — this is what gives the layout's
    `<body class="body">` an actual definition. */

@@ -48,7 +48,7 @@
     hand and passes it through instead. %>
 <% side = (debate_turn.user_id == debate.challenger_id) ? :challenger : :opponent %>
 <div id="<%= dom_id(debate_turn) %>"
-     class="debate-turn shadow px-3.5 py-3 max-w-[86%] <%= (side == :challenger) ? "self-start rounded-2xl rounded-bl-md bg-card" : "self-end rounded-2xl rounded-br-md bg-disagree-soft" %>">
+     class="debate-turn shadow px-3.5 py-3 max-w-[86%] <%= "debate-turn-enter" if local_assigns[:entering] %> <%= (side == :challenger) ? "self-start rounded-2xl rounded-bl-md bg-card" : "self-end rounded-2xl rounded-br-md bg-disagree-soft" %>">
   <div class="flex items-center gap-1.5 mb-1 min-w-0 <%= "flex-row-reverse" if side == :opponent %>">
     <%= render "ui/avatar", user: debate_turn.user, size: :sm %>
     <span class="text-[10.5px] font-bold uppercase tracking-wide truncate <%= (side == :challenger) ? "text-agree" : "text-disagree" %>">
