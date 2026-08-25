@@ -53,6 +53,9 @@
     <%= link_to cta_label, cta_href, class: ds_button_classes(tone: "primary", size: :sm) %>
   </div>
 <% else %>
+<%# Flush-left and byte-identical to the pre-CTA output — do NOT re-indent. All nine
+    existing call sites take this branch, and the specs assert on text/selectors, not
+    whitespace, so a "tidy" edit here would silently change every one of them. %>
 <div class="flex items-center gap-1 text-sm p-3 bg-white <%= tone %> <%= align %> <%= local_assigns[:class] %>">
   <%= lucide_icon(icon, class: "w-4 h-4") if icon.present? %>
   <span><%= message %></span>
