@@ -10,8 +10,12 @@ RSpec.describe "Tag feed", type: :request do
   end
 
   it "404s on an unknown tag" do
-    get "/t/nosuchtag"
-    expect(response).to have_http_status(:not_found)
+    # Task 8: the controller no longer rescues RecordNotFound into a blank
+    # head :not_found — it propagates to the branded 404 (config.exceptions_app
+    # = routes in production). This project's test env runs
+    # action_dispatch.show_exceptions = :none, so here it surfaces as a raise
+    # rather than a rendered response (see spec/requests/errors_spec.rb).
+    expect { get "/t/nosuchtag" }.to raise_error(ActiveRecord::RecordNotFound)
   end
 
   it "is case-insensitive on the tag name" do

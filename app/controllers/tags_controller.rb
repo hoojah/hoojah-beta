@@ -15,9 +15,5 @@ class TagsController < ApplicationController
       format.html
       format.turbo_stream # show.turbo_stream.erb (load-more append)
     end
-  rescue ActiveRecord::RecordNotFound
-    # The tag lookup raised before anything authorized — satisfy verify_authorized.
-    skip_authorization
-    head :not_found
   end
 end

@@ -1,0 +1,33 @@
+<%# Branded 404/422/500.
+    SECURITY: do NOT render shared/navbar here — it calls
+    current_user.unread_notifications_count (a live DB query). A DB-outage 500 would then
+    re-hit the DB while rendering its own error page, raise again inside ShowExceptions,
+    and collapse to Rails' bare failsafe text. This header is query-free. %>
+<header class="fixed top-0 inset-x-0 z-20 bg-nav backdrop-blur border-b border-hairline">
+  <div class="max-w-xl mx-auto px-4 h-14 flex items-center">
+    <%= link_to root_path, class: "flex items-center no-underline", aria: {label: "Hoojah"} do %>
+      <%= image_tag "logo.svg", alt: "Hoojah", class: "h-7 w-auto" %>
+    <% end %>
+  </div>
+</header>
+<div class="h-14"></div>
+
+<main class="max-w-xl mx-auto px-4 py-16">
+  <%
+    # `.html_safe` on title/body only: every string here is a fixed literal in this
+    # file, never interpolated with request/user data, so skipping ERB's escaping is
+    # safe. It also keeps the apostrophes in "doesn't" / "couldn't" as plain ASCII
+    # rather than `&#39;` — request specs assert on the exact copy text.
+    copy = {
+      404 => {title: "That page doesn't exist".html_safe, body: "The link may be broken or the hoojah was removed.".html_safe, icon: "compass"},
+      422 => {title: "That request couldn't be processed".html_safe, body: "Something about that action didn't check out. Try again.".html_safe, icon: "alert-triangle"},
+      500 => {title: "Something went wrong on our end".html_safe, body: "We've been notified. Please try again in a moment.".html_safe, icon: "server-crash"}
+    }[@status]
+  %>
+  <div class="<%= ds_card_classes %> flex flex-col items-center text-center gap-4 p-8">
+    <%= lucide_icon copy[:icon], class: "w-10 h-10 text-grey" %>
+    <h1 class="text-2xl font-extrabold text-ink tracking-tight"><%= copy[:title] %></h1>
+    <p class="text-ink-2 text-sm"><%= copy[:body] %></p>
+    <%= link_to "Back to feed", root_path, class: ds_button_classes(tone: "primary", size: :sm) %>
+  </div>
+</main>

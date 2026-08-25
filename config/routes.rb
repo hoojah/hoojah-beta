@@ -11,6 +11,13 @@ Rails.application.routes.draw do
   # See the `host_authorization` and `ssl_options` comments there.
   get "/up", to: "rails/health#show", as: :rails_health_check
 
+  # Branded error pages (2026). In production config.exceptions_app = routes sends an
+  # unhandled 404/422/500 here so users get the app shell instead of Rails' default
+  # static page. `via: :all` because the failing request can carry any verb.
+  match "/404", to: "errors#show", via: :all, defaults: {status: 404}
+  match "/422", to: "errors#show", via: :all, defaults: {status: 422}
+  match "/500", to: "errors#show", via: :all, defaults: {status: 500}
+
   devise_for :users,
     controllers: {registrations: "users/registrations"},
     path: "",

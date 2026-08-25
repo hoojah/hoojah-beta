@@ -64,8 +64,9 @@ class HujahsController < ApplicationController
 
   def create
     # A spoofed/missing parent_id must not nil-deref: Hujah.find raising
-    # RecordNotFound resolves to 404 (the app runs show_exceptions=:none in
-    # test, so rescue here to return the status the request spec asserts).
+    # RecordNotFound propagates (the parent lookup happens before `authorize`
+    # runs, so verify_authorized never fires for this action) straight to the
+    # branded 404 (config.exceptions_app = routes) instead of a blank body.
     @parent = params.dig(:hujah, :parent_id).presence && Hujah.find(params[:hujah][:parent_id])
     # Build the instance (with its parent_id) BEFORE authorizing so HujahPolicy#create?
     # can read record.parent.user_id and reject a reply to a hidden pair (Slice 7).
@@ -83,10 +84,6 @@ class HujahsController < ApplicationController
       @parent ||= nil
       render :new, status: :unprocessable_content
     end
-  rescue ActiveRecord::RecordNotFound
-    # The parent lookup raised before `authorize` ran — satisfy verify_authorized.
-    skip_authorization
-    head :not_found
   end
 
   private

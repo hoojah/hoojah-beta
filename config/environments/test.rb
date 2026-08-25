@@ -14,7 +14,18 @@ Rails.application.configure do
   config.eager_load = false
 
   # Configure public file server for tests with Cache-Control for performance.
-  config.public_file_server.enabled = true
+  #
+  # Task 8 (2026): OFF by default here, mirroring production.rb's own
+  # `ENV["RAILS_SERVE_STATIC_FILES"].present?` gate. ActionDispatch::Static sits
+  # ahead of routing in the middleware stack (`bin/rails middleware`) and matches
+  # ANY GET/HEAD path against `public/<path>.html` before the request ever reaches
+  # a controller. With this hardcoded true, `get "/404"` in spec/requests/errors_spec.rb
+  # was being answered by the (now-rebranded) static public/404.html with a bare 200 —
+  # never reaching config.exceptions_app's ErrorsController, and never exercising the
+  # actual 404/422/500 status codes the branded page exists to serve. Nothing else in
+  # the suite reads a literal public/ file, so turning this off costs nothing and lets
+  # /404, /422, /500 resolve to the real route instead of being shadowed.
+  config.public_file_server.enabled = ENV["RAILS_SERVE_STATIC_FILES"].present?
   config.public_file_server.headers = {
     "Cache-Control" => "public, max-age=#{1.hour.to_i}"
   }

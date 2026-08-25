@@ -27,9 +27,14 @@ RSpec.describe "Compose", type: :request do
   end
 
   it "rejects a spoofed missing parent_id" do
+    # Task 8: the controller no longer rescues RecordNotFound into a blank
+    # head :not_found — it propagates to the branded 404 (config.exceptions_app
+    # = routes in production). This project's test env runs
+    # action_dispatch.show_exceptions = :none, so here it surfaces as a raise
+    # rather than a rendered response (see spec/requests/errors_spec.rb).
     sign_in user
-    post "/hoojah", params: {hujah: {body: "x", parent_id: 999_999}}
-    expect(response).to have_http_status(:not_found).or have_http_status(:unprocessable_content)
+    expect { post "/hoojah", params: {hujah: {body: "x", parent_id: 999_999}} }
+      .to raise_error(ActiveRecord::RecordNotFound)
   end
 
   it "persists visibility and allow_debates on create" do
