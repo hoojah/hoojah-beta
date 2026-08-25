@@ -7,7 +7,7 @@ class Api::V1::UsersController < Api::V1::BaseController
     # endpoint by a non-follower. The gated HTML profile (name/@handle/counts) is not
     # mirrored here yet — native parity is deferred to Project 3.
     if user&.visible_to?(current_user)
-      render json: UserSerializer.new(user).serializable_hash
+      render json: UserSerializer.new(user, params: {current_user: current_user}).serializable_hash
     else
       head :not_found
     end
@@ -17,7 +17,7 @@ class Api::V1::UsersController < Api::V1::BaseController
     @user = current_user
     authorize @user
     if @user.update(user_params)
-      render json: UserSerializer.new(@user).serializable_hash
+      render json: UserSerializer.new(@user, params: {current_user: @user}).serializable_hash
     else
       render json: @user.errors
     end

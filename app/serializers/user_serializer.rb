@@ -3,18 +3,21 @@ class UserSerializer
 
   attributes :username, :full_name, :photo, :location, :headline, :link
 
-  attribute :hujah_count do |user|
-    user.hujahs.length
+  # Slice 11 (A1): only the top-level hoojahs this viewer may see (per-post visibility),
+  # via User#visible_hujahs_for — shared with the HTML profile "Hoojahs" tab. Count
+  # follows the same filter so it can't reveal that hidden claims exist.
+  attribute :hujah_count do |user, params|
+    user.visible_hujahs_for(params[:current_user]).size
   end
 
   attribute :vote_count do |user|
     user.votes.length
   end
 
-  attributes :hujahs, if: proc { |user| user.hujahs.length != 0 } do |user|
+  attributes :hujahs, if: proc { |user, params| user.visible_hujahs_for(params[:current_user]).any? } do |user, params|
     all_hujah = []
 
-    user.hujahs.each do |child_hujah|
+    user.visible_hujahs_for(params[:current_user]).each do |child_hujah|
       temp_child_hujah = {
         id: child_hujah.id,
         type: "hujah",

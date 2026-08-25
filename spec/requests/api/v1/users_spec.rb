@@ -38,4 +38,40 @@ RSpec.describe "Api::V1::Users", type: :request do
       expect(user.reload.id).not_to eq(other_id)
     end
   end
+
+  describe "per-post visibility of the profile hoojah list" do
+    let(:owner) { create(:user) }
+
+    it "omits a public account's private_only and followers_only bodies from a stranger" do
+      create(:hujah, user: owner, visibility: :visible_public, body: "public claim")
+      create(:hujah, user: owner, visibility: :followers_only, body: "followers claim")
+      create(:hujah, user: owner, visibility: :private_only, body: "private claim")
+
+      get "/api/v1/#{owner.username}"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("public claim")
+      expect(response.body).not_to include("followers claim")
+      expect(response.body).not_to include("private claim")
+    end
+
+    it "shows followers_only bodies to an accepted follower" do
+      viewer = create(:user)
+      owner.update!(private: false)
+      create(:hujah, user: owner, visibility: :followers_only, body: "followers claim")
+      owner.passive_follows.create!(follower: viewer, status: :accepted)
+
+      sign_in viewer
+      get "/api/v1/#{owner.username}"
+
+      expect(response.body).to include("followers claim")
+    end
+
+    it "reports hujah_count as the visible top-level count" do
+      create(:hujah, user: owner, visibility: :visible_public)
+      create(:hujah, user: owner, visibility: :private_only)
+      get "/api/v1/#{owner.username}"
+      expect(JSON.parse(response.body).dig("data", "attributes", "hujah_count")).to eq(1)
+    end
+  end
 end
