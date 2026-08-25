@@ -1,6 +1,6 @@
 # Hoojah Design System
 
-**Hoojah** is a Malaysian social debate platform ("where Malaysia's brilliant minds come to debate about current issues and vote for what they feel is important"). Users post a **hujah** (a stance or claim), gather **agree / neutral / disagree** votes, thread stance-tagged responses, and escalate any argument into a one-on-one turn-based **debate** with a spectator verdict. Live at https://beta.hoojah.my
+**Hoojah** is a Malaysian social debate platform ("where Malaysia's brilliant minds come to debate about current issues and vote for what they feel is important"). Users post a **hujah** (a stance or claim), gather **agree / neutral / disagree** votes, thread stance-tagged responses, and escalate any argument into a one-on-one turn-based **debate** with a spectator verdict. Live at https://hoojah.rudzainy.com
 
 ## Source
 - Attached codebase: `hoojah-beta/` — Rails 8.1 server-rendered Hotwire app (Turbo + Stimulus), Tailwind CSS v4, `lucide-rails` icons. Ground truth files: `app/assets/tailwind/application.css` (the `@theme` palette), `app/views/**` (all UI), `app/helpers/icons_helper.rb`, `app/models/badge.rb`.

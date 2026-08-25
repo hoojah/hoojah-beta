@@ -1,7 +1,7 @@
 # Hoojah web app — UI kit
 
 A click-through recreation of the only Hoojah surface that exists: the **web app** at
-https://beta.hoojah.my. Built by reading `hoojah-beta/app/views/**` (Rails + Hotwire ERB),
+https://hoojah.rudzainy.com. Built by reading `hoojah-beta/app/views/**` (Rails + Hotwire ERB),
 not from screenshots. Every screen composes the primitives in `components/` — nothing is
 re-implemented here.
 

@@ -18,7 +18,7 @@ argument into a one-on-one, turn-based **debate** — with real-time turns and a
 verdict. It's a **server-rendered Hotwire** app (Turbo + Stimulus over importmap, no Node)
 on **Rails 8.1 / Ruby 3.4**, with **Devise** auth, **Pundit** authorization, **Action Cable**
 (Solid Cable) for live debate turns, and a JSON `Api::V1` for native clients —
-https://beta.hoojah.my
+https://hoojah.rudzainy.com
 
 > **Status.** The "land everything" feature roadmap is **complete** — Social (follow /
 > Following feed / @mentions), Debate (MVP + spectator verdict + real-time + timeout +
@@ -109,7 +109,7 @@ One-time setup in the Coolify dashboard; after it, every push to `master` ships:
 5. **Health check** — path **`/up`** (the same path the image's own `HEALTHCHECK` probes).
    `/up` is excluded from host authorization, so the internal probe passes even though it
    never arrives on `APP_HOST`.
-6. **Domain** — set the FQDN to `https://beta.hoojah.my`; Coolify terminates TLS and
+6. **Domain** — set the FQDN to `https://hoojah.rudzainy.com`; Coolify terminates TLS and
    reverse-proxies. It **must** match `APP_HOST` (below) or every request 403s.
 7. **Environment** — paste the keys from [`.env.example`](.env.example) into Coolify's
    environment editor (see [Environment](#environment)). Read the master.key warning below
@@ -133,7 +133,7 @@ To reproduce a Coolify build locally (the image is identical to what it deploys)
 ```bash
 docker build --platform linux/amd64 -t hoojah .
 docker run -p 3000:3000 \
-  -e RAILS_MASTER_KEY=... -e DATABASE_URL=... -e APP_HOST=beta.hoojah.my hoojah
+  -e RAILS_MASTER_KEY=... -e DATABASE_URL=... -e APP_HOST=hoojah.rudzainy.com hoojah
 ```
 
 **Build for `linux/amd64`.** `Gemfile.lock`'s `PLATFORMS` lists `x86_64-linux` but not

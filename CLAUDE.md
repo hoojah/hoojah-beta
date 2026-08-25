@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**Hoojah** (https://beta.hoojah.my) — a Malaysian social debate platform. A user posts a *hujah*
+**Hoojah** (https://hoojah.rudzainy.com) — a Malaysian social debate platform. A user posts a *hujah*
 (claim), others cast **agree / neutral / disagree** votes and thread stance-tagged responses, and any
 argument can be escalated into a one-on-one turn-based **debate** with real-time turns and a
 spectator verdict.
