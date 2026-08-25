@@ -6,7 +6,8 @@
     (default "message-circle"); `tone:` :faint (default) or :muted; `align:` :left
     (default) or :center; `class:` extra utilities; `cta_label:` / `cta_href:` — when
     BOTH are present, a single pill CTA renders below the sentence in a centred
-    stacked layout.
+    stacked layout. `align:` applies to the no-CTA layout only — the CTA layout is
+    always centred, so passing `align:` alongside a CTA has no effect.
 
     `message` is fetched, not defaulted: it is the entire component, so a caller who
     forgets it would otherwise get a faint glyph beside an empty span — a row that

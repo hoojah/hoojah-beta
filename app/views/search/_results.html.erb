@@ -20,7 +20,7 @@
       <%= render partial: "search/result_user", collection: @users, as: :user %>
     </div>
   <% else %>
-    <%= render "ui/empty_state", message: "No results for “#{@query}”.", icon: "search" %>
+    <%= render "ui/empty_state", message: "No results for “#{@query}”", icon: "search" %>
   <% end %>
   <%= render "ui/divider", class: "my-2" %>
 <% end %>
