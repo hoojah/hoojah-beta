@@ -167,6 +167,11 @@ class Hujah < ApplicationRecord
   # first top-level hoojah earns first_hoojah; the first reply earns first_argument.
   after_create_commit :award_authoring_badge
 
+  # Moderation (2026): a cached trending hoojah must not linger up to 15 min after
+  # removal. Mirrors User#bust_trending_cache (the private-flip case) — bust on the
+  # moderation flip so the next Hujah.trending recomputes without the removed id.
+  after_update_commit :bust_trending_cache, if: -> { saved_change_to_moderation_status? }
+
   extend FriendlyId
 
   friendly_id :slug_source, use: [:slugged, :history]
@@ -194,7 +199,7 @@ class Hujah < ApplicationRecord
     ids = Rails.cache.fetch("trending:v1", expires_in: 15.minutes) do
       # Slice 7b: trending candidates exclude a private author's hoojahs (with the
       # User#after_update_commit cache-bust so the flip is reflected immediately).
-      where(parent_id: nil).where("hujahs.updated_at > ?", 48.hours.ago)
+      where(parent_id: nil).not_removed.where("hujahs.updated_at > ?", 48.hours.ago) # Moderation: E4 — removed claims never trend
         .where(visibility: :visible_public) # 2026: a non-public claim never trends
         .joins(:user).where(users: {private: false}).to_a
         .map { |h|
@@ -269,6 +274,8 @@ class Hujah < ApplicationRecord
   end
 
   private
+
+  def bust_trending_cache = Rails.cache.delete("trending:v1")
 
   def award_authoring_badge
     UserBadge.award(user, is_parent? ? "first_hoojah" : "first_argument")
