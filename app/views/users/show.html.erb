@@ -51,10 +51,21 @@
         <% else %>
           <%# `ui/_empty_state`'s baked-in `p-3 bg-white` and faint tone are exactly what
               this row spelled by hand; the only thing lost is a dead `card-body` class
-              left over from the Bootstrap SPA, which matches no rule in the bundle. %>
-          <% empty_message = {"hoojahs" => "No hoojahs yet", "responses" => "No responses yet",
-               "debates" => "No debates yet"}.fetch(@active_tab) %>
-          <%= render "ui/empty_state", message: empty_message %>
+              left over from the Bootstrap SPA, which matches no rule in the bundle.
+
+              Debates gets `swords` (matching the same "No debates yet" empty state on
+              the hujah page) instead of the default `message-circle` glyph. The owner,
+              on an empty Hoojahs tab only, gets a first-run CTA into the composer —
+              a visitor or the Responses/Debates tabs fall back to the bare sentence. %>
+          <% empty = {"hoojahs" => {message: "No hoojahs yet", icon: "message-circle"},
+               "responses" => {message: "No responses yet", icon: "message-circle"},
+               "debates" => {message: "No debates yet", icon: "swords"}}.fetch(@active_tab) %>
+          <% if @active_tab == "hoojahs" && @user == current_user %>
+            <%= render "ui/empty_state", message: empty[:message], icon: empty[:icon],
+                  align: :center, cta_label: "Post your first hoojah", cta_href: new_hujah_path %>
+          <% else %>
+            <%= render "ui/empty_state", message: empty[:message], icon: empty[:icon] %>
+          <% end %>
         <% end %>
       <% end %>
     </div>
