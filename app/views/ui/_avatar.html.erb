@@ -39,8 +39,9 @@
      - The same name on both branches, as in Avatar.jsx. Announcing one person two
        different ways depending on whether they uploaded a photo is a bug; the handle
        is not always adjacent either (see shared/_navbar).
-%><% avatar_url = ds_avatar_url(user) %>
-<% tile = local_assigns[:variant] == :tile || avatar_url.blank? %>
+%><% tile = local_assigns[:variant] == :tile %>
+<% avatar_url = tile ? nil : ds_avatar_url(user) %>
+<% tile ||= avatar_url.blank? %>
 <% box = "#{ds_avatar_classes(size: local_assigns[:size], variant: (tile ? :tile : :photo))} shrink-0 #{local_assigns[:class]}".squish %>
 <% if tile %>
   <span role="img" aria-label="<%= user.full_name %>"

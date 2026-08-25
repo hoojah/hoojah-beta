@@ -57,6 +57,18 @@ RSpec.describe "Profile", type: :request do
     expect(user.reload.avatar).to be_attached
   end
 
+  it "renders the attached avatar image on the profile page" do
+    user = create(:user)
+    # A photo-variant avatar renders on the hoojah rows (the hero uses the initials
+    # tile), so give the user a public hoojah for the attachment URL to land on.
+    create(:hujah, user: user, body: "avatar render probe")
+    user.avatar.attach(io: StringIO.new("\x89PNG\r\n\x1a\n".b + ("0".b * 50)), filename: "me.png", content_type: "image/png")
+    get "/u/#{user.username}"
+    # Disk service (test) serves attachments under /rails/active_storage/... — the
+    # marker that ds_avatar_url resolved to the attached blob rather than the photo string.
+    expect(response.body).to include("rails/active_storage")
+  end
+
   it "shows the followers list publicly (signed out)" do
     fan = create(:user, username: "fan")
     fan.active_follows.create!(followed: user, status: :accepted)

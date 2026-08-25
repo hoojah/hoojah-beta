@@ -32,13 +32,13 @@ class UsersController < ApplicationController
   def followers
     skip_authorization
     return redirect_to profile_path(@user.username) unless @user.visible_to?(current_user)
-    @users = @user.followers.order(:username)
+    @users = @user.followers.with_attached_avatar.order(:username)
   end
 
   def following
     skip_authorization
     return redirect_to profile_path(@user.username) unless @user.visible_to?(current_user)
-    @users = @user.following.order(:username)
+    @users = @user.following.with_attached_avatar.order(:username)
   end
 
   def edit
@@ -97,7 +97,7 @@ class UsersController < ApplicationController
     case tab
     when "responses"
       @pagy, replies = pagy(:countless,
-        @user.hujahs.where.not(parent_id: nil).includes(:user, parent: :user).order(updated_at: :desc))
+        @user.hujahs.where.not(parent_id: nil).includes(user: {avatar_attachment: :blob}, parent: {user: {avatar_attachment: :blob}}).order(updated_at: :desc))
       replies.select { |reply| reply.visible_to?(current_user) }
     when "debates"
       base = Debate.where(challenger_id: @user.id).or(Debate.where(opponent_id: @user.id))

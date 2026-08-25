@@ -171,11 +171,6 @@ RSpec.describe User, type: :model do
 
   describe "avatar attachment" do
     let(:user) { create(:user) }
-    let(:png) do
-      Rack::Test::UploadedFile.new(
-        StringIO.new("\x89PNG\r\n\x1a\n".b + ("0".b * 100)), "image/png", original_filename: "a.png"
-      )
-    end
 
     it "accepts an image attachment" do
       user.avatar.attach(io: StringIO.new("fakeimg"), filename: "a.png", content_type: "image/png")

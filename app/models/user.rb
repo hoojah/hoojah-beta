@@ -146,6 +146,8 @@ class User < ApplicationRecord
 
   private
 
+  # Gates the controller `update` path (`valid?`/`save`). A direct `avatar.attach` on a
+  # persisted record bypasses this by design — attach writes immediately without validation.
   def avatar_is_valid_image
     return unless avatar.attached?
     unless ALLOWED_AVATAR_TYPES.include?(avatar.blob.content_type)
