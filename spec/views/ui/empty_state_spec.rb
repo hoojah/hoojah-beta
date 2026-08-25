@@ -112,4 +112,27 @@ RSpec.describe "ui/_empty_state", type: :view do
     expect { render(partial: "ui/empty_state", locals: {icon: "bell"}) }
       .to raise_error(ActionView::Template::Error, /message/)
   end
+
+  # The optional CTA slot: a caller can pair the sentence with a single pill link
+  # (e.g. "Post the first hoojah") when both `cta_label` and `cta_href` are given.
+  # Either alone is not enough — a label with no href has nowhere to send the
+  # visitor, so it renders no link at all rather than a link to nil.
+  describe "the CTA slot" do
+    it "renders just the sentence and glyph with no CTA by default" do
+      render "ui/empty_state", message: "Nothing here"
+      expect(rendered).to have_text("Nothing here")
+      expect(rendered).not_to have_selector("a")
+    end
+
+    it "renders a single pill CTA when cta_label and cta_href are both present" do
+      render "ui/empty_state", message: "No hoojahs yet",
+        cta_label: "Post the first hoojah", cta_href: "/hoojah/new"
+      expect(rendered).to have_link("Post the first hoojah", href: "/hoojah/new")
+    end
+
+    it "renders no CTA when only cta_label is given (href missing)" do
+      render "ui/empty_state", message: "No hoojahs yet", cta_label: "Post"
+      expect(rendered).not_to have_selector("a")
+    end
+  end
 end

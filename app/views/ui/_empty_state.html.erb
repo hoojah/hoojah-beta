@@ -38,8 +38,21 @@
 %><% message = local_assigns.fetch(:message)
    icon = local_assigns.fetch(:icon, "message-circle")
    tone = (local_assigns[:tone]&.to_sym == :muted) ? "text-grey" : "text-light-grey"
-   align = (local_assigns[:align]&.to_sym == :center) ? "justify-center" : "justify-start" %>
-<div class="flex items-center gap-1 text-sm p-3 bg-white <%= tone %> <%= align %> <%= local_assigns[:class] %>">
-  <%= lucide_icon(icon, class: "w-4 h-4") if icon.present? %>
-  <span><%= message %></span>
-</div>
+   align = (local_assigns[:align]&.to_sym == :center) ? "justify-center" : "justify-start"
+   cta_label = local_assigns[:cta_label]
+   cta_href = local_assigns[:cta_href]
+   has_cta = cta_label.present? && cta_href.present? %>
+<% if has_cta %>
+  <div class="flex flex-col items-center gap-3 text-sm p-6 bg-white <%= tone %> <%= local_assigns[:class] %>">
+    <div class="flex items-center gap-1 justify-center">
+      <%= lucide_icon(icon, class: "w-4 h-4") if icon.present? %>
+      <span><%= message %></span>
+    </div>
+    <%= link_to cta_label, cta_href, class: ds_button_classes(tone: "primary", size: :sm) %>
+  </div>
+<% else %>
+  <div class="flex items-center gap-1 text-sm p-3 bg-white <%= tone %> <%= align %> <%= local_assigns[:class] %>">
+    <%= lucide_icon(icon, class: "w-4 h-4") if icon.present? %>
+    <span><%= message %></span>
+  </div>
+<% end %>
