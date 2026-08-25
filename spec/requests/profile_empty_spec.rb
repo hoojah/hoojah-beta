@@ -17,4 +17,14 @@ RSpec.describe "Profile empty states", type: :request do
     expect(response.body).to include("No hoojahs yet")
     expect(response.body).not_to include("Post your first hoojah")
   end
+
+  it "renders the Debates tab empty state without raising (swords glyph)" do
+    # lucide_icon raises on an unknown name, so a bad "swords" would 500 here — this
+    # exercises the debates-tab icon branch that the Hoojahs-tab tests never reach.
+    user = create(:user)
+    sign_in user
+    get profile_path(user.username, tab: "debates")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("No debates yet")
+  end
 end
