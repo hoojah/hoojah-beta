@@ -19,7 +19,10 @@ Rails.application.routes.draw do
   match "/500", to: "errors#show", via: :all, defaults: {status: 500}
 
   devise_for :users,
-    controllers: {registrations: "users/registrations"},
+    controllers: {
+      registrations: "users/registrations",
+      omniauth_callbacks: "users/omniauth_callbacks"
+    },
     path: "",
     path_names: {sign_in: "login", sign_out: "logout", sign_up: "signup"}
 
