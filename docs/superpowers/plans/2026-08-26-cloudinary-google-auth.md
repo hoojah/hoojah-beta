@@ -201,15 +201,13 @@ git commit -m "Slice: User#avatar attachment with image validation"
 ## Task A4: Avatar URL helper + _avatar partial (TDD)
 
 **Files:**
+- Modify: `app/controllers/application_controller.rb` (include `ActiveStorage::SetCurrent`)
 - Modify: `app/helpers/design_system_helper.rb`
 - Modify: `app/views/ui/_avatar.html.erb`
-- Test: `spec/helpers/design_system_helper_spec.rb` (create if absent)
+- Test: `spec/helpers/design_system_helper_spec.rb` (**already exists** — append inside the existing `RSpec.describe DesignSystemHelper` block, do NOT recreate the file or re-declare `require`/`RSpec.describe`)
 
-- [ ] **Step 1: Write failing helper test.** Create/append `spec/helpers/design_system_helper_spec.rb`:
+- [ ] **Step 1: Write failing helper test.** Inside the existing `RSpec.describe DesignSystemHelper, type: :helper do` block in `spec/helpers/design_system_helper_spec.rb`, add a new `describe "#ds_avatar_url"` block:
 ```ruby
-require "rails_helper"
-
-RSpec.describe DesignSystemHelper, type: :helper do
   describe "#ds_avatar_url" do
     around do |ex|
       old = ActiveStorage::Current.url_options
@@ -221,7 +219,10 @@ RSpec.describe DesignSystemHelper, type: :helper do
     it "returns the attached avatar url when attached" do
       user = create(:user)
       user.avatar.attach(io: StringIO.new("img"), filename: "a.png", content_type: "image/png")
-      expect(helper.ds_avatar_url(user)).to eq(user.avatar.url)
+      # freeze_time so the two DiskService#url calls generate byte-identical signed URLs
+      freeze_time do
+        expect(helper.ds_avatar_url(user)).to eq(user.avatar.url)
+      end
     end
 
     it "falls back to the photo string when no avatar is attached" do
@@ -236,13 +237,15 @@ RSpec.describe DesignSystemHelper, type: :helper do
       expect(helper.ds_avatar_url(user)).to be_nil
     end
   end
-end
 ```
+(Close only the new `describe` block — the surrounding `RSpec.describe DesignSystemHelper` block already exists.)
 
 - [ ] **Step 2: Run — expect failure.** Run: `RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/helpers/design_system_helper_spec.rb`
 Expected: FAIL (`ds_avatar_url` undefined).
 
-- [ ] **Step 3: Implement helper.** In `app/helpers/design_system_helper.rb` add:
+- [ ] **Step 3a: Set ActiveStorage url_options per-request.** In `app/controllers/application_controller.rb`, add `include ActiveStorage::SetCurrent` (near the top, alongside the existing includes). Without it, rendering an attached avatar via the Disk service in any request/system spec raises `ArgumentError: Cannot generate URL … set ActiveStorage::Current.url_options`. Harmless in production (Cloudinary URLs don't need it).
+
+- [ ] **Step 3b: Implement helper.** In `app/helpers/design_system_helper.rb` add:
 ```ruby
   # Resolve a user's avatar image URL: prefer an uploaded ActiveStorage avatar,
   # fall back to the legacy Cloudinary `photo` string, else nil (caller renders the tile).
@@ -255,12 +258,14 @@ Expected: FAIL (`ds_avatar_url` undefined).
 - [ ] **Step 4: Run — expect pass.** Run: `RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/helpers/design_system_helper_spec.rb`
 Expected: 3 examples, 0 failures.
 
-- [ ] **Step 5: Update the partial.** In `app/views/ui/_avatar.html.erb`, replace the photo-vs-tile decision so it uses the helper. Change the `tile` computation to treat "no resolvable url" as the tile trigger, and render the resolved URL. Concretely, replace the current `tile = variant == :tile || user.photo.blank?` and the `image_tag user.photo, ...` with:
+- [ ] **Step 5: Update the partial.** In `app/views/ui/_avatar.html.erb`, the actual line 42 is `<% tile = local_assigns[:variant] == :tile || user.photo.blank? %>` (glued to the closing `%>` of the doc comment — preserve `local_assigns[:variant]`). Replace that line with two lines that resolve the URL via the helper and use blank-url as the tile trigger:
 ```erb
 <% avatar_url = ds_avatar_url(user) %>
-<% tile = variant == :tile || avatar_url.blank? %>
+<% tile = local_assigns[:variant] == :tile || avatar_url.blank? %>
 ```
 and in the photo branch replace `image_tag user.photo, ...` with `image_tag avatar_url, ...` (keep the existing `class:` / `alt:` / size attributes exactly).
+
+- [ ] **Step 5b: Prevent an avatar N+1.** `ds_avatar_url` calls `user.avatar.attached?`, which lazily queries `active_storage_attachments` per user unless preloaded. Grep app code for user-list loads that render `ui/_avatar` (`grep -rn "includes(:user)\|preload(:user)\|with(:user)" app/`), and for each call site that renders avatars, add the attachment to the include, e.g. `includes(user: {avatar_attachment: :blob})` (or `.with_attached_avatar` on a `User` relation). Keep the change minimal and only where avatars are actually rendered in a list. Note in the commit which call sites changed.
 
 - [ ] **Step 6: Run avatar-rendering specs.** Run: `RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/helpers/design_system_helper_spec.rb` and any partial spec if present.
 Expected: PASS.
@@ -279,9 +284,11 @@ git commit -m "Slice: ds_avatar_url helper; _avatar prefers attached avatar"
 - Delete: `app/javascript/controllers/cloudinary_upload_controller.js`
 - Modify: `app/views/layouts/application.html.erb:33-39`
 - Modify: `config/initializers/content_security_policy.rb`
-- Test: `spec/requests/users_spec.rb` (or the existing profile-update request spec) and `spec/system/*profile*`
+- Modify: `spec/system/profile_spec.rb` (rewrite the old-widget assertion)
+- Modify: `spec/support/capybara.rb` (Cuprite host blocklist)
+- Test: `spec/requests/profile_spec.rb` and `spec/system/profile_spec.rb`
 
-- [ ] **Step 1: Write failing request test.** Find the existing profile-update request spec (grep `spec/requests` for `profile_path` / `users#update`; likely `spec/requests/users_spec.rb`). Add:
+- [ ] **Step 1: Write failing request test.** In the existing `spec/requests/profile_spec.rb` (the profile-update request spec), add:
 ```ruby
   it "attaches an uploaded avatar via multipart PATCH" do
     user = create(:user)
@@ -294,7 +301,7 @@ git commit -m "Slice: ds_avatar_url helper; _avatar prefers attached avatar"
   end
 ```
 
-- [ ] **Step 2: Run — expect failure.** Run: `RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/requests/users_spec.rb -e "attaches an uploaded avatar"`
+- [ ] **Step 2: Run — expect failure.** Run: `RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/requests/profile_spec.rb -e "attaches an uploaded avatar"`
 Expected: FAIL (avatar not permitted → not attached).
 
 - [ ] **Step 3: Permit `:avatar`.** In `app/controllers/users_controller.rb` change the `user_params` permit list (line 76) to include `:avatar`:
@@ -302,7 +309,7 @@ Expected: FAIL (avatar not permitted → not attached).
     params.require(:user).permit(:full_name, :username, :location, :link, :headline, :photo, :private, :avatar)
 ```
 
-- [ ] **Step 4: Run — expect pass.** Run: `RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/requests/users_spec.rb -e "attaches an uploaded avatar"`
+- [ ] **Step 4: Run — expect pass.** Run: `RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/requests/profile_spec.rb -e "attaches an uploaded avatar"`
 Expected: PASS.
 
 - [ ] **Step 5: Swap the form UI to a file field.** In `app/views/users/_profile_edit.html.erb`:
@@ -329,12 +336,23 @@ git rm app/javascript/controllers/cloudinary_upload_controller.js
   - `frame_src` (line 9): remove `"https://widget.cloudinary.com"` (leave Drift; if it becomes empty, set `policy.frame_src "https://*.drift.com"`).
   - **Keep** `img_src ... "https://res.cloudinary.com"` (line 7) — avatars (legacy + new AS-Cloudinary) are served from there.
 
-- [ ] **Step 9: Run the profile system spec + request spec.** Run:
+- [ ] **Step 9: Rewrite the old-widget system spec.** `spec/system/profile_spec.rb` has an example (~line 45) `"wires the Cloudinary photo button to a hidden field the widget fills"` asserting `have_button("Update photo", disabled: :all)` and `have_field("user[photo]", type: :hidden)`. Both are removed. Rewrite that example to assert the new file field, e.g.:
+```ruby
+    it "offers a photo file field on the edit form" do
+      # ...open the edit dialog as the existing example does...
+      expect(page).to have_field("user[avatar]", type: :file)
+    end
+```
+Keep the dialog-opening setup identical to the surrounding examples.
+
+- [ ] **Step 9b: Update the Cuprite host blocklist.** In `spec/support/capybara.rb`, remove the `widget.cloudinary.com` / `api.cloudinary.com` entries from the blocked-hosts list and update the accompanying comment (they're gone from the app now). **Keep `res.cloudinary.com`** — legacy `photo` URLs still render from there.
+
+- [ ] **Step 9c: Run the profile specs.** Run:
 ```bash
 rm -rf public/assets
-RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/requests/users_spec.rb spec/system --tag js -e "profile" 2>&1 | tail -20
+RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/requests/profile_spec.rb spec/system/profile_spec.rb 2>&1 | tail -25
 ```
-Expected: profile edit/update specs PASS; no reference to the removed `cloudinary-upload` controller breaks the page. (If a system spec asserted the old "Update photo" button text, update that assertion to the new file field.)
+Expected: profile edit/update specs PASS; nothing references the removed `cloudinary-upload` controller.
 
 - [ ] **Step 10: Commit.**
 ```bash
@@ -484,12 +502,13 @@ Expected: FAIL (methods undefined).
       return user
     end
 
-    seed = auth.info.name.presence || email.split("@").first
+    # Seed the username from the email local-part (matches the spec), falling back to the name.
+    seed = email.split("@").first.presence || auth.info.name
     create(
       provider: auth.provider,
       uid: auth.uid,
       email: email,
-      full_name: auth.info.name.presence || seed,
+      full_name: auth.info.name.presence || email.split("@").first,
       username: generate_username(seed),
       password: Devise.friendly_token[0, 20]
     )
@@ -654,7 +673,7 @@ end
 - [ ] **Step 2: Run — expect failure.** Run: `rm -rf public/assets && RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/system/google_sign_in_spec.rb`
 Expected: FAIL (signup has no button; login button is inert `type="button"`).
 
-- [ ] **Step 3: Wire the login button.** In `app/views/devise/sessions/new.html.erb`, replace the inert button block (lines 68-71) with a `button_to` POST (Turbo disabled so the request-phase redirect to Google is a full navigation):
+- [ ] **Step 3: Wire the login button.** First update the header comment at `app/views/devise/sessions/new.html.erb:17-19` — it currently states the Google button is intentionally INERT ("do not turn it into a link/`button_to`…"). Rewrite it to say the button is now wired to Devise's `google_oauth2` OmniAuth request phase. Then replace the inert button block (lines 68-71) with a `button_to` POST (Turbo disabled so the request-phase redirect to Google is a full navigation):
 ```erb
   <%= button_to user_google_oauth2_omniauth_authorize_path,
         method: :post,
@@ -710,7 +729,7 @@ RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec 2>&1 | tail -30
 ```
 Expected: 0 failures. Investigate any regression (esp. avatar rendering across feed/navbar/profile surfaces and CSP-related system specs).
 
-- [ ] **Step 5: N+1 sanity.** Run: `grep -c 'N+1 queries detected' log/prosopite.log` — should not increase materially over the baseline (~146).
+- [ ] **Step 5: N+1 sanity.** Run: `grep -c 'N+1 queries detected' log/prosopite.log`. Prosopite is log-only (never a failing gate). Baseline is ~146. After Task A4's `avatar_attachment` eager-loading at the avatar-rendering call sites, the count should stay near baseline; a small increase is acceptable given `avatar.attached?` now runs on avatar renders. If it rose materially, confirm the eager-load was applied at the list call sites (it is not a merge blocker either way).
 
 - [ ] **Step 6: Hand off to finishing-a-development-branch** to merge into `master` and push (see subagent-driven-development / finishing skill).
 
