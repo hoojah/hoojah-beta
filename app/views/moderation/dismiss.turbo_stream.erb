@@ -1,0 +1,7 @@
+<%# Resolved item leaves the queue; the pending-count chip refreshes in place. All
+    three moderation actions (dismiss/remove/warn) share this shape — each is written out
+    so it can be read independently. %>
+<%= turbo_stream.remove dom_id(@hujah, :moderation_item) %>
+<%= turbo_stream.replace "moderation-pending-count" do %>
+  <span id="moderation-pending-count" class="text-sm text-grey"><%= pending_moderation_count %> awaiting review</span>
+<% end %>
