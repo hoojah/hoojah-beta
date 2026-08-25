@@ -78,7 +78,7 @@
           <%= link_to "X", "https://x.com/intent/tweet?url=#{CGI.escape(profile_share_url)}&text=#{CGI.escape(profile_share_text)}&via=hoojah_my", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
           <%= link_to "Telegram", "https://t.me/share/url?url=#{CGI.escape(profile_share_url)}&text=#{CGI.escape(profile_share_text)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
           <%= link_to "Facebook", "https://www.facebook.com/sharer/sharer.php?u=#{CGI.escape(profile_share_url)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
-          <%= mail_to "hello@hoojah.my", "Email", subject: "Hoojah profile", body: "#{profile_share_text}\n\n#{profile_share_url}", class: ds_menu_item_classes %>
+          <%= mail_to "hello@rudzainy.com", "Email", subject: "Hoojah profile", body: "#{profile_share_text}\n\n#{profile_share_url}", class: ds_menu_item_classes %>
         <% end %>
       </details>
       <% if owner %>

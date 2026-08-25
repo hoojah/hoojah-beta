@@ -155,7 +155,7 @@
         <%= link_to "Telegram", "https://t.me/share/url?url=#{CGI.escape(debate_share_url)}&text=#{CGI.escape(debate_share_text)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
         <%= link_to "Reddit", "https://www.reddit.com/submit?url=#{CGI.escape(debate_share_url)}&title=#{CGI.escape(debate_share_text)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
         <%= link_to "Facebook", "https://www.facebook.com/sharer/sharer.php?u=#{CGI.escape(debate_share_url)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
-        <%= mail_to "hello@hoojah.my", "Email", subject: debate_share_title, body: "#{debate_share_text}\n\n#{debate_share_url}", class: ds_menu_item_classes %>
+        <%= mail_to "hello@rudzainy.com", "Email", subject: debate_share_title, body: "#{debate_share_text}\n\n#{debate_share_url}", class: ds_menu_item_classes %>
       <% end %>
     </details>
   <% end %>

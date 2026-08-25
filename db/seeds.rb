@@ -43,7 +43,7 @@ User.create!(
 # 2
 hoojah = User.create!(
   full_name: "Hoojah",
-  email: "hello@hoojah.my",
+  email: "hello@rudzainy.com",
   username: "hoojahhq", # "hoojah" is a RESERVED_USERNAME (see User model); use a non-reserved handle for the official seed account
   password: PASSWORD,
   password_confirmation: PASSWORD,
