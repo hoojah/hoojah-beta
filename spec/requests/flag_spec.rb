@@ -31,4 +31,19 @@ RSpec.describe "Flag (HTML)", type: :request do
     expect(response.body).to include("close_dialog")
     expect(response.body).to include(ActionView::RecordIdentifier.dom_id(hujah, :flag_dialog))
   end
+
+  it "is idempotent per user and hoojah — a re-flag updates the reason, not the count" do
+    sign_in user
+
+    post "/hoojah/#{hujah.slug}/flags", params: {flag: {subject: "spam"}}
+    expect(Flag.count).to eq(1)
+
+    expect {
+      post "/hoojah/#{hujah.slug}/flags", params: {flag: {subject: "abusive"}}
+    }.not_to change(Flag, :count)
+
+    expect(response).not_to have_http_status(:error)
+    flag = user.flags.find_by(hujah: hujah)
+    expect(flag.abusive?).to eq(true)
+  end
 end
