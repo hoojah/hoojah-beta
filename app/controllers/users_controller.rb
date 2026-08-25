@@ -127,6 +127,10 @@ class UsersController < ApplicationController
     return nil unless debate
     return nil unless debate.challenger.visible_to?(current_user) && debate.opponent.visible_to?(current_user)
     return nil if current_user && (current_user.hidden_user_ids & [debate.challenger_id, debate.opponent_id]).any?
+    # Moderation (C-1): the card quotes the claim body, and this action has no
+    # authenticate_user! — a removed claim is staff-only, so gate it per-record like
+    # every other content surface (debates/show + _verdict + _debate_pending).
+    return nil unless debate.hujah.visible_to?(current_user)
     debate
   end
 end

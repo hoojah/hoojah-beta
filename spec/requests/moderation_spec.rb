@@ -194,4 +194,42 @@ RSpec.describe "Moderation queue", type: :request do
       expect(note.subject_user_id).to be_nil
     end
   end
+
+  # M-1: set_hujah must not run before authorization, or a non-staff member gets a
+  # "Not allowed." redirect for an existing slug vs a 404 for a missing one — an
+  # existence oracle. Both cases must produce the SAME non-committal outcome.
+  describe "existence oracle (M-1)" do
+    it "gives a plain member the same outcome for an existing and a nonexistent slug" do
+      hujah = create(:hujah)
+      create(:flag, hujah: hujah)
+      sign_in member
+
+      patch "/moderation/#{hujah.slug}/dismiss"
+      existing_status = response.status
+      expect(response).to redirect_to(root_path)
+      expect(flash[:alert]).to eq("Not allowed.")
+
+      patch "/moderation/no-such-slug/dismiss"
+      expect(response.status).to eq(existing_status)
+      expect(response).to redirect_to(root_path)
+      expect(flash[:alert]).to eq("Not allowed.")
+    end
+  end
+
+  # L-1: a second removal is a no-op — Hujah#remove! early-returns on an
+  # already-removed record, so the author is never re-notified.
+  describe "remove idempotency (L-1)" do
+    it "creates exactly one moderation_removed notification when remove is called twice" do
+      hujah = create(:hujah)
+      create(:flag, hujah: hujah)
+      sign_in moderator
+
+      delete "/moderation/#{hujah.slug}/remove"
+      expect {
+        delete "/moderation/#{hujah.slug}/remove"
+      }.not_to change(Notification, :count)
+
+      expect(Notification.where(category: :moderation_removed, hujah_id: hujah.id).count).to eq(1)
+    end
+  end
 end

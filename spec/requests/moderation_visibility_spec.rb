@@ -121,4 +121,20 @@ RSpec.describe "Moderation visibility sweep", type: :request do
       expect(response.body).to include("ZBETA")
     end
   end
+
+  # C-1: the profile live-debate card quotes the claim body with no per-record gate.
+  # UsersController#show has no authenticate_user!, so a removed claim behind the
+  # owner's active debate would print to the public. The card must not render when the
+  # claim is not visible to the viewer.
+  describe "profile live-debate card GET /u/:username (C-1)" do
+    it "hides the removed claim's body from an anonymous visitor" do
+      motion = create(:hujah, user: author, body: "ZLIVEDEBATE distinctive motion")
+      create(:debate, hujah: motion, challenger: author, opponent: create(:user), status: :active)
+      motion.update!(moderation_status: :removed)
+
+      get "/u/#{author.username}"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("ZLIVEDEBATE")
+    end
+  end
 end
