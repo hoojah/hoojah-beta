@@ -210,7 +210,7 @@ RSpec.describe User, type: :model do
     def auth(email:, name: "Jane Doe", uid: "123")
       OmniAuth::AuthHash.new(
         provider: "google_oauth2", uid: uid,
-        info: { email: email, name: name }
+        info: {email: email, name: name}
       )
     end
 
