@@ -42,6 +42,14 @@ RSpec.describe "Api::V1::Flags", type: :request do
       expect(response.parsed_body).to have_key("hujah")
     end
 
+    # Slice 11 (A2): a POST with no `flag` key must return 400, not a
+    # NoMethodError-on-nil 500 that fired BEFORE `authorize`.
+    it "returns 400 (not 500) when the flag key is missing" do
+      login_as(user)
+      post "/api/v1/flags/create", params: {}, as: :json
+      expect(response).to have_http_status(:bad_request)
+    end
+
     it "ignores a spoofed user_id and records the flag under the current user" do
       other = create(:user)
       login_as(user)
