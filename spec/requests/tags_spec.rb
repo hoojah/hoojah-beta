@@ -42,4 +42,26 @@ RSpec.describe "Tag feed", type: :request do
       expect(response.body).not_to include(hidden.slug)
     end
   end
+
+  describe "empty state" do
+    it "shows an empty state when a tag has no visible hoojahs" do
+      tag = create(:hashtag)
+      get tag_path(tag.name)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("No hoojahs tagged")
+    end
+
+    it "shows a compose CTA to a signed-in visitor on an empty tag" do
+      tag = create(:hashtag)
+      sign_in create(:user)
+      get tag_path(tag.name)
+      expect(response.body).to include(new_hujah_path)
+    end
+
+    it "shows no compose CTA to an anonymous visitor on an empty tag" do
+      tag = create(:hashtag)
+      get tag_path(tag.name)
+      expect(response.body).not_to include("Post a hoojah")
+    end
+  end
 end

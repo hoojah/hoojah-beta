@@ -11,13 +11,24 @@
         <span>#<%= @tag.display %></span>
       </div>
       <p class="text-ink-2 text-sm mt-2">
-        <%= pluralize(@tag.hujahs_count, "hoojah") %> tagged
+        <%= pluralize(@count, "hoojah") %> tagged
       </p>
     </header>
 
-    <div id="hujah-feed">
-      <%= render partial: "hujahs/hujah_card", collection: @hujahs, as: :hujah %>
-    </div>
+    <% if @count.zero? %>
+      <div id="hujah-feed">
+        <% if user_signed_in? %>
+          <%= render "ui/empty_state", message: "No hoojahs tagged ##{@tag.display} yet", icon: "hash",
+                align: :center, cta_label: "Post a hoojah", cta_href: new_hujah_path %>
+        <% else %>
+          <%= render "ui/empty_state", message: "No hoojahs tagged ##{@tag.display} yet", icon: "hash" %>
+        <% end %>
+      </div>
+    <% else %>
+      <div id="hujah-feed">
+        <%= render partial: "hujahs/hujah_card", collection: @hujahs, as: :hujah %>
+      </div>
+    <% end %>
 
     <div id="load-more">
       <%= render "load_more" if @pagy.next %>

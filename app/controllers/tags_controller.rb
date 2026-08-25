@@ -9,6 +9,7 @@ class TagsController < ApplicationController
     base = @tag.hujahs.where(parent_id: nil).where(visibility: :visible_public)
       .joins(:user).where(users: {private: false}).includes(:user).order(updated_at: :desc)
     base = base.where.not(user_id: current_user.hidden_user_ids) if user_signed_in?
+    @count = base.count
     @pagy, @hujahs = pagy(:countless, base)
     respond_to do |format|
       format.html
