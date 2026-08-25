@@ -10,7 +10,9 @@
              data-action="response-filter#filter",
              data-response-filter-filter-param="all|agree|neutral|disagree"
       items: data-response-filter-target="item" data-response-filter-vote="<stance>"
-    Change a name here and half the thread stops hiding, silently. The tabs' active fill
+    Change a name here and half the thread stops hiding, silently. `empty` (below, inside
+    the responses list) is a pure ADDITION to this contract, not a rename — the controller
+    toggles it visible when a stance filter matches zero items. The tabs' active fill
     is driven by the built-in `aria-pressed:` variant the controller already toggles, so
     it needs no extra JS. Stance active-fills are spelled literally per stance (a loop
     would interpolate `aria-pressed:bg-<stance>` which the scanner can't see).
@@ -72,9 +74,12 @@
       <% children.each do |child| %>
         <%= render "hujahs/child_card", child: child, hujah: hujah, live_debate_keys: live_debate_keys %>
       <% end %>
+      <div data-response-filter-target="empty" hidden>
+        <%= render "ui/empty_state", message: "No responses match this filter yet", class: "px-4" %>
+      </div>
     <% else %>
       <div id="<%= dom_id(hujah, :responses_empty) %>">
-        <%= render "ui/empty_state", message: "No response yet", class: "px-4" %>
+        <%= render "ui/empty_state", message: "No responses yet", class: "px-4" %>
       </div>
     <% end %>
   </div>
