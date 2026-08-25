@@ -1,8 +1,9 @@
 # Hoojah 2026 redesign, Phase 1.1 — the Devise auth screens (log in / sign up)
 # restyled to the 2026 visual language. This spec pins the FROZEN contracts that
-# must survive the restyle untouched: Warden's field names, the invisible_captcha
-# honeypot, and the fact that "Continue with Google" is decorative only (no
-# OmniAuth is wired up, so it must never be a real link).
+# must survive the restyle untouched: Warden's field names and the invisible_captcha
+# honeypot. "Continue with Google" is now WIRED to the Google OmniAuth request phase
+# (`button_to` POST /auth/google_oauth2), so it submits a real form rather than being
+# a bare anchor link — the assertion below pins that shape.
 require "rails_helper"
 
 RSpec.describe "Devise auth screens (Hoojah 2026 restyle)", type: :request do
@@ -21,16 +22,21 @@ RSpec.describe "Devise auth screens (Hoojah 2026 restyle)", type: :request do
       expect(doc.text).to include("Where Malaysia's brilliant minds debate.")
     end
 
-    it "renders 'Continue with Google' as an inert button, never a link" do
+    it "wires 'Continue with Google' to a POST to the Google OmniAuth request phase" do
       doc = Nokogiri::HTML.parse(response.body)
 
+      # Still not a bare anchor link — button_to renders a real form submission.
       anchors_with_google = doc.css("a").select { |a| a.text.include?("Continue with Google") }
       expect(anchors_with_google).to be_empty
 
       google_button = doc.css("button").find { |b| b.text.include?("Continue with Google") }
       expect(google_button).to be_present
-      expect(google_button["type"]).to eq("button")
-      expect(google_button["href"]).to be_nil
+      expect(google_button["type"]).to eq("submit")
+
+      form = google_button.ancestors("form").first
+      expect(form).to be_present
+      expect(form["action"]).to eq("/auth/google_oauth2")
+      expect(form["method"]).to eq("post")
     end
   end
 
