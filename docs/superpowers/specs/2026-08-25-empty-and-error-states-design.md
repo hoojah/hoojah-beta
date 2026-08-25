@@ -84,8 +84,12 @@ because the new locals default to nil:
 - **LOW polish** — "No responses yet" plural; a one-line closing sentence in the declined-debate body.
 
 ### 3. Branded error pages
-- `ErrorsController#show` — `skip_authorization`, renders `app/views/errors/show.html.erb` inside the
-  app layout, status derived from the request path. One-line copy per code + a "Back to feed" CTA:
+- `ErrorsController#show` — `skip_authorization`, plus `skip_before_action :verify_authenticity_token`
+  (security H1: a redispatched CSRF-failure POST must not re-fail the token check inside the error
+  controller) and a JSON-format branch for `Api::V1` clients (M3). Renders
+  `app/views/errors/show.html.erb` with a **query-free** minimal header — NOT `shared/navbar`, which
+  runs a `current_user.unread_notifications_count` DB query that would re-raise on a DB-outage 500
+  (security H2). One-line copy per code + a "Back to feed" CTA:
   - 404 "That page doesn't exist." · 422 "That request couldn't be processed." · 500 "Something went
     wrong on our end."
 - Wire `config.exceptions_app = routes` (production) and route `/404`, `/422`, `/500` →

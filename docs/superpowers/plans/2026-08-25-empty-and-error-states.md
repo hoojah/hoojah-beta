@@ -23,8 +23,13 @@
 **Create:**
 - `app/controllers/errors_controller.rb` — maps an error status to a branded page.
 - `app/views/errors/show.html.erb` — the branded 404/422/500 body.
-- `app/helpers/notifications_helper.rb` — reason-aware empty message for notifications.
 - Spec files listed per task.
+
+> Reviewer-driven revisions folded in (2026-08-25): dropped the one-call-site `NotificationsHelper`
+> (inline `case`); added the tag-page signed-in CTA to match the spec; added the `itemTargetConnected`
+> Stimulus hook so a live Turbo-Stream reply respects the active filter; added CSRF-skip + JSON-format
+> handling + a query-free error header for security findings H1/H2/M3; corrected the `public/500.html`
+> failsafe reasoning (M1) and documented the M2 status-coverage scope.
 
 **Modify:**
 - `app/views/ui/_empty_state.html.erb` — additive CTA slot.
@@ -258,21 +263,30 @@ In `app/views/tags/show.html.erb`, change the header count line from `@tag.hujah
       </p>
 ```
 
-Then replace the `<div id="hujah-feed">` block with an empty-aware version:
+Then replace the `<div id="hujah-feed">` block with an empty-aware version. Drive both the
+header count and the empty branch off the single `@count` source of truth (simplifier review),
+and add the signed-in compose CTA the spec's key-funnel list requires:
 
 ```erb
-    <% if @hujahs.any? %>
+    <% if @count.zero? %>
       <div id="hujah-feed">
-        <%= render partial: "hujahs/hujah_card", collection: @hujahs, as: :hujah %>
+        <% if user_signed_in? %>
+          <%= render "ui/empty_state", message: "No hoojahs tagged ##{@tag.display} yet", icon: "hash",
+                align: :center, cta_label: "Post a hoojah", cta_href: new_hujah_path %>
+        <% else %>
+          <%= render "ui/empty_state", message: "No hoojahs tagged ##{@tag.display} yet", icon: "hash" %>
+        <% end %>
       </div>
     <% else %>
       <div id="hujah-feed">
-        <%= render "ui/empty_state", message: "No hoojahs tagged ##{@tag.display} yet", icon: "hash" %>
+        <%= render partial: "hujahs/hujah_card", collection: @hujahs, as: :hujah %>
       </div>
     <% end %>
 ```
 
 Keep `#hujah-feed` present in both branches so the load-more turbo stream target is stable.
+Extend the T3 request spec to assert the signed-in CTA renders (`new_hujah_path` present when
+signed in) and is absent when anonymous.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
@@ -338,9 +352,11 @@ In `app/views/hujahs/_response_filter.html.erb`, inside the `<div id="<%= dom_id
 
 (It lives in the `children.any?` branch only — when there are zero responses total, the existing `responses_empty` server state covers it.)
 
-- [ ] **Step 4: Add the `empty` target + count logic to the controller**
+- [ ] **Step 4: Add the `empty` target + a shared `applyFilter` method to the controller**
 
-In `app/javascript/controllers/response_filter_controller.js`, add `"empty"` to `static targets` and update `activeValueChanged`:
+In `app/javascript/controllers/response_filter_controller.js`, add `"empty"` to `static targets`
+and factor the show/hide + count + empty-toggle logic into one private method so it can be called
+from BOTH the value-changed callback and the target-connected callback (better-stimulus review):
 
 ```js
 export default class extends Controller {
@@ -351,7 +367,24 @@ export default class extends Controller {
     this.activeValue = event.params.filter
   }
 
-  activeValueChanged(value) {
+  activeValueChanged() {
+    this.applyFilter()
+  }
+
+  // A response appended via Turbo Stream (create.turbo_stream.erb) connects a new
+  // `item` target AFTER the last activeValueChanged. Re-apply the active filter to
+  // the whole set so the new card is hidden/shown correctly and the placeholder
+  // re-evaluates — otherwise a non-matching reply leaks into a filtered view, or a
+  // matching reply leaves the "no matches" placeholder stranded.
+  itemTargetConnected() {
+    this.applyFilter()
+  }
+
+  // Invariant: `item` visibility is controlled SOLELY by this controller. If a future
+  // change hides a card for another reason, the `visible === 0` guard below would
+  // misfire the placeholder.
+  applyFilter() {
+    const value = this.activeValue
     let visible = 0
     this.itemTargets.forEach((el) => {
       const show = value === "all" || el.dataset.responseFilterVote === value
@@ -364,14 +397,47 @@ export default class extends Controller {
       this.emptyTarget.toggleAttribute("hidden", !(visible === 0 && this.itemTargets.length > 0))
     }
     this.tabTargets.forEach((tab) => {
-      tab.setAttribute(
-        "aria-pressed",
-        String(tab.dataset.responseFilterFilterParam === value)
-      )
+      tab.setAttribute("aria-pressed", String(tab.dataset.responseFilterFilterParam === value))
     })
   }
 }
 ```
+
+Copy decision (better-stimulus #4): keep the generic one-liner "No responses match this filter
+yet" rather than per-stance messages — simpler, deterministic to test, and avoids coupling copy to
+the frozen a11y labels. Revisit only if per-stance clarity is later requested (then use a
+`emptyMessages: Object` value, never the tab `aria-label`).
+
+- [ ] **Step 4a: Add the Turbo-Stream regression system test**
+
+```ruby
+# append to spec/system/response_filter_empty_spec.rb
+  it "keeps a filter correct when a reply is appended live while the filter is active" do
+    author = create(:user)
+    hujah = create(:hujah, user: author)
+    create(:hujah, parent: hujah, user: create(:user), stance: "agree")
+
+    sign_in author
+    visit hujah_path(hujah.slug)
+    click_button "Disagree"
+    expect(page).to have_text("No responses match this filter yet")
+
+    # Post a disagreeing reply via the argument composer (Turbo Stream append).
+    # Adjust selectors to the real composer in _argument_composer.html.erb.
+    within("##{ActionView::RecordIdentifier.dom_id(hujah, :argument_composer)}") do
+      # open/fill/submit the composer with stance "disagree"
+    end
+
+    # The appended disagreeing card must now be visible and the placeholder gone,
+    # without the user re-clicking the Disagree tab.
+    expect(page).not_to have_text("No responses match this filter yet")
+  end
+```
+
+Note: read `app/views/hujahs/_argument_composer.html.erb` to fill in the composer interaction
+(stance selection + submit). If driving the composer in a system spec proves flaky, assert the
+controller behavior with a focused Jasmine-free DOM check is NOT available here — instead keep this
+as the regression guard and lean on the `itemTargetConnected` wiring.
 
 - [ ] **Step 5: Run test to verify it passes**
 
@@ -393,8 +459,11 @@ git commit -m "Show placeholder when a response stance filter matches nothing"
 
 ## Task 5: Notifications reason-aware empty copy (MEDIUM)
 
+> Simplifier review: no helper. `read_all` always re-renders the unfiltered list, so it can only
+> ever be "You have no notifications" — hardcode it there. That leaves `index` as the single caller
+> with real branching, so inline a `case` in the view rather than adding a one-call-site helper file.
+
 **Files:**
-- Create: `app/helpers/notifications_helper.rb`
 - Modify: `app/views/notifications/index.html.erb`, `app/views/notifications/read_all.turbo_stream.erb`
 - Test: `spec/requests/notifications_empty_spec.rb` (create)
 
@@ -433,40 +502,34 @@ end
 Run: `RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/requests/notifications_empty_spec.rb`
 Expected: FAIL — all three currently render "You have no notifications".
 
-- [ ] **Step 3: Add the helper**
+- [ ] **Step 3: Inline the reason-aware copy in `index`**
 
-```ruby
-# app/helpers/notifications_helper.rb
-module NotificationsHelper
-  # Reason-aware empty message for the notifications list. Keyed on the same filter
-  # key NotificationsController#index computes ("all" | "mentions" | "debates").
-  def notifications_empty_message(filter)
-    case filter
-    when "mentions" then "No mentions yet"
-    when "debates" then "No debate activity yet"
-    else "You have no notifications"
-    end
-  end
-end
-```
-
-- [ ] **Step 4: Use it in both render paths**
-
-In `app/views/notifications/index.html.erb`, change the empty branch to:
+In `app/views/notifications/index.html.erb`, change the empty branch to a `case` on `@filter`
+(the key `NotificationsController#index` already computes as `"all" | "mentions" | "debates"`):
 
 ```erb
     <% if @notifications.empty? %>
-      <%= render "ui/empty_state", message: notifications_empty_message(@filter), icon: "bell" %>
+      <% empty_message = case @filter
+           when "mentions" then "No mentions yet"
+           when "debates" then "No debate activity yet"
+           else "You have no notifications"
+         end %>
+      <%= render "ui/empty_state", message: empty_message, icon: "bell" %>
     <% end %>
 ```
 
-In `app/views/notifications/read_all.turbo_stream.erb`, make the identical change to its empty branch. (`@filter` is set by both `index` and `read_all`? `read_all` does not set `@filter` — it always re-renders the full unfiltered list, so pass `"all"` explicitly there:)
+- [ ] **Step 4: Hardcode the unfiltered copy in `read_all`**
+
+`read_all` always re-renders the full unfiltered list, so it can only be truly-empty. In
+`app/views/notifications/read_all.turbo_stream.erb`, leave the message as the literal:
 
 ```erb
     <% if @notifications.empty? %>
-      <%= render "ui/empty_state", message: notifications_empty_message("all"), icon: "bell" %>
+      <%= render "ui/empty_state", message: "You have no notifications", icon: "bell" %>
     <% end %>
 ```
+
+(No change needed if it already reads exactly this — confirm the icon is `bell`.)
 
 - [ ] **Step 5: Run tests to verify they pass**
 
@@ -476,7 +539,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add app/helpers/notifications_helper.rb app/views/notifications/index.html.erb app/views/notifications/read_all.turbo_stream.erb spec/requests/notifications_empty_spec.rb
+git add app/views/notifications/index.html.erb app/views/notifications/read_all.turbo_stream.erb spec/requests/notifications_empty_spec.rb
 git commit -m "Make notifications empty copy reason-aware per filter"
 ```
 
@@ -663,12 +726,29 @@ RSpec.describe "Branded error pages", type: :request do
     expect(response.body).to include("Something went wrong")
   end
 
+  it "renders the branded 422 even for a POST (H1: CSRF-failure verb survives redispatch)" do
+    post "/422"
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.body).to include("That request couldn't be processed")
+  end
+
+  it "returns JSON for a JSON client instead of the HTML body (M3)" do
+    get "/404", headers: {"Accept" => "application/json"}
+    expect(response).to have_http_status(:not_found)
+    expect(response.media_type).to eq("application/json")
+  end
+
   it "no longer swallows a missing tag slug into a blank body" do
     expect { get "/t/definitely-not-a-real-tag" }
       .to raise_error(ActiveRecord::RecordNotFound)
   end
 end
 ```
+
+The POST-to-/422 case is the H1 regression guard: it fails if `ErrorsController` does not skip CSRF
+(the POST would re-trigger `verify_authenticity_token`). Full DB-outage behavior (H2) is covered by
+keeping the header query-free — a spec that stubs a broken connection is brittle; the query-free
+header is the guarantee.
 
 Rationale for the last example: in the test env `action_dispatch.show_exceptions` is off, so a propagating `RecordNotFound` surfaces as a raise (proving the controller no longer returns a blank `head :not_found`). In production `exceptions_app = routes` converts that same exception to the branded 404 — covered by the `/404` example.
 
@@ -686,11 +766,24 @@ class ErrorsController < ApplicationController
   # reachable directly at /404, /422, /500. No resource to authorize; no login.
   skip_before_action :authenticate_user!, raise: false
 
+  # CRITICAL (security review H1): exceptions_app redispatches the ORIGINAL request —
+  # same verb — to /422 etc. The most common real 422 is InvalidAuthenticityToken
+  # (a CSRF failure). Without skipping CSRF here, that request re-fails the token
+  # check a second time INSIDE ShowExceptions#render_exception, whose own rescue
+  # returns Rails' bare unstyled FAILSAFE_RESPONSE — defeating the branded page for
+  # the very case it exists to handle. This controller only renders (no writes), so
+  # skipping forgery protection is safe.
+  skip_before_action :verify_authenticity_token, raise: false
+
   def show
     skip_authorization
     @status = params[:status].to_i
     @status = 500 unless [404, 422, 500].include?(@status)
-    render :show, status: @status, formats: [:html]
+    # M3: Api::V1 clients expect JSON, not an HTML error body. Honor the request format.
+    respond_to do |format|
+      format.json { render json: {error: Rack::Utils::HTTP_STATUS_CODES[@status]}, status: @status }
+      format.any { render :show, status: @status, formats: [:html] }
+    end
   end
 end
 ```
@@ -698,8 +791,21 @@ end
 - [ ] **Step 4: Create the branded view**
 
 ```erb
-<%# app/views/errors/show.html.erb — branded 404/422/500 in the app shell. %>
-<%= render "shared/navbar" %>
+<%# app/views/errors/show.html.erb — branded 404/422/500.
+
+    SECURITY (review H2): do NOT render shared/navbar here. That partial calls
+    current_user.unread_notifications_count — a live DB query — for signed-in viewers.
+    A DB-outage 500 would then re-hit the DB while rendering its own error page, raise
+    a second time inside ShowExceptions, and collapse to Rails' bare failsafe text.
+    This minimal header is query-free (brand mark + a static link only). %>
+<header class="fixed top-0 inset-x-0 z-20 bg-nav backdrop-blur border-b border-hairline">
+  <div class="max-w-xl mx-auto px-4 h-14 flex items-center">
+    <%= link_to root_path, class: "flex items-center no-underline", aria: {label: "Hoojah"} do %>
+      <%= image_tag "logo.svg", alt: "Hoojah", class: "h-7 w-auto" %>
+    <% end %>
+  </div>
+</header>
+<div class="h-14"></div>
 
 <main class="max-w-xl mx-auto px-4 py-16">
   <%
@@ -707,9 +813,9 @@ end
       404 => {title: "That page doesn't exist", body: "The link may be broken or the hoojah was removed.", icon: "compass"},
       422 => {title: "That request couldn't be processed", body: "Something about that action didn't check out. Try again.", icon: "alert-triangle"},
       500 => {title: "Something went wrong on our end", body: "We've been notified. Please try again in a moment.", icon: "server-crash"}
-    }.fetch(@status, {title: "Something went wrong on our end", body: "Please try again in a moment.", icon: "server-crash"})
+    }[@status]
   %>
-  <div class="flex flex-col items-center text-center gap-4 bg-card border border-hairline rounded-none p-8 shadow">
+  <div class="<%= ds_card_classes %> flex flex-col items-center text-center gap-4 p-8">
     <%= lucide_icon copy[:icon], class: "w-10 h-10 text-grey" %>
     <h1 class="text-2xl font-extrabold text-ink tracking-tight"><%= copy[:title] %></h1>
     <p class="text-ink-2 text-sm"><%= copy[:body] %></p>
@@ -718,7 +824,13 @@ end
 </main>
 ```
 
-Confirm the Lucide names `compass`, `alert-triangle`, `server-crash` resolve (`lucide_icon` raises on unknown names); substitute a known glyph if any is absent.
+Notes:
+- `copy = {...}[@status]` needs no `.fetch` default because the controller already clamps `@status`
+  to `[404, 422, 500]` (single source of the default — simplifier review).
+- `ds_card_classes` (no `padded:`) yields the house card base with no padding, so adding `p-8` here
+  is safe — no same-family padding conflict (see the `padded:` note in `DesignSystemHelper`).
+- Confirm the Lucide names `compass`, `alert-triangle`, `server-crash` resolve (`lucide_icon` raises
+  on unknown names); substitute a known glyph if any is absent.
 
 - [ ] **Step 5: Wire the routes**
 
@@ -756,6 +868,18 @@ In `app/controllers/hujahs_controller.rb`, in the `create` rescue (around line 8
 ```
 
 (Or delete the rescue entirely — same effect. Keep whichever reads cleaner after StandardRB.)
+
+> **Failsafe reality (security review M1) — do not rely on the wrong model.** `public/500.html` is
+> NOT served when `errors#show` itself raises mid-render. When `config.exceptions_app = routes` is
+> set, a raise inside `ErrorsController#show` is caught by `ShowExceptions`' own inner rescue, which
+> returns Rails' hardcoded bare `FAILSAFE_RESPONSE` text — it does not fall back to `public/500.html`.
+> That static file is only served when the app fails to **boot** (or a front proxy substitutes it).
+> This is exactly why H1 (skip CSRF) and H2 (query-free header) matter: they keep `errors#show` from
+> raising, so the branded page actually renders. Rebrand `public/*.html` anyway for the boot-down case.
+>
+> **Accepted out of scope (M2):** only 404/422/500 get branded routes. Other statuses Rails can raise
+> (400/401/405/413/429/501/503) fall through to a bare Rack response. Blast radius is tiny for this
+> app's routing surface; branding them is deferred, not forgotten.
 
 - [ ] **Step 8: Rebrand the static fallback pages**
 
