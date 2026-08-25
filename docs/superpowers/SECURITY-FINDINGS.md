@@ -27,17 +27,46 @@ All above are production/tooling only; test+dev suite stays green (24/0/2).
 
 ## ⚠️ OPEN — the whole of it
 
-**Five items. Nothing else on this page is open.** Everything the 2026-08-04 audit deferred
-is closed and moved to the section below; the two later findings (L1, the rack-attack
-throttle bypass) are closed too. Read this table and stop.
+**Two items. Nothing else on this page is open.** Slice 11 (2026-08-25) closed the three
+`Api::V1` items — read the "Closed in Slice 11" section below for the closure evidence. What
+remains open is the product/privacy secret-ballot item (Slice 13) and the deploy-gated
+master-key item. Read this table and stop.
 
 | ID | Severity | Issue | Where it lands | State |
 |----|----------|-------|----------------|-------|
-| **`Api::V1` read parity** | High-impact, live traffic | Feed / children / user endpoints do not filter `hidden_user_ids`, and `HujahSerializer#children`/`parent` plus the notifications endpoint do not enforce private-account visibility. **A private author's reply is reachable today through a public hujah's API children.** Slice 7b hardened the top-level index/show/user endpoints and explicitly deferred serializer-nested content. | **Slice 11** | Open. The only item here with live-traffic exposure rather than pre-native-prep exposure. |
-| M1 | ~~Med~~ **Low** | CORS origin hardcoded `localhost:3000` with `credentials: true` (`initializers/cors.rb:3`) | **Slice 11** | Open, **decided: delete the file outright.** Re-triaged Med → Low on 2026-08-17 — see the reasoning further down; it is dead config from the retired React dev server, and native clients are not CORS-gated either way. |
-| **`flag_params`** | Contract decision | `Api::V1::FlagsController#flag_params` is `params[:flag].permit(...)` with **no `require`**, so a POST with no `flag` key raises `NoMethodError` on nil → 500, before `authorize` runs. The HTML sibling already uses `require`. | **Slice 11** | Open, **decided 2026-08-19: adopt `require`** (→ 400, not 500), as a breaking change. The owner confirmed no legacy native client hits `Api::V1`, so there is no deprecation window to honour. |
 | **2a** | Product/privacy | Public vote counts vs the secret ballot — a small enough electorate lets an observer infer individual votes from the published breakdown. | **Slice 13** | Open, **decided 2026-08-19: option C.** Below k=5, show the total and the viewer's own stance but no breakdown; at ≥5 show the full split. Applies to the HTML surfaces **and** `HujahSerializer`. |
 | L4 | Low | `config.require_master_key` commented out in `production.rb:19` | Deploy track, **not a slice** | Open by design. Gated on the deploy providing `RAILS_MASTER_KEY`, not on any code change here. Enabling it before the key exists turns a boot into a crash. |
+
+### New tracked follow-ups surfaced during Slice 11 (Low — not scheduled)
+
+| ID | Severity | Issue | Notes |
+|----|----------|-------|-------|
+| **vote?-block** | Low | `HujahPolicy#vote?` (`user.present? && record.visible_to?(user)`) lacks the `hidden_user_ids` block check that `#create?` has — a blocker can still vote on a blocked author's *public* hujah. | Shared by BOTH the HTML and API vote paths (one policy), so it is not a read-parity gap; a small policy hardening for a later slice. |
+| **notif-param-500** | Low | `Api::V1::NotificationsController#notification_params` is `params[:notification].permit(:read)` with no `require` — a PATCH with no `notification` key → 500. | Same latent shape A2 fixed for flags, but it fires **after** `authorize` (not the "500-before-authorize" security class). Fold into a future API pass. |
+| **A7 counts** | Low | `UserSerializer#vote_count` and the remaining `*_count` columns (`hujah_count` on other surfaces, tab badges, hashtag counts) stay unfiltered. `children_count`/`hujah_count` in the serializers ARE now visibility-gated (Slice 11) because they sit inside gated serializers; the rest are the same class as 2a. | Track with 2a. |
+
+---
+
+## ✅ Closed in Slice 11 (2026-08-25) — the `Api::V1` hardening pass
+
+Branch `slice-11-api-hardening` (off `master` `e82acab`). `bin/ci` green: **886 examples / 0
+failures**, standardrb + brakeman 0 + bundler-audit 0. Built brainstorm-compressed (owner
+decisions were already recorded here) → plan → **pre-implementation Fable leak-audit** (caught two
+A1-class leaks the first draft missed — the `UserSerializer#hujahs` list and the reply-serving feed
+index) → subagent-driven TDD (per-task implementer + spec/quality review) → **`rails-security-auditor`
+pass: A1/A2/A4 CONFIRMED CLOSED, no new findings**. Plan:
+`docs/superpowers/plans/2026-08-25-slice-11-api-hardening.md`.
+
+| ID | Issue | Closed by | What changed |
+|----|-------|-----------|--------------|
+| **`Api::V1` read parity (A1)** | Serializer-nested + feed-index + user-endpoint content bypassed the Slice-7b/2026 visibility gates: a private/blocked/per-post-restricted author's body+username reachable via the JSON API. | `1ad534c` `e56b817` `5600051` `62ce577` `42fcab7` `daf4feb` | Extracted the two inline visibility predicates onto the model — `Hujah#visible_children_for` (from `HujahsController#show`) and `User#visible_hujahs_for` (from `UsersController#profile_tab_list`) — so HTML and API share ONE SQL-filtered gate. `HujahSerializer` (`children`/`children_count`/`parent`, the last with an added block check) and `UserSerializer` (`hujahs`/`hujah_count`) are now viewer-aware via a Devise-session `current_user:` serializer param (not request-forgeable). The `Api::V1` feed index is now **top-level only** (`parent_id: nil`, closing the public-reply-under-a-restricted-parent leak) **and** block-filtered for signed-in callers. Each leak has a named spec in `spec/requests/api/v1/api_visibility_spec.rb` (incl. a block-dimension `parent` test proven by temporary clause-removal) + `users_spec.rb`. **Contract change:** the user endpoint's `hujahs`/`hujah_count` are now top-level-only (were all hujahs incl. replies) — the intended secure behaviour; follower-aware parity for restricted top-level claims stays deferred to Project 3. |
+| **`flag_params` (A2)** | `params[:flag].permit(...)` with no `require` → `NoMethodError` on nil → 500 **before** `authorize`. | `b2a5940` | `params.require(:flag).permit(...)` + a scoped `rescue_from ActionController::ParameterMissing → :bad_request` in `Api::V1::FlagsController` (needed because the test env runs `show_exceptions = :none`; mirrors the documented in-controller-rescue convention). Now 400, not 500. Spec asserts the real 400. |
+| **M1 (A4)** | Dead `rack-cors` config (`localhost:3000`, `credentials: true`) from the retired React dev server. | `e39d338` | `config/initializers/cors.rb` deleted; `rack-cors` removed from `Gemfile`/`Gemfile.lock`. `rails middleware` boots clean with no `Rack::Cors`; no dangling reference. |
+
+Also folded in (not a ledger item — a robustness bug found during the A1 work): `NotificationSerializer#hujah`
+used `Hujah.find(notification.hujah_id)`, which **500'd the entire notifications index** once any
+referenced hoojah was deleted (`notifications.hujah` is `optional: true`). Switched to the nil-safe
+association accessor (`16c6acc`); the private-account `visible_to?` gate (Slice 7b) is unchanged.
 
 ---
 
