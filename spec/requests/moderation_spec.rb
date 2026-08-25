@@ -17,6 +17,14 @@ RSpec.describe "Moderation queue", type: :request do
       expect(flash[:alert]).to eq("Not allowed.")
     end
 
+    it "renders the empty state when nothing is pending" do
+      sign_in moderator
+      get "/moderation"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Nothing to review.")
+    end
+
     it "lists a hujah carrying a pending flag with its report count" do
       hujah = create(:hujah, body: "Contentious claim about durian")
       create(:flag, hujah: hujah, subject: :spam)
