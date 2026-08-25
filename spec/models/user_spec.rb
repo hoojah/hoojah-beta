@@ -190,4 +190,55 @@ RSpec.describe User, type: :model do
       expect(user.errors[:avatar].join).to match(/5 MB|smaller/i)
     end
   end
+
+  describe ".generate_username" do
+    it "slugifies to allowed characters" do
+      expect(User.generate_username("Jane.Doe")).to eq("janedoe")
+    end
+
+    it "appends a numeric suffix on collision" do
+      create(:user, username: "janedoe")
+      expect(User.generate_username("jane.doe")).to eq("janedoe2")
+    end
+
+    it "avoids reserved usernames" do
+      expect(User.generate_username("admin")).not_to eq("admin")
+    end
+  end
+
+  describe ".from_omniauth" do
+    def auth(email:, name: "Jane Doe", uid: "123")
+      OmniAuth::AuthHash.new(
+        provider: "google_oauth2", uid: uid,
+        info: { email: email, name: name }
+      )
+    end
+
+    it "creates a new user with a generated username and random password" do
+      expect {
+        @user = User.from_omniauth(auth(email: "new.person@gmail.com"))
+      }.to change(User, :count).by(1)
+      expect(@user).to be_persisted
+      expect(@user.username).to eq("newperson")
+      expect(@user.provider).to eq("google_oauth2")
+      expect(@user.uid).to eq("123")
+    end
+
+    it "auto-links to an existing account by email" do
+      existing = create(:user, email: "taken@gmail.com")
+      expect {
+        found = User.from_omniauth(auth(email: "TAKEN@gmail.com", uid: "999"))
+        expect(found.id).to eq(existing.id)
+      }.not_to change(User, :count)
+      expect(existing.reload.uid).to eq("999")
+    end
+
+    it "returns the same user on repeat login by provider+uid" do
+      first = User.from_omniauth(auth(email: "again@gmail.com", uid: "555"))
+      expect {
+        second = User.from_omniauth(auth(email: "again@gmail.com", uid: "555"))
+        expect(second.id).to eq(first.id)
+      }.not_to change(User, :count)
+    end
+  end
 end

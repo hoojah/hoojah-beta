@@ -27,7 +27,8 @@ class User < ApplicationRecord
   has_many :blocks_received, class_name: "Block", foreign_key: :blocked_id, dependent: :destroy
 
   devise :database_authenticatable, :registerable,
-    :recoverable, :rememberable, :validatable
+    :recoverable, :rememberable, :validatable,
+    :omniauthable, omniauth_providers: [:google_oauth2]
 
   has_one_attached :avatar
 
@@ -65,6 +66,49 @@ class User < ApplicationRecord
       "https://res.cloudinary.com/hoojah/image/upload/v1586909321/user_photo_6.gif",
       "https://res.cloudinary.com/hoojah/image/upload/v1586909320/user_photo_7.gif"
     ].sample
+  end
+
+  # Resolve a Google OmniAuth callback to a User (Track B). Three paths, in order:
+  # (1) an existing provider+uid identity → return it; (2) an existing account with the
+  # same email → auto-link by writing provider+uid (a password user adopting Google);
+  # (3) otherwise create a fresh account with a generated username and a random password
+  # (Devise validatable still requires one even though sign-in is via Google).
+  def self.from_omniauth(auth)
+    if (user = find_by(provider: auth.provider, uid: auth.uid))
+      return user
+    end
+
+    email = auth.info.email.to_s.downcase.strip
+    if (user = find_by(email: email))
+      user.update_columns(provider: auth.provider, uid: auth.uid)
+      return user
+    end
+
+    # Seed the username from the email local-part (matches the spec), falling back to the name.
+    seed = email.split("@").first.presence || auth.info.name
+    create(
+      provider: auth.provider,
+      uid: auth.uid,
+      email: email,
+      full_name: auth.info.name.presence || email.split("@").first,
+      username: generate_username(seed),
+      password: Devise.friendly_token[0, 20]
+    )
+  end
+
+  # Derive a valid, unique username from a seed (email local-part or name). Strips to the
+  # allowed [a-z0-9_] charset, guards RESERVED_USERNAMES, and appends an incrementing
+  # numeric suffix until it lands on a free, non-reserved candidate.
+  def self.generate_username(seed)
+    base = seed.to_s.downcase.gsub(/[^a-z0-9_]/, "")
+    base = "user" if base.blank? || RESERVED_USERNAMES.include?(base)
+    candidate = base
+    n = 1
+    while exists?(username: candidate) || RESERVED_USERNAMES.include?(candidate)
+      n += 1
+      candidate = "#{base}#{n}"
+    end
+    candidate
   end
 
   def unread_notifications_count
