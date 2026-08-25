@@ -8,14 +8,12 @@ class NotificationSerializer
   # only expose the hoojah when it is visible to them (a private author's body must not
   # leak to a non-follower through the API).
   attribute :hujah do |notification|
-    if notification.hujah_id
-      hujah = Hujah.find(notification.hujah_id)
-      if hujah.visible_to?(notification.user)
-        {
-          slug: hujah.slug,
-          body: hujah.body
-        }
-      end
+    hujah = notification.hujah # optional belongs_to → nil, not RecordNotFound, if deleted
+    if hujah&.visible_to?(notification.user)
+      {
+        slug: hujah.slug,
+        body: hujah.body
+      }
     end
   end
 

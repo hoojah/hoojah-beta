@@ -32,6 +32,38 @@ RSpec.describe "Api::V1::Notifications", type: :request do
     expect(response).to have_http_status(:unauthorized)
   end
 
+  describe "referenced hoojah visibility + robustness" do
+    # Slice 11 Task 9: the serializer used `Hujah.find`, so a notification whose
+    # referenced hoojah was later deleted raised RecordNotFound → 500 on index.
+    # `belongs_to :hujah, optional: true` returns nil for a dangling id.
+    it "does not 500 the index when a referenced hoojah was deleted" do
+      recipient = create(:user)
+      hujah = create(:hujah, user: create(:user))
+      notif = create(:notification, user: recipient, hujah: hujah, category: :new_hoojah_response)
+      hujah.destroy
+      notif.reload
+
+      sign_in recipient
+      get "/api/v1/#{recipient.username}/notifications", as: :json
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    # Slice 7b Gate 9 guard: a private author's hoojah body must not leak through the API.
+    it "omits the hoojah block when its author is private and unseen by the recipient" do
+      recipient = create(:user)
+      priv = create(:user, private: true)
+      hujah = create(:hujah, user: priv, visibility: :visible_public)
+      create(:notification, user: recipient, hujah: hujah, category: :new_hoojah_response)
+
+      sign_in recipient
+      get "/api/v1/#{recipient.username}/notifications", as: :json
+
+      hujah_attrs = JSON.parse(response.body)["data"].map { |n| n.dig("attributes", "hujah") }.compact
+      expect(hujah_attrs).to be_empty
+    end
+  end
+
   # Slice 5 Part A: a new_vote notification must never serialize a subject_user
   # (that would hand the owner the first voter's identity). Categories that name a
   # legitimately public actor (e.g. new_hoojah_response) still carry subject_user.
