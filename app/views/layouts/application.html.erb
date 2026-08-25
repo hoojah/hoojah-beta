@@ -30,13 +30,11 @@
   <body>
     <%= render "layouts/flash" %>
     <%= yield %>
-    <%# Third-party widgets (Cloudinary upload + Drift live chat). Skipped in test:
-        headless Chrome would hang on these external hosts, surfacing as intermittent
-        Ferrum::PendingConnectionsError. None of the specs exercise the remote widgets
-        (Cloudinary wiring is asserted structurally), so leaving them out makes the
-        system suite deterministic without changing dev/production behaviour. %>
+    <%# Drift live chat. Skipped in test: headless Chrome would hang on the external
+        host, surfacing as intermittent Ferrum::PendingConnectionsError. No spec
+        exercises the remote widget, so leaving it out makes the system suite
+        deterministic without changing dev/production behaviour. %>
     <% unless Rails.env.test? %>
-    <script src="//widget.cloudinary.com/global/all.js" type="text/javascript"></script>
     <%# Drift live chat (appId fx42y6ieyaff) — inline, allowed by a CSP nonce (no 'unsafe-inline'). %>
     <script nonce="<%= content_security_policy_nonce %>">
       "use strict";

@@ -42,18 +42,15 @@ RSpec.describe "Profile", type: :system, js: true do
     expect(user.reload.headline).to eq("Ships Hotwire")
   end
 
-  it "wires the Cloudinary photo button to a hidden field the widget fills" do
+  it "offers a photo file field on the edit form" do
+    # The old client-side Cloudinary upload widget (an "Update photo" button + a
+    # hidden user[photo] field) is gone; photo upload is now a plain multipart
+    # file_field :avatar backed by ActiveStorage.
     login_as_system(user)
     visit "/u/rudz"
     find("[aria-label='Edit your profile']").click
     within("dialog##{ActionView::RecordIdentifier.dom_id(user, :edit_dialog)}") do
-      # Assert the WIRING, not a live upload: the trigger button and the hidden
-      # field the widget fills both exist. The Cloudinary widget script
-      # (widget.cloudinary.com) is blocked under headless Chrome, so
-      # cloudinary_upload_controller disables the button (window.cloudinary absent)
-      # — hence disabled: :all rather than requiring an enabled button.
-      expect(page).to have_button("Update photo", disabled: :all)
-      expect(page).to have_field("user[photo]", type: :hidden)
+      expect(page).to have_field("user[avatar]", type: :file)
     end
   end
 end

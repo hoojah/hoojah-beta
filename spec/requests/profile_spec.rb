@@ -47,6 +47,16 @@ RSpec.describe "Profile", type: :request do
     expect(user.reload.photo).not_to include("evil.com")
   end
 
+  it "attaches an uploaded avatar via multipart PATCH" do
+    user = create(:user)
+    sign_in user
+    file = Rack::Test::UploadedFile.new(
+      StringIO.new("\x89PNG\r\n\x1a\n".b + ("0".b * 50)), "image/png", original_filename: "me.png"
+    )
+    patch "/u/#{user.username}", params: {user: {avatar: file}}
+    expect(user.reload.avatar).to be_attached
+  end
+
   it "shows the followers list publicly (signed out)" do
     fan = create(:user, username: "fan")
     fan.active_follows.create!(followed: user, status: :accepted)

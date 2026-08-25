@@ -549,7 +549,7 @@ RSpec.describe DesignSystemHelper, type: :helper do
   describe "#ds_avatar_url" do
     around do |ex|
       old = ActiveStorage::Current.url_options
-      ActiveStorage::Current.url_options = { host: "http://test.host" }
+      ActiveStorage::Current.url_options = {host: "http://test.host"}
       ex.run
       ActiveStorage::Current.url_options = old
     end

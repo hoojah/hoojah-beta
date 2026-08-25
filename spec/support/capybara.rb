@@ -10,19 +10,19 @@ chrome_candidates = [
 ].compact
 chrome_path = chrome_candidates.find { |p| File.executable?(p) }
 
-# Every page renders the Drift chat widget (js.driftt.com → *.drift.com) and the
-# Cloudinary upload widget (widget.cloudinary.com). Headless Chrome will happily
-# hang waiting on those third-party connections, which surfaces as intermittent
-# `Ferrum::PendingConnectionsError` when specs run together (the browser is shared,
-# so a slow external request from one example bleeds into the next). Blocking those
-# hosts at the network layer makes the suite deterministic without touching product
-# code — none of the Slice 2 behaviour under test depends on the remote widgets
-# (Cloudinary wiring is asserted structurally, not via a live upload).
+# Every page renders the Drift chat widget (js.driftt.com → *.drift.com). Headless
+# Chrome will happily hang waiting on those third-party connections, which surfaces
+# as intermittent `Ferrum::PendingConnectionsError` when specs run together (the
+# browser is shared, so a slow external request from one example bleeds into the
+# next). Blocking those hosts at the network layer makes the suite deterministic
+# without touching product code — no behaviour under test depends on the remote
+# widget. `res.cloudinary.com` stays blocked: avatars (legacy `photo` URLs and new
+# ActiveStorage-Cloudinary images) are served from there, and we don't fetch them
+# live in the suite. The old client-side upload widget (widget.cloudinary.com /
+# api.cloudinary.com) is gone, so those hosts no longer need blocking.
 CUPRITE_URL_BLACKLIST = [
   "*js.driftt.com*",
   "*.drift.com*",
-  "*widget.cloudinary.com*",
-  "*api.cloudinary.com*",
   "*res.cloudinary.com*"
 ].freeze
 
