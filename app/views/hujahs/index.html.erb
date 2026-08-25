@@ -14,16 +14,21 @@
         form that prepends the new card to #hujah-feed via create.turbo_stream.erb. %>
     <%= render "hujahs/inline_composer" if user_signed_in? %>
 
-    <%# Deliberately NOT `ui/_empty_state`. That primitive is the product's one-line
-        empty state — "one Lucide glyph, one plain sentence" — and its six call sites
-        are all single fragments ("No response yet", "Nothing trending yet."). This is
-        two sentences, the second of which tells you what to do about it, so it is a
-        centred paragraph rather than an icon row. Compressing it into the primitive
-        would either truncate the instruction or stretch the primitive. %>
-    <% if params[:filter] == "following" && user_signed_in? && @hujahs.empty? %>
-      <p class="text-center text-grey py-8">
-        Your Following feed is empty. Follow some people to see their hoojahs here.
-      </p>
+    <%# Empty states. Following stays a centred two-clause paragraph (documented above);
+        the global/default feed gets the design-system primitive with a key-funnel CTA. %>
+    <% if @hujahs.empty? %>
+      <% if params[:filter] == "following" && user_signed_in? %>
+        <p class="text-center text-grey py-8">
+          When people you follow post, you'll see it here.
+        </p>
+      <% elsif user_signed_in? %>
+        <%= render "ui/empty_state", message: "No hoojahs yet", align: :center,
+              cta_label: "Post the first hoojah", cta_href: new_hujah_path %>
+      <% else %>
+        <%= render "ui/empty_state",
+              message: "No hoojahs yet — sign up to start the conversation", align: :center,
+              cta_label: "Sign up", cta_href: new_user_registration_path %>
+      <% end %>
     <% end %>
 
     <div id="hujah-feed">
