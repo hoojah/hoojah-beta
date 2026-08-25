@@ -240,5 +240,19 @@ RSpec.describe User, type: :model do
         expect(second.id).to eq(first.id)
       }.not_to change(User, :count)
     end
+
+    it "returns an errored, unpersisted user when Google gives no email" do
+      user = User.from_omniauth(OmniAuth::AuthHash.new(provider: "google_oauth2", uid: "nomail", info: {name: "No Email"}))
+      expect(user).not_to be_persisted
+      expect(user.errors[:base].join).to match(/verified email/i)
+    end
+
+    it "refuses to transfer an email already linked to a different Google account" do
+      existing = create(:user, email: "linked@gmail.com")
+      existing.update_columns(provider: "google_oauth2", uid: "original")
+      result = User.from_omniauth(OmniAuth::AuthHash.new(provider: "google_oauth2", uid: "attacker", info: {email: "linked@gmail.com", name: "X"}))
+      expect(result.errors[:base].join).to match(/already linked/i)
+      expect(existing.reload.uid).to eq("original")
+    end
   end
 end

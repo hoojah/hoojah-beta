@@ -68,23 +68,30 @@ class User < ApplicationRecord
     ].sample
   end
 
-  # Resolve a Google OmniAuth callback to a User (Track B). Three paths, in order:
-  # (1) an existing provider+uid identity → return it; (2) an existing account with the
-  # same email → auto-link by writing provider+uid (a password user adopting Google);
-  # (3) otherwise create a fresh account with a generated username and a random password
-  # (Devise validatable still requires one even though sign-in is via Google).
+  # Auto-linking by email is safe ONLY because omniauth-google-oauth2 populates
+  # info.email from Google's verified_email (nil unless the address is verified).
+  # Do not reuse this method for a provider without that guarantee.
   def self.from_omniauth(auth)
     if (user = find_by(provider: auth.provider, uid: auth.uid))
       return user
     end
 
     email = auth.info.email.to_s.downcase.strip
+    if email.blank?
+      user = new
+      user.errors.add(:base, "Google did not provide a verified email address.")
+      return user
+    end
+
     if (user = find_by(email: email))
+      if user.provider.present? && user.uid != auth.uid
+        user.errors.add(:base, "This email is already linked to a different Google account.")
+        return user
+      end
       user.update_columns(provider: auth.provider, uid: auth.uid)
       return user
     end
 
-    # Seed the username from the email local-part (matches the spec), falling back to the name.
     seed = email.split("@").first.presence || auth.info.name
     create(
       provider: auth.provider,
@@ -94,13 +101,17 @@ class User < ApplicationRecord
       username: generate_username(seed),
       password: Devise.friendly_token[0, 20]
     )
+  rescue ActiveRecord::RecordNotUnique
+    # Concurrent first sign-in: the other request won the unique [provider, uid]
+    # index. Return the now-existing record.
+    find_by(provider: auth.provider, uid: auth.uid)
   end
 
   # Derive a valid, unique username from a seed (email local-part or name). Strips to the
   # allowed [a-z0-9_] charset, guards RESERVED_USERNAMES, and appends an incrementing
   # numeric suffix until it lands on a free, non-reserved candidate.
   def self.generate_username(seed)
-    base = seed.to_s.downcase.gsub(/[^a-z0-9_]/, "")
+    base = seed.to_s.downcase.gsub(/[^a-z0-9_]/, "")[0, 30]
     base = "user" if base.blank? || RESERVED_USERNAMES.include?(base)
     candidate = base
     n = 1
