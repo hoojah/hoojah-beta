@@ -41,6 +41,11 @@ export default class extends Controller {
       el.toggleAttribute("hidden", !show)
       if (show) visible += 1
     })
+    // hasEmptyTarget can legitimately be false at runtime: the placeholder only
+    // renders inside the "there ARE responses" branch, so the first reply appended to
+    // a previously-empty hujah connects an `item` with no `empty` target present yet.
+    // Nothing to toggle in that case — the server-rendered `responses_empty` was just
+    // removed and a real card took its place.
     if (this.hasEmptyTarget) {
       this.emptyTarget.toggleAttribute("hidden", !(visible === 0 && this.itemTargets.length > 0))
     }
