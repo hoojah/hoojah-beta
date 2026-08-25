@@ -40,15 +40,10 @@ class HujahsController < ApplicationController
     # accepted followers. HujahPolicy#show? = record.user.visible_to?(user) (nil-safe;
     # anonymous → the ApplicationController Pundit rescue redirects, not a bare 403).
     authorize @hujah
-    @children = @hujah.children.includes(:user).order(updated_at: :desc)
-    # Slice 7: hide replies from a hidden (blocked/blocked-by) author (incl. pre-block
-    # replies; new ones are rejected at create). Signed-in only — anonymous unfiltered.
-    @children = @children.where.not(user_id: current_user.hidden_user_ids) if user_signed_in?
-    # Slice 7b (Gate 6): hide a PRIVATE replier's reply from anyone who can't see them —
-    # UNCONDITIONAL per-viewer SQL predicate (no N+1). Accepted followers (+ self) see
-    # private replies via their following_ids; strangers and anonymous do not.
-    visible_ids = user_signed_in? ? current_user.following_ids + [current_user.id] : []
-    @children = @children.joins(:user).where("users.private = false OR hujahs.user_id IN (?)", visible_ids)
+    # Slice 11: the Slice-7/7b reply-visibility predicate now lives on the model
+    # (Hujah#visible_children_for) so the HTML thread and the JSON API serializer
+    # share ONE gate and cannot drift. Same query, same order, no N+1.
+    @children = @hujah.visible_children_for(current_user)
     # Debates lens (Slice 4). policy_scope hides others' active/pending/declined
     # debates but shows concluded ones publicly. This is NOT a separate route —
     # it renders inline on the hoojah page. policy_scope does not count toward
