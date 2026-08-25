@@ -258,6 +258,13 @@ module DesignSystemHelper
     parts.filter_map { |word| word[0] }.join.upcase
   end
 
+  # Resolve a user's avatar image URL: prefer an uploaded ActiveStorage avatar,
+  # fall back to the legacy Cloudinary `photo` string, else nil (caller renders the tile).
+  def ds_avatar_url(user)
+    return user.avatar.url if user.avatar.attached?
+    user.photo.presence
+  end
+
   private
 
   # Unset takes the default; a typo is loud. `tone: "aggree"` is the dangerous case —

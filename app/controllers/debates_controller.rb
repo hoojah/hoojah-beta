@@ -20,7 +20,7 @@ class DebatesController < ApplicationController
   # participants eager-loaded for the view.
   def show
     authorize @debate
-    @turns = @debate.turns.includes(:user).order(:position)
+    @turns = @debate.turns.includes(user: {avatar_attachment: :blob}).order(:position)
   end
 
   # Debate create PAGE (2026, Phase 3.2) — rounds picker + opening argument, the

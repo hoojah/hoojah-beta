@@ -69,7 +69,7 @@ class Hujah < ApplicationRecord
   # predicate; anonymous: public authors only. Accepted followers (+ self) see a
   # private author's reply via following_ids.
   def visible_children_for(viewer)
-    scope = children.includes(:user).order(updated_at: :desc)
+    scope = children.includes(user: {avatar_attachment: :blob}).order(updated_at: :desc)
     scope = scope.where.not(user_id: viewer.hidden_user_ids) if viewer
     visible_ids = viewer ? viewer.following_ids + [viewer.id] : []
     scope.joins(:user).where("users.private = false OR hujahs.user_id IN (?)", visible_ids)
@@ -180,7 +180,7 @@ class Hujah < ApplicationRecord
         }
         .sort_by { |_, score| -score }.first(10).map(&:first)
     end
-    where(id: ids).includes(:user).sort_by { |h| ids.index(h.id) }
+    where(id: ids).includes(user: {avatar_attachment: :blob}).sort_by { |h| ids.index(h.id) }
   end
 
   def cast_vote(by:, choice:, conviction: false)

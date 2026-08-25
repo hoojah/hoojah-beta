@@ -1,6 +1,11 @@
 class ApplicationController < ActionController::Base
   include Pundit::Authorization
 
+  # Sets ActiveStorage::Current.url_options per request so an attached avatar rendered
+  # through the Disk service (dev/test) can generate its URL. Harmless in production,
+  # where Cloudinary URLs don't need it.
+  include ActiveStorage::SetCurrent
+
   # CSRF is ON (Devise + Turbo). Api::V1::BaseController overrides the strategy for JSON clients.
 
   # Pagy ~> 43.6 exposes the `pagy(:countless, collection)` paginator via this mixin

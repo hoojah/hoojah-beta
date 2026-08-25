@@ -98,7 +98,7 @@ class User < ApplicationRecord
       else
         hujahs.where(visibility: :visible_public)
       end
-    base.where(parent_id: nil).includes(:user).order(updated_at: :desc)
+    base.where(parent_id: nil).includes(user: {avatar_attachment: :blob}).order(updated_at: :desc)
   end
 
   # SQL counterpart to #visible_to? for LIST surfaces (search, Phase 2). Must match

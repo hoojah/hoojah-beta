@@ -545,6 +545,36 @@ RSpec.describe DesignSystemHelper, type: :helper do
       expect(helper.ds_menu_item_classes(tone: "pink")).to eq(helper.ds_menu_item_classes)
     end
   end
+
+  describe "#ds_avatar_url" do
+    around do |ex|
+      old = ActiveStorage::Current.url_options
+      ActiveStorage::Current.url_options = { host: "http://test.host" }
+      ex.run
+      ActiveStorage::Current.url_options = old
+    end
+
+    it "returns the attached avatar url when attached" do
+      user = create(:user)
+      user.avatar.attach(io: StringIO.new("img"), filename: "a.png", content_type: "image/png")
+      # freeze_time so the two DiskService#url calls generate byte-identical signed URLs
+      freeze_time do
+        expect(helper.ds_avatar_url(user)).to eq(user.avatar.url)
+      end
+    end
+
+    it "falls back to the photo string when no avatar is attached" do
+      user = create(:user)
+      user.update_column(:photo, "https://res.cloudinary.com/hoojah/image/upload/x.gif")
+      expect(helper.ds_avatar_url(user)).to eq("https://res.cloudinary.com/hoojah/image/upload/x.gif")
+    end
+
+    it "returns nil when neither is present" do
+      user = create(:user)
+      user.update_column(:photo, "")
+      expect(helper.ds_avatar_url(user)).to be_nil
+    end
+  end
 end
 
 # `ds_button_classes` interpolates the tone into `bg-` / `text-` / `border-`,
