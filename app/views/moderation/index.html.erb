@@ -9,7 +9,7 @@
   <div class="w-full max-w-xl mx-auto">
     <header class="flex items-center justify-between mb-4">
       <h1 class="text-xl font-extrabold text-ink tracking-tight">Moderation</h1>
-      <span id="moderation-pending-count" class="text-sm text-grey"><%= pending_moderation_count %> awaiting review</span>
+      <%= render "moderation/pending_count" %>
     </header>
 
     <div id="moderation-queue">

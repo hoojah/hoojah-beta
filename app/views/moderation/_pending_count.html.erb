@@ -1,0 +1,2 @@
+<%# Shared count chip; aria-live so screen-reader moderators hear the count change after a Turbo Stream swap. The id `moderation-pending-count` is FROZEN (system spec + stream targets depend on it). %>
+<span id="moderation-pending-count" aria-live="polite" class="text-sm text-grey"><%= pending_moderation_count %> awaiting review</span>

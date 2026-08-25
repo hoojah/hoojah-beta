@@ -95,6 +95,40 @@ class Hujah < ApplicationRecord
     scope.joins(:user).where("users.private = false OR hujahs.user_id IN (?)", visible_ids)
   end
 
+  # Moderation (2026): the dismiss/remove/warn composition. Lifted off
+  # ModerationController so the transactional invariants live next to the state they
+  # protect. Each resolves the pending reports; only `by:` (the acting moderator) is
+  # used for flag resolution — the notifications carry NO subject_user_id, the same
+  # secret-ballot rule the vote notification follows (the moderator is never
+  # identified to the author). `flags.pending.find_each` is idempotent by
+  # construction: a second call finds zero pending flags and touches nothing.
+
+  # Resolve every pending report; content untouched, no author notification.
+  def dismiss_flags!(by:)
+    flags.pending.find_each { |flag| flag.resolve!(by:, as: :dismissed) }
+  end
+
+  # Hide from everyone but staff + notify the author. One transaction: a half-applied
+  # removal (hidden but unresolved flags, or the reverse) must not exist. The
+  # `moderation_removed?` early return makes a second removal a no-op so the author is
+  # never re-notified (L-1).
+  def remove!(by:)
+    return if moderation_removed?
+    transaction do
+      update!(moderation_status: :removed)
+      flags.pending.find_each { |flag| flag.resolve!(by:, as: :actioned) }
+      Notification.create!(user_id:, category: :moderation_removed, hujah_id: id)
+    end
+  end
+
+  # Content untouched; author notified (anonymously); reports closed as actioned.
+  def warn_author!(by:)
+    transaction do
+      flags.pending.find_each { |flag| flag.resolve!(by:, as: :actioned) }
+      Notification.create!(user_id:, category: :moderation_warning, hujah_id: id)
+    end
+  end
+
   # @handle mention pattern. The `(?<!\w)` lookbehind means an `@` preceded by a
   # word char (e.g. inside an email `foo@bar`) is NOT a mention.
   MENTION_RE = /(?<!\w)@([a-zA-Z0-9_]+)/
