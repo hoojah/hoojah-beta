@@ -55,6 +55,30 @@ RSpec.describe "Notifications", type: :request do
       expect(response.body).to include("Your hoojah was flagged for review")
     end
 
+    # The two moderation notifications carry NO moderator identity (subject_user_id nil,
+    # same secret-ballot shape as new_vote). moderation_removed's hoojah is removed, so
+    # visible_to? is false even for its author — the body must NOT leak into the card,
+    # but the row must still offer a way to clear itself. moderation_warning leaves the
+    # content active, so the author still sees the body preview.
+    it "renders the removal notification without leaking the removed body, keeping a mark-read affordance" do
+      hujah = create(:hujah, user: me, body: "the removed claim body", moderation_status: :removed)
+      create(:notification, user: me, category: :moderation_removed, hujah:, subject_user: nil)
+      sign_in me
+      get "/notifications"
+      expect(response.body).to include("Your hoojah was removed by a moderator for violating community guidelines")
+      expect(response.body).not_to include("the removed claim body")
+      expect(response.body).to include("Mark as read")
+    end
+
+    it "renders the warning notification with the still-visible body preview" do
+      hujah = create(:hujah, user: me, body: "the warned claim body")
+      create(:notification, user: me, category: :moderation_warning, hujah:, subject_user: nil)
+      sign_in me
+      get "/notifications"
+      expect(response.body).to include("A moderator has issued a warning about your hoojah")
+      expect(response.body).to include("the warned claim body")
+    end
+
     it "always offers a mark-read affordance, even with no visible hoojah attached" do
       create(:notification, user: me, category: :admin, hujah: nil, subject_user: nil)
       sign_in me

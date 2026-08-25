@@ -73,6 +73,8 @@
    when "debate_concluded" then ["gavel", "neutral"]
    when "admin" then ["shield", "primary"]
    when "flag" then ["flag", "disagree"]
+   when "moderation_removed" then ["x-circle", "disagree"]
+   when "moderation_warning" then ["alert-triangle", "neutral"]
    else ["bell", "primary"]
    end %>
 <% actor_tile = notification.new_hoojah_response? && notification.subject_user %>
@@ -119,6 +121,14 @@
           You have a message from the Hoojah team
         <% when "flag" %>
           Your hoojah was flagged for review
+        <% when "moderation_removed" %>
+          <%# Author-facing, no moderator identity (subject_user_id is nil by construction).
+              The removed body itself never renders — visible_to? gates the body branch below
+              to false for removed content, even for its author — so this line is all the
+              author sees, plus a mark-read affordance from the else branch. %>
+          Your hoojah was removed by a moderator for violating community guidelines
+        <% when "moderation_warning" %>
+          A moderator has issued a warning about your hoojah
         <% else %>
           You have a new notification
         <% end %>
