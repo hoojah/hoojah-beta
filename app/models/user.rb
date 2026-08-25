@@ -99,7 +99,9 @@ class User < ApplicationRecord
       else
         hujahs.where(visibility: :visible_public)
       end
-    base.where(parent_id: nil).includes(:user).order(updated_at: :desc)
+    # Moderation: E6 sweep — the profile Hoojahs tab (HTML + API UserSerializer)
+    # never lists removed claims.
+    base.not_removed.where(parent_id: nil).includes(:user).order(updated_at: :desc)
   end
 
   # SQL counterpart to #visible_to? for LIST surfaces (search, Phase 2). Must match

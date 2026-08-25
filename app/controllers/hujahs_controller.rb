@@ -13,7 +13,8 @@ class HujahsController < ApplicationController
         .where("hujahs.visibility IN (0, 1) OR hujahs.user_id = ?", current_user.id)
         .includes(:user).order(updated_at: :desc)
     else
-      global = Hujah.where(parent_id: nil).includes(:user).order(updated_at: :desc)
+      # Moderation: E1 sweep — the global/anonymous feed never shows removed claims.
+      global = Hujah.not_removed.where(parent_id: nil).includes(:user).order(updated_at: :desc)
       # Slice 7b (Gate 1): the global feed NEVER shows a private author — UNCONDITIONAL
       # (anonymous too). A private user's content lives on their gated profile and in
       # their accepted followers' Following feed, never the public feed.

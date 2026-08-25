@@ -14,8 +14,10 @@ class UsersController < ApplicationController
       # Debates count tabs. Counts are plain association counts — no new columns, no
       # query object — and only the ACTIVE tab's list is loaded.
       @active_tab = params[:tab].in?(%w[hoojahs responses debates]) ? params[:tab] : "hoojahs"
-      @hoojahs_count = @user.hujahs.where(parent_id: nil).count
-      @responses_count = @user.hujahs.where.not(parent_id: nil).count
+      # Moderation: E7 sweep — profile counters exclude removed content (hidden even
+      # from its author, so their own counts must not include it).
+      @hoojahs_count = @user.hujahs.not_removed.where(parent_id: nil).count
+      @responses_count = @user.hujahs.not_removed.where.not(parent_id: nil).count
       @debates_count = @user.challenged_debates.count + @user.defended_debates.count
       @list = profile_tab_list(@active_tab)
       # Hoojah 2026 (redesign Phase 4, Task 4.4): the profile's live-debate card.

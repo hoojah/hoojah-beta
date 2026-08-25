@@ -87,7 +87,9 @@ class Hujah < ApplicationRecord
   # predicate; anonymous: public authors only. Accepted followers (+ self) see a
   # private author's reply via following_ids.
   def visible_children_for(viewer)
-    scope = children.includes(:user).order(updated_at: :desc)
+    # Moderation: E5 sweep — removed replies vanish from the HTML thread AND the API
+    # serializer's children list/count (both share this one gate).
+    scope = children.not_removed.includes(:user).order(updated_at: :desc)
     scope = scope.where.not(user_id: viewer.hidden_user_ids) if viewer
     visible_ids = viewer ? viewer.following_ids + [viewer.id] : []
     scope.joins(:user).where("users.private = false OR hujahs.user_id IN (?)", visible_ids)
@@ -125,7 +127,9 @@ class Hujah < ApplicationRecord
   # Hujah#visible_to? recurses through parent.visible_to?, which is not expressible in
   # one SQL predicate.
   scope :visible_to, ->(viewer) {
-    base = where(parent_id: nil).joins(:user)
+    # Moderation: E3 sweep — removed claims never surface on search (Hujah.search
+    # feeds off this scope).
+    base = where(parent_id: nil).not_removed.joins(:user)
     if viewer
       ids = viewer.following_ids # accepted-only
       base.where(
@@ -152,7 +156,8 @@ class Hujah < ApplicationRecord
   # drops a blocked author from `following_ids`; the `hidden_user_ids` exclusion is
   # belt-and-suspenders (Slice 7).
   scope :timeline_for, ->(user) {
-    where(parent_id: nil).where(user_id: user.following_ids + [user.id])
+    # Moderation: E2 sweep — the Following feed never shows removed claims.
+    where(parent_id: nil).not_removed.where(user_id: user.following_ids + [user.id])
       .where.not(user_id: user.hidden_user_ids)
   }
 
