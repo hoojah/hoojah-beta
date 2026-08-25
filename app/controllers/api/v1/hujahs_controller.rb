@@ -7,9 +7,16 @@ class Api::V1::HujahsController < Api::V1::BaseController
     # through the JSON index (full follower-aware parity is deferred to Project 3).
     # Per-post visibility (2026): the public API index is a hard boundary —
     # visible_public only (follower-aware parity is deferred to Project 3).
-    hujahs = Hujah.joins(:user).where(users: {private: false})
+    # Slice 11 (A1): TOP-LEVEL only (`parent_id: nil`) — the index previously served
+    # replies too, leaking a public reply's body from under a restricted/private parent
+    # (Hujah#visible_to? is false for it via parent recursion). Matches the HTML global
+    # feed shape. Follower-aware parity for restricted top-level claims stays deferred.
+    hujahs = Hujah.where(parent_id: nil).joins(:user).where(users: {private: false})
       .where(visibility: :visible_public).order(updated_at: :desc)
-    serialized_hujahs = HujahSerializer.new(hujahs, params: {logged_in: user_signed_in?, current_user_id: current_user&.id}).serializable_hash
+    # Drop blocked/blocked-by authors for a signed-in caller — mirrors the HTML feed.
+    # Anonymous callers are unfiltered (no social graph).
+    hujahs = hujahs.where.not(user_id: current_user.hidden_user_ids) if user_signed_in?
+    serialized_hujahs = HujahSerializer.new(hujahs, params: {logged_in: user_signed_in?, current_user_id: current_user&.id, current_user: current_user}).serializable_hash
     render json: serialized_hujahs
   end
 
@@ -30,7 +37,7 @@ class Api::V1::HujahsController < Api::V1::BaseController
     # Slice 7b (Gate 11, A-1): deny a private author's hoojah to anyone who can't see
     # them — the content the feature hides must not be one guessable URL away.
     if hujah&.visible_to?(current_user)
-      serialized_hujah = HujahSerializer.new(hujah, params: {logged_in: user_signed_in?, current_user_id: current_user&.id}).serializable_hash
+      serialized_hujah = HujahSerializer.new(hujah, params: {logged_in: user_signed_in?, current_user_id: current_user&.id, current_user: current_user}).serializable_hash
 
       render json: serialized_hujah
     else

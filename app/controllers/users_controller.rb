@@ -104,15 +104,10 @@ class UsersController < ApplicationController
         .includes(:challenger, :opponent, :hujah).order(created_at: :desc)
       policy_scope(base)
     else
-      scoped =
-        if current_user == @user
-          @user.hujahs
-        elsif user_signed_in? && @user.accepted_follower?(current_user)
-          @user.hujahs.where(visibility: [:visible_public, :followers_only])
-        else
-          @user.hujahs.where(visibility: :visible_public)
-        end
-      scoped.where(parent_id: nil).includes(:user).order(updated_at: :desc)
+      # Slice 11: the per-post-visibility profile predicate now lives on the model
+      # (User#visible_hujahs_for) so the HTML "Hoojahs" tab and the API UserSerializer
+      # share ONE gate and cannot drift.
+      @user.visible_hujahs_for(current_user)
     end
   end
 

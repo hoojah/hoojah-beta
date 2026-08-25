@@ -358,4 +358,37 @@ RSpec.describe Hujah, type: :model do
       expect(Hujah.search("CAPTERM", viewer: viewer).size).to eq(8)
     end
   end
+
+  describe "#visible_children_for" do
+    let(:author) { create(:user) }
+    let(:parent) { create(:hujah, user: author) }
+    let(:viewer) { create(:user) }
+
+    it "includes a public author's reply for anyone (incl. anonymous)" do
+      child = create(:hujah, user: create(:user), parent: parent)
+      expect(parent.visible_children_for(nil)).to include(child)
+      expect(parent.visible_children_for(viewer)).to include(child)
+    end
+
+    it "hides a private author's reply from a stranger and from anonymous" do
+      child = create(:hujah, user: create(:user, private: true), parent: parent)
+      expect(parent.visible_children_for(nil)).not_to include(child)
+      expect(parent.visible_children_for(viewer)).not_to include(child)
+    end
+
+    it "shows a private author's reply to an accepted follower and to the author" do
+      priv = create(:user, private: true)
+      child = create(:hujah, user: priv, parent: parent)
+      priv.passive_follows.create!(follower: viewer, status: :accepted)
+      expect(parent.visible_children_for(viewer)).to include(child)
+      expect(parent.visible_children_for(priv)).to include(child)
+    end
+
+    it "hides a reply authored by someone in the viewer's hidden set (block)" do
+      blocked = create(:user)
+      child = create(:hujah, user: blocked, parent: parent)
+      viewer.blocks_made.create!(blocked: blocked)
+      expect(parent.visible_children_for(viewer)).not_to include(child)
+    end
+  end
 end

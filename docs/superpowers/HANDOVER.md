@@ -22,7 +22,51 @@ this file before touching views or Tailwind: it corrects CLAUDE.md's gotcha #1 (
 NOT scanned; ERB `<%# %>` comments ARE) and records nine CSS rules that ship with no view asking for
 them.
 
-Next up: **Project 3 (Hotwire Native)** — not started.
+Next up: **Project 3 (Hotwire Native)** — not started. (Slice 11, below, closed the last
+`Api::V1` security items that were meant to be frozen before native clients consume the API.)
+
+## Slice 11 — Api::V1 Hardening — DONE ✅ (branch `slice-11-api-hardening`, not merged)
+
+_2026-08-25. Closes the SECURITY-FINDINGS OPEN items **A1** (the only one with live-traffic
+exposure), **A2**, and **M1/A4** — the JSON-API authorization/visibility parity that Slices 11–13
+were carved out to settle before Project 3. `bin/ci` green: **886 examples / 0 failures** (+22 over
+the 864 baseline), brakeman 0, standardrb + bundler-audit clean. prosopite: no material N+1
+regression (isolated measurement of the changed serializers = the acknowledged bounded per-record
+C2 pattern; the pre-existing `debate.rb` baseline still dominates). Plan:
+`docs/superpowers/plans/2026-08-25-slice-11-api-hardening.md`. Built brainstorm-compressed (owner
+decisions already in the ledger) → plan → **pre-implementation Fable leak-audit** → subagent-driven
+TDD (per-task implementer + spec/quality review) → **rails-security-auditor pass (A1/A2/A4 CONFIRMED
+CLOSED)**._
+
+**What shipped (11 commits):**
+- **Shared visibility gates.** Extracted the two inline predicates onto the model —
+  `Hujah#visible_children_for(viewer)` (from `HujahsController#show`) and
+  `User#visible_hujahs_for(viewer)` (from `UsersController#profile_tab_list`). HTML and API now
+  call ONE SQL-filtered gate each and can't drift; both HTML controllers were refactored onto them
+  (behaviour-identical).
+- **A1 — serializers viewer-aware.** `HujahSerializer#children`/`children_count`/`parent` (parent
+  guarded on privacy **and** block) and `UserSerializer#hujahs`/`hujah_count` filter through the
+  shared gates via a Devise-session `current_user:` serializer param (not request-forgeable). The
+  `Api::V1` feed index is now **top-level only** (`parent_id: nil`) **and** block-filtered for
+  signed-in callers. Named leak specs in `spec/requests/api/v1/api_visibility_spec.rb` +
+  `users_spec.rb`. **Fable caught two A1-class leaks the first plan draft missed** — the
+  `UserSerializer#hujahs` list and the reply-serving feed index — both fixed before implementation.
+- **A2 — `flag_params`.** `params.require(:flag)` + a scoped `rescue_from ParameterMissing → 400`
+  (test env runs `show_exceptions = :none`; mirrors the `HujahsController#create` convention).
+- **M1/A4 — dead CORS.** `config/initializers/cors.rb` + the `rack-cors` gem deleted.
+- **Bundled robustness fix.** `NotificationSerializer#hujah` no longer 500s the notifications index
+  when a referenced hoojah was deleted (`notification.hujah` nil-safe accessor, not `Hujah.find`).
+
+**Contract change (intentional):** the `Api::V1` user endpoint's `hujahs`/`hujah_count` are now
+top-level-only (were all hujahs incl. replies) — the secure behaviour; native follower-aware parity
+for restricted top-level claims stays deferred to Project 3.
+
+**New tracked follow-ups (Low, not scheduled — see SECURITY-FINDINGS):** `HujahPolicy#vote?` lacks
+the `hidden_user_ids` block check `#create?` has (both surfaces, shared policy);
+`Api::V1::NotificationsController#notification_params` has the same latent params-on-nil 500 as flags
+had (post-authorize, not the security class); `UserSerializer#vote_count` + remaining `*_count`
+columns stay unfiltered (A7 class, track with 2a). Carried forward unchanged: **A3/2a** (Slice 13),
+**A6** (votes unique index / first-vote race), **L4** (deploy), **Project 3 (Hotwire Native)**.
 
 ## Hoojah 2026 FULL-APP redesign — DONE ✅ (branch `hoojah-2026-full-redesign`, not merged)
 
