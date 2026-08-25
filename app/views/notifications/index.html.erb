@@ -36,7 +36,12 @@
   <div id="notifications-list" class="flex flex-col gap-2">
     <%= render partial: "notification_card", collection: @notifications, as: :notification %>
     <% if @notifications.empty? %>
-      <%= render "ui/empty_state", message: "You have no notifications", icon: "bell" %>
+      <% empty_message = case @filter
+           when "mentions" then "No mentions yet"
+           when "debates" then "No debate activity yet"
+           else "You have no notifications"
+         end %>
+      <%= render "ui/empty_state", message: empty_message, icon: "bell" %>
     <% end %>
   </div>
 </main>
