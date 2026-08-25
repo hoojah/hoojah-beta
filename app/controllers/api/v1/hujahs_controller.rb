@@ -9,7 +9,7 @@ class Api::V1::HujahsController < Api::V1::BaseController
     # visible_public only (follower-aware parity is deferred to Project 3).
     hujahs = Hujah.joins(:user).where(users: {private: false})
       .where(visibility: :visible_public).order(updated_at: :desc)
-    serialized_hujahs = HujahSerializer.new(hujahs, params: {logged_in: user_signed_in?, current_user_id: current_user&.id}).serializable_hash
+    serialized_hujahs = HujahSerializer.new(hujahs, params: {logged_in: user_signed_in?, current_user_id: current_user&.id, current_user: current_user}).serializable_hash
     render json: serialized_hujahs
   end
 
@@ -30,7 +30,7 @@ class Api::V1::HujahsController < Api::V1::BaseController
     # Slice 7b (Gate 11, A-1): deny a private author's hoojah to anyone who can't see
     # them — the content the feature hides must not be one guessable URL away.
     if hujah&.visible_to?(current_user)
-      serialized_hujah = HujahSerializer.new(hujah, params: {logged_in: user_signed_in?, current_user_id: current_user&.id}).serializable_hash
+      serialized_hujah = HujahSerializer.new(hujah, params: {logged_in: user_signed_in?, current_user_id: current_user&.id, current_user: current_user}).serializable_hash
 
       render json: serialized_hujah
     else

@@ -3,8 +3,11 @@ class HujahSerializer
 
   attributes :body, :agree_count, :neutral_count, :disagree_count, :vote, :slug
 
-  attribute :children_count do |hujah|
-    hujah.children.count
+  # Slice 11 (A1): children_count reflects only the replies this viewer may see —
+  # returning the raw count alongside a filtered `children` array would itself leak
+  # that hidden replies exist. Shares Hujah#visible_children_for with `children`.
+  attribute :children_count do |hujah, params|
+    hujah.visible_children_for(params[:current_user]).size
   end
 
   # this is the owner of the hujah, not the current user
@@ -20,7 +23,14 @@ class HujahSerializer
     }
   end
 
-  attribute :parent, if: proc { |hujah| !hujah.parent_id.nil? } do |hujah|
+  # Slice 11 (A1): only expose the parent block when the parent is visible to the
+  # viewer (privacy via #visible_to?) AND not authored by someone the viewer blocked —
+  # a private/blocked parent author must not leak through a public reply's `parent`.
+  attribute :parent, if: proc { |hujah, params|
+    hujah.parent_id &&
+      hujah.parent.visible_to?(params[:current_user]) &&
+      !params[:current_user]&.hidden_user_ids&.include?(hujah.parent.user_id)
+  } do |hujah|
     {
       id: hujah.parent.id,
       type: "hujah",
@@ -38,11 +48,12 @@ class HujahSerializer
     }
   end
 
-  attributes :children, if: proc { |hujah| hujah.children.length != 0 } do |hujah|
-    new_children = []
-
-    hujah.children.each do |child|
-      new_child = {
+  # Slice 11 (A1): iterate ONLY the viewer-visible children (private-account + block
+  # filtered in SQL via Hujah#visible_children_for) — the previous `hujah.children.each`
+  # leaked private/blocked authors' reply bodies + usernames to any API caller.
+  attribute :children, if: proc { |hujah, params| hujah.visible_children_for(params[:current_user]).any? } do |hujah, params|
+    hujah.visible_children_for(params[:current_user]).map do |child|
+      {
         id: child.id,
         type: "hujah",
         attributes: {
@@ -61,10 +72,7 @@ class HujahSerializer
           }
         }
       }
-      new_children << new_child
     end
-
-    new_children
   end
 
   attribute :current_user_vote do |hujah, params|
