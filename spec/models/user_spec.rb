@@ -168,4 +168,31 @@ RSpec.describe User, type: :model do
       expect(owner.visible_hujahs_for(owner)).to contain_exactly(a, b)
     end
   end
+
+  describe "avatar attachment" do
+    let(:user) { create(:user) }
+    let(:png) do
+      Rack::Test::UploadedFile.new(
+        StringIO.new("\x89PNG\r\n\x1a\n".b + ("0".b * 100)), "image/png", original_filename: "a.png"
+      )
+    end
+
+    it "accepts an image attachment" do
+      user.avatar.attach(io: StringIO.new("fakeimg"), filename: "a.png", content_type: "image/png")
+      expect(user).to be_valid
+      expect(user.avatar).to be_attached
+    end
+
+    it "rejects a non-image content type" do
+      user.avatar.attach(io: StringIO.new("nope"), filename: "a.txt", content_type: "text/plain")
+      expect(user).not_to be_valid
+      expect(user.errors[:avatar].join).to match(/PNG|image/i)
+    end
+
+    it "rejects an oversized image" do
+      user.avatar.attach(io: StringIO.new("x" * (6 * 1024 * 1024)), filename: "big.png", content_type: "image/png")
+      expect(user).not_to be_valid
+      expect(user.errors[:avatar].join).to match(/5 MB|smaller/i)
+    end
+  end
 end

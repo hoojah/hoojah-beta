@@ -29,10 +29,15 @@ class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
     :recoverable, :rememberable, :validatable
 
+  has_one_attached :avatar
+
   before_validation { self.email = email.to_s.downcase.strip }
 
   RESERVED_USERNAMES = %w[login signup logout password edit cancel new hoojah hoojahs u users
     notifications rails api admin].freeze
+
+  MAX_AVATAR_BYTES = 5.megabytes
+  ALLOWED_AVATAR_TYPES = %w[image/png image/jpeg image/gif image/webp].freeze
 
   validates :full_name, presence: true
   validates :username, presence: true, uniqueness: true,
@@ -43,6 +48,7 @@ class User < ApplicationRecord
   # allow — closing the M7 link-XSS finding brakeman flags as Format Validation.
   validates :link, format: {with: %r{\Ahttps?://\S+\z}i}, allow_blank: true
   validate :photo_from_cloudinary
+  validate :avatar_is_valid_image
 
   after_create :assign_random_photo
 
@@ -139,6 +145,16 @@ class User < ApplicationRecord
   end
 
   private
+
+  def avatar_is_valid_image
+    return unless avatar.attached?
+    unless ALLOWED_AVATAR_TYPES.include?(avatar.blob.content_type)
+      errors.add(:avatar, "must be a PNG, JPEG, GIF, or WebP image")
+    end
+    if avatar.blob.byte_size > MAX_AVATAR_BYTES
+      errors.add(:avatar, "must be smaller than 5 MB")
+    end
+  end
 
   def bust_trending_cache = Rails.cache.delete("trending:v1")
 
