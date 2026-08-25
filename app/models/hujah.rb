@@ -14,6 +14,17 @@ class Hujah < ApplicationRecord
   # `visibility_private_only?` so they don't collide with User#private? semantics.
   enum :visibility, {visible_public: 0, followers_only: 1, private_only: 2}, prefix: :visibility
 
+  # Moderation (2026): the single visibility-enforcement point. `removed` content is
+  # staff-only everywhere. The :moderation prefix avoids clashing with visibility_*
+  # and the debate `status` enum — predicates are moderation_active? / moderation_removed?.
+  enum :moderation_status, {active: 0, removed: 1}, default: :active, prefix: :moderation
+
+  # Moderation (2026): the SQL counterpart to the visible_to? early gate below, for
+  # LIST surfaces that never call visible_to? per record. Every feed/count sweep
+  # site applies this unconditionally — staff read removed content on /moderation
+  # and via direct URL, not in feeds.
+  scope :not_removed, -> { where(moderation_status: :active) }
+
   validates :body, presence: true
   # 2026: a top-level claim must be a substantial statement (>= 8 chars); replies
   # (parent_id present) stay unconstrained so a terse "Agreed." still posts.
@@ -49,7 +60,14 @@ class Hujah < ApplicationRecord
   # under a public claim must stay hidden from non-followers; the API show +
   # notification cards rely on this). Every content surface that renders a hoojah
   # gates through this.
+  #
+  # Moderation (2026): a removed hoojah is staff-only EVERYWHERE — including its
+  # author, who learns via the moderation_removed notification instead. This gate is
+  # the FIRST line, before the parent-recursion branch, so a removed REPLY is gated
+  # on its OWN status, not just its parent's (an active reply under a removed parent
+  # is still hidden by the parent recursion below).
   def visible_to?(viewer)
+    return !!viewer&.can_moderate? if moderation_removed?
     return parent.visible_to?(viewer) && user.visible_to?(viewer) if parent_id
     return false unless user.visible_to?(viewer)
 

@@ -359,6 +359,35 @@ RSpec.describe Hujah, type: :model do
     end
   end
 
+  # Moderation (2026): moderation_status is the single visibility-enforcement point.
+  # The :moderation prefix keeps predicates clear of the visibility_* and debate
+  # status enums.
+  describe "moderation_status" do
+    it "maps the two states to stable integers" do
+      expect(Hujah.moderation_statuses).to eq("active" => 0, "removed" => 1)
+    end
+
+    it "defaults a new hoojah to moderation_active" do
+      expect(create(:hujah)).to be_moderation_active
+    end
+
+    it "flips to moderation_removed on update" do
+      h = create(:hujah)
+      h.update!(moderation_status: :removed)
+      expect(h).to be_moderation_removed
+    end
+
+    describe ".not_removed" do
+      it "excludes removed records and includes active ones" do
+        active = create(:hujah)
+        removed = create(:hujah)
+        removed.update!(moderation_status: :removed)
+        expect(Hujah.not_removed).to include(active)
+        expect(Hujah.not_removed).not_to include(removed)
+      end
+    end
+  end
+
   describe "#visible_children_for" do
     let(:author) { create(:user) }
     let(:parent) { create(:hujah, user: author) }
