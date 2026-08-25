@@ -29,6 +29,13 @@ class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
     :recoverable, :rememberable, :validatable
 
+  # Moderation (2026): the moderator identity. No prefix — moderator?/admin? don't
+  # collide with anything today.
+  enum :role, {member: 0, moderator: 1, admin: 2}, default: :member
+
+  # The ONLY capability gate the rest of the app reads (policies, nav, views).
+  def can_moderate? = moderator? || admin?
+
   before_validation { self.email = email.to_s.downcase.strip }
 
   RESERVED_USERNAMES = %w[login signup logout password edit cancel new hoojah hoojahs u users
