@@ -89,7 +89,46 @@ alone will not rebuild CSS on change.
 
 The target is **Coolify**, which builds this repo's `Dockerfile` and fronts the container
 with its own TLS-terminating reverse proxy. There is no Kamal, no Capistrano and no
-Procfile — the image's `CMD` is the whole story.
+Procfile — the image's `CMD` is the whole story. Deployment runs **straight from GitHub**:
+a push to `master` triggers a Coolify build and deploy via its GitHub App integration.
+
+### Continuous deploy: GitHub → Coolify (`master`)
+
+One-time setup in the Coolify dashboard; after it, every push to `master` ships:
+
+1. **Source** — under *Sources*, install/connect Coolify's **GitHub App** on the
+   `hoojah-beta` repo, then create a new **Application** resource from it.
+2. **Branch** — `master`, with **Auto Deploy** enabled (Coolify installs the push webhook
+   on the repo for you).
+3. **Build Pack** — **Dockerfile** (Build Context `/`, Dockerfile `./Dockerfile`). Do
+   **not** let it fall back to Nixpacks: a Nixpacks build skips `assets:precompile` and the
+   app deploys with no CSS while reporting success — the whole reason this `Dockerfile`
+   exists.
+4. **Port** — expose **`3000`** (the Dockerfile's `EXPOSE`; Thruster listens there and
+   Coolify injects `PORT`, which `bin/docker-entrypoint` maps to `HTTP_PORT`).
+5. **Health check** — path **`/up`** (the same path the image's own `HEALTHCHECK` probes).
+   `/up` is excluded from host authorization, so the internal probe passes even though it
+   never arrives on `APP_HOST`.
+6. **Domain** — set the FQDN to `https://beta.hoojah.my`; Coolify terminates TLS and
+   reverse-proxies. It **must** match `APP_HOST` (below) or every request 403s.
+7. **Environment** — paste the keys from [`.env.example`](.env.example) into Coolify's
+   environment editor (see [Environment](#environment)). Read the master.key warning below
+   **before** the first deploy.
+8. **Worker service** — add a **second** Application from the same repo + `master`, with
+   identical env and Auto Deploy on, but the **Start Command** overridden to
+   `bundle exec bin/jobs` and **no** health check and **no** public domain. Without it,
+   `ConcludeStaleDebatesJob` never fires (see [the worker note](#the-background-worker-is-a-second-service)).
+9. **First deploy only** — run the one-time [database bootstrap](#first-deploy-database-bootstrap)
+   and complete the master.key steps (the ⚠️ section below) before the app goes healthy.
+
+> **Tradeoff of native auto-deploy:** Coolify ships **every** push to `master`,
+> independent of CI — a red build still deploys. CI (`.github/workflows/ci.yml`) runs the
+> same `bin/ci` gates on each push and PR, so keep `master` protected behind green PRs and
+> treat a failing CI run on `master` as *push a fix / roll back in Coolify*. To make CI a
+> hard gate, replace step 2's push webhook with a deploy webhook fired from a
+> `workflow_run` job on CI success — deliberately not wired here.
+
+To reproduce a Coolify build locally (the image is identical to what it deploys):
 
 ```bash
 docker build --platform linux/amd64 -t hoojah .
