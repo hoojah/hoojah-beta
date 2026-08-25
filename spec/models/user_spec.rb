@@ -44,4 +44,100 @@ RSpec.describe User, type: :model do
     expect(user).to be_valid
     expect(user.photo).to be_present
   end
+
+  # Canonical SQL visibility scope for LIST surfaces (search, Phase 2). Must match
+  # User#visible_to? exactly.
+  describe ".visible_to scope" do
+    let(:public_user) { create(:user, private: false) }
+    let(:private_user) { create(:user, private: true) }
+    let(:viewer) { create(:user) }
+    let(:follower) { create(:user) }
+    let(:stranger) { create(:user) }
+
+    before do
+      follower.active_follows.create!(followed: private_user, status: :accepted)
+    end
+
+    it "includes a public account" do
+      expect(User.visible_to(viewer)).to include(public_user)
+    end
+
+    it "excludes a private account not visible to the viewer (non-follower)" do
+      expect(User.visible_to(stranger)).not_to include(private_user)
+    end
+
+    it "includes a private account for an accepted follower" do
+      expect(User.visible_to(follower)).to include(private_user)
+    end
+
+    it "includes a private account for itself" do
+      expect(User.visible_to(private_user)).to include(private_user)
+    end
+
+    it "excludes users in viewer.hidden_user_ids (blocked or blocking)" do
+      blocked = create(:user, private: false)
+      viewer.blocks_made.create!(blocked: blocked)
+
+      blocker = create(:user, private: false)
+      blocker.blocks_made.create!(blocked: viewer)
+
+      expect(User.visible_to(viewer)).not_to include(blocked)
+      expect(User.visible_to(viewer)).not_to include(blocker)
+    end
+
+    context "anonymous viewer (nil)" do
+      it "excludes all private accounts" do
+        expect(User.visible_to(nil)).not_to include(private_user)
+      end
+
+      it "includes public accounts" do
+        expect(User.visible_to(nil)).to include(public_user)
+      end
+    end
+
+    it "agrees with User#visible_to? on a sample of accounts" do
+      samples = [public_user, private_user]
+      [viewer, follower, stranger, private_user, nil].each do |v|
+        scoped_ids = User.visible_to(v).pluck(:id)
+        samples.each do |u|
+          expect(scoped_ids.include?(u.id)).to eq(u.visible_to?(v)),
+            "mismatch for user=#{u.id} viewer=#{v&.id.inspect} private=#{u.private}"
+        end
+      end
+    end
+  end
+
+  # Phase 2.2 search scope — reuses .visible_to (proven above) then filters by
+  # username/full_name. Leak coverage lives end-to-end in spec/requests/search_spec.rb.
+  describe ".search" do
+    let(:viewer) { create(:user) }
+
+    it "matches a case-insensitive substring of the username" do
+      u = create(:user, username: "klangvalleyfan")
+      expect(User.search("KLANGVALLEY", viewer: viewer)).to include(u)
+    end
+
+    it "matches a case-insensitive substring of the full_name" do
+      u = create(:user, full_name: "Siti Rahman")
+      expect(User.search("rahman", viewer: viewer)).to include(u)
+    end
+
+    it "excludes a non-matching account" do
+      u = create(:user, username: "nomatchhere", full_name: "Nobody Related")
+      expect(User.search("zzz-no-match", viewer: viewer)).not_to include(u)
+    end
+
+    it "treats % and _ as literal characters, not SQL wildcards (sanitize_sql_like)" do
+      literal = create(:user, username: "has_underscore")
+      no_underscore = create(:user, username: "hasXunderscore")
+      results = User.search("has_underscore", viewer: viewer)
+      expect(results).to include(literal)
+      expect(results).not_to include(no_underscore)
+    end
+
+    it "caps results at 8" do
+      9.times { |n| create(:user, username: "capuser#{n}") }
+      expect(User.search("capuser", viewer: viewer).size).to eq(8)
+    end
+  end
 end

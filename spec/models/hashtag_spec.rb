@@ -34,4 +34,34 @@ RSpec.describe Hashtag, type: :model do
       expect(tag.reload.hujahs_count).to eq 1
     end
   end
+
+  # Phase 2.2 search scope. Hashtags carry no privacy of their own (no visible_to
+  # reuse needed) — leak coverage for the surrounding search page is end-to-end in
+  # spec/requests/search_spec.rb.
+  describe ".search" do
+    it "matches a case-insensitive substring of the name" do
+      tag = Hashtag.create!(name: "klangvalley", display: "KlangValley")
+      expect(Hashtag.search("KLANG")).to include(tag)
+    end
+
+    it "excludes a non-matching tag" do
+      tag = Hashtag.create!(name: "nomatch", display: "NoMatch")
+      expect(Hashtag.search("zzz-no-match")).not_to include(tag)
+    end
+
+    it "treats % and _ as literal characters, not SQL wildcards (sanitize_sql_like)" do
+      literal = Hashtag.create!(name: "has_underscore", display: "has_underscore")
+      no_underscore = Hashtag.create!(name: "hasxunderscore", display: "hasxunderscore")
+      results = Hashtag.search("has_underscore")
+      expect(results).to include(literal)
+      expect(results).not_to include(no_underscore)
+    end
+
+    it "orders by hujahs_count descending and caps at 8" do
+      9.times { |n| Hashtag.create!(name: "captag#{n}", display: "captag#{n}", hujahs_count: n) }
+      results = Hashtag.search("captag")
+      expect(results.size).to eq(8)
+      expect(results.map(&:hujahs_count)).to eq(results.map(&:hujahs_count).sort.reverse)
+    end
+  end
 end

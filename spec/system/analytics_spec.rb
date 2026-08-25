@@ -19,8 +19,9 @@ RSpec.describe "Analytics dashboard", type: :system, js: true do
 
     expect(page).to have_content("Your dashboard")
     # Totals: 5 votes received, 0 arguments received.
-    expect(page).to have_content("Votes received")
+    expect(page).to have_content("Total votes received")
     expect(page).to have_content("5")
+    expect(page).to have_content("Followers")
     # The well-voted hoojah shows its split; agree is 3/5 = 60%.
     expect(page).to have_content("A well-voted hoojah")
     expect(page).to have_content("60%")

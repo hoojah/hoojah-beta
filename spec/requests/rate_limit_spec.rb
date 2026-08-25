@@ -54,6 +54,13 @@ RSpec.describe "Rate limiting", type: :request do
     expect(response).to have_http_status(:too_many_requests)
   end
 
+  # Phase 2.2. Search is public (anonymous included), so this keys on IP rather
+  # than user id — an anonymous scraper must be capped too.
+  it "throttles search (GET /search) per IP beyond the limit" do
+    31.times { get "/search", params: {q: "anything"} }
+    expect(response).to have_http_status(:too_many_requests)
+  end
+
   # Rails appends an optional `(.:format)` to EVERY route, and Rack::Request#path
   # returns the raw path with the suffix attached. A matcher anchored on the bare
   # path therefore misses `/…/extend.turbo_stream` — which routes to the very same
@@ -130,6 +137,11 @@ RSpec.describe "Rate limiting", type: :request do
       sign_in create(:user)
 
       21.times { post "/hoojah.turbo_stream", params: {hujah: {body: "spammy take"}} }
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it "throttles search at .html" do
+      31.times { get "/search.html", params: {q: "anything"} }
       expect(response).to have_http_status(:too_many_requests)
     end
 

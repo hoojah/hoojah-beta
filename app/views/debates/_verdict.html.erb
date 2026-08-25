@@ -1,9 +1,9 @@
 <%# Spectator verdict block on a CONCLUDED debate. Wrapped in the pinned
     dom_id(debate, :verdict) so the create.turbo_stream replace lands here.
 
-    An eligible, not-yet-voted spectator sees three vote buttons; everyone else
-    (participants, anonymous, already-voted) sees the read-only tally bar built
-    from verdict_tally (compute-on-read) using the _vote_bars width-% idiom.
+    An eligible, not-yet-voted spectator sees three vote buttons (UNCHANGED — this is
+    the live voting flow, see DebateVerdictPolicy#create? for eligibility); everyone
+    else (participants, anonymous, already-voted) sees the read-only WINNER-HERO below.
 
     Locals: debate.
 
@@ -14,57 +14,149 @@
     broadcast render context to defend against, and the eligibility check needs the
     real session.
 
-    DESIGN SYSTEM (Slice 9, Task 4.5) —
-    docs/design-system/components/debate/Verdict.prompt.md. Colours are fixed:
-    challenger indigo (`primary`), opponent purple (`disagree`), draw grey. The heading
-    is uppercase + `tracking-wide` at Verdict.jsx's own `--text-sm`, not the 12px of the
-    state/phase micro-labels, and takes the medium weight the component sets. The bars
-    are the product's standard 8px track. All three colour tokens are INTERPOLATED into
-    `border-`/`text-`/`bg-`, so each must stay covered by the `@source inline` safelist
-    in app/assets/tailwind/application.css — the stance line and the grey line between
-    them already do.
+    HOOJAH 2026 WINNER-HERO (redesign Phase 3, Task 3.6) — mockup ~1216-1275,
+    supersedes the flat three-row tally bar Slice 9 Task 4.5 built. Still SECRET
+    BALLOT and AGGREGATE-ONLY: every number below reads from `debate.verdict_tally`
+    (a `GROUP BY choice` count) and `debate.verdict_winner` (derived from that same
+    tally) — nothing here ever reads an individual DebateVerdict#user. Do not add a
+    per-voter list "to show who voted"; that is exactly the de-anonymization hole the
+    `new_vote` notification comment on Hujah warns about, for the same reason.
 
-    The card is `ui/_card` without `padded:`: Verdict.jsx sets a uniform
-    `var(--space-4)` box, and mixing the flag with a `p-4` in `class:` is the bundle-
-    order trap `ui/_card`'s header spells out. `my-4` is the caller's own margin — the
-    card primitive deliberately owns none. %>
+    Small-N spectator suppression (hiding the tally under a minimum-voter threshold)
+    is a pre-existing DEFERRED item (2a in the backlog) — out of scope here, and this
+    partial reproduces the prior behaviour of showing the tally at any N, including 0.
+
+    `.verdict-hero` is a component class (`app/assets/tailwind/application.css`),
+    same treatment as `.trending-hero`: the gradient's second stop is a fixed literal
+    with no design-system token, so it can't be a `bg-gradient-to-*` utility. The
+    crown's gold fill is the same kind of fixed literal, inlined via `style:` rather
+    than a Tailwind colour utility for the same reason (no stance, no token). %>
 <%
   eligible = DebateVerdictPolicy.new(current_user, debate.debate_verdicts.new(user: current_user)).create?
   voted = current_user.present? && debate.debate_verdicts.exists?(user_id: current_user.id)
-  tally = debate.verdict_tally
-  total = tally.values.sum
-  rows = [["challenger", "primary", "@#{debate.challenger.username}"],
-    ["opponent", "disagree", "@#{debate.opponent.username}"],
-    ["draw", "grey", "Draw"]]
 %>
-<%= render layout: "ui/card", locals: {id: dom_id(debate, :verdict), class: "my-4 p-4"} do %>
-  <h2 class="text-sm font-medium uppercase tracking-wide text-grey mb-3">Spectator verdict</h2>
-
+<div id="<%= dom_id(debate, :verdict) %>" class="my-4 flex flex-col gap-3">
   <% if eligible && !voted %>
-    <div class="flex flex-col gap-2">
-      <% rows.each do |choice, color, label| %>
-        <%= button_to debate_verdicts_path(debate.slug), params: {choice: choice},
-              class: ds_button_classes(variant: :outline, tone: color, size: :md) do %>
-          <%= label %>
+    <%= render layout: "ui/card", locals: {padded: true} do %>
+      <h2 class="text-sm font-medium uppercase tracking-wide text-grey mb-3">Spectator verdict</h2>
+      <div class="flex flex-col gap-2">
+        <% [["challenger", "primary", "@#{debate.challenger.username}"],
+            ["opponent", "disagree", "@#{debate.opponent.username}"],
+            ["draw", "grey", "Draw"]].each do |choice, color, label| %>
+          <%= button_to debate_verdicts_path(debate.slug), params: {choice: choice},
+                class: ds_button_classes(variant: :outline, tone: color, size: :md) do %>
+            <%= label %>
+          <% end %>
         <% end %>
-      <% end %>
-    </div>
-  <% else %>
-    <% rows.each do |choice, color, label| %>
-      <% count = tally[choice].to_i %>
-      <% pct = total.zero? ? 0 : (count * 100.0 / total).round %>
-      <div class="flex items-center mb-3 last:mb-0">
-        <%# `text-sm` explicitly: `<small>` renders at 80% of its parent (12.8px), and
-            Verdict.jsx pins both of these labels at 14px. %>
-        <small class="w-28 shrink-0 truncate text-sm text-<%= color %>"><%= label %></small>
-        <div class="flex-1 mx-3 h-2 bg-gray-200 rounded overflow-hidden">
-          <div class="h-2 rounded bg-<%= color %>" style="width: <%= pct %>%"></div>
-        </div>
-        <small class="w-10 text-right text-sm text-<%= color %>"><%= pct %>%</small>
       </div>
     <% end %>
-    <% if total.zero? %>
-      <p class="text-grey text-center text-sm py-1">No verdicts yet.</p>
+  <% else %>
+    <%
+      tally = debate.verdict_tally
+      total = tally.values.sum
+      winner = debate.verdict_winner
+      challenger_pct = total.zero? ? 0 : (tally["challenger"].to_i * 100.0 / total).round
+      opponent_pct = total.zero? ? 0 : (tally["opponent"].to_i * 100.0 / total).round
+    %>
+    <div class="rounded-3xl verdict-hero shadow p-4 text-center" data-testid="verdict-hero">
+      <div class="text-xs font-extrabold uppercase tracking-wide opacity-80">Verdict</div>
+
+      <div class="mt-3 flex items-center justify-center gap-4">
+        <% [[:challenger, debate.challenger], [:opponent, debate.opponent]].each do |side, participant| %>
+          <% is_winner = winner == side %>
+          <% dimmed = winner != :draw && !is_winner %>
+          <div class="flex flex-col items-center gap-1.5 <%= "opacity-60" if dimmed %>">
+            <div class="relative">
+              <%= render "ui/avatar", user: participant, size: :md, variant: :tile, class: "border-2 border-white" %>
+              <% if is_winner %>
+                <%= lucide_icon("crown", class: "verdict-crown w-5 h-5 absolute -top-3.5 left-1/2 -translate-x-1/2",
+                      style: "fill:#ffd76a;stroke:#ffd76a") %>
+              <% end %>
+            </div>
+            <span class="text-sm font-extrabold">@<%= participant.username %></span>
+            <span class="text-[10px] font-bold uppercase tracking-wide bg-white/20 px-2.5 py-0.5 rounded-full">
+              <%= is_winner ? "Winner" : (side == :challenger ? "Challenger" : "Opponent") %>
+            </span>
+          </div>
+          <% if side == :challenger %><span class="text-xl font-black opacity-70" aria-hidden="true">&middot;</span><% end %>
+        <% end %>
+      </div>
+
+      <% if winner == :draw %>
+        <div class="mt-2 text-xs font-extrabold uppercase tracking-wide">Draw</div>
+      <% end %>
+
+      <%# The single result bar — challenger's share fills from the left, same width-%
+          idiom the old three-row tally used. Draw-choice votes are counted in `total`
+          (the footnote's spectator count) but, like the mockup, are not their own
+          segment: the bar and the two percentages below it compare the two
+          PARTICIPANTS only. %>
+      <div class="mt-4 h-3 rounded-full bg-white/25 overflow-hidden">
+        <div class="h-3 bg-white rounded-full" style="width: <%= challenger_pct %>%"></div>
+      </div>
+      <div class="mt-2 flex justify-between text-xs font-bold">
+        <span><%= challenger_pct %>%</span>
+        <span class="opacity-80"><%= opponent_pct %>%</span>
+      </div>
+
+      <div class="mt-2.5 text-[11px] opacity-85">
+        Decided by <%= total %> <%= "spectator".pluralize(total) %> over <%= debate.rounds_limit %> <%= "round".pluralize(debate.rounds_limit) %>
+      </div>
+    </div>
+
+    <%# Closing statements — the two turns from the FINAL closing-phase round, derived
+        from `rounds_limit` the same way `Debate#phase_for` derives it (never stored).
+        Turns strictly alternate challenger-then-opponent starting at position 1
+        (`Debate#post_turn` only ever accepts `current_turn_user`), so the closing
+        round is always exactly these two positions. A debate rendered here with no
+        turns yet (factories in specs, or a hypothetical concluded-with-no-transcript
+        row) simply shows none — this loop does not assume they exist. %>
+    <% closing_start = ((debate.rounds_limit - 1) * 2) + 1 %>
+    <% debate.turns.where(position: closing_start..).order(:position).each do |turn| %>
+      <% side_color = (turn.user_id == debate.challenger_id) ? "agree" : "disagree" %>
+      <%= render layout: "ui/card", locals: {padded: true} do %>
+        <div class="text-[10.5px] font-bold uppercase tracking-wide text-<%= side_color %> mb-1">
+          Closing &middot; @<%= turn.user.username %>
+        </div>
+        <div class="hujah-body text-sm text-ink break-words"><%= format_body(turn.body) %></div>
+      <% end %>
     <% end %>
+
+    <%# Share — the same progressive-enhancement contract as hujahs/_share_menu: a
+        server-rendered intent-link menu that works with JS off, plus the `share`
+        controller's native-share button once JS confirms support. Styled as the
+        mockup's single outlined pill rather than a small trigger glyph, since this is
+        the one prominent CTA on the hero, not a corner affordance. %>
+    <%
+      debate_share_url = debate_url(debate.slug)
+      debate_share_text = "\"#{strip_tags(debate.hujah.body)}\" — @#{debate.challenger.username} vs @#{debate.opponent.username} on Hoojah. Who won?"
+      debate_share_title = "@#{debate.challenger.username} vs @#{debate.opponent.username} on Hoojah"
+    %>
+    <details class="relative"
+             data-controller="share"
+             data-share-title-value="<%= debate_share_title %>"
+             data-share-text-value="<%= debate_share_text %>"
+             data-share-url-value="<%= debate_share_url %>">
+      <summary class="list-none cursor-pointer h-12 rounded-2xl border-2 border-primary text-primary font-medium text-sm flex items-center justify-center gap-2">
+        <%= lucide_icon("share-2", class: "w-4 h-4") %> Share this debate
+      </summary>
+      <%= render layout: "ui/menu", locals: {width: "w-52"} do %>
+        <h6 class="text-xs text-grey px-3 pb-1">Share this debate via</h6>
+
+        <button type="button" hidden
+                data-share-target="button"
+                data-action="share#share"
+                class="<%= ds_menu_item_classes %> border-0 bg-transparent cursor-pointer">
+          Share…
+        </button>
+
+        <%= link_to "WhatsApp", "https://wa.me/?text=#{CGI.escape("#{debate_share_text} #{debate_share_url}")}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+        <%= link_to "X", "https://x.com/intent/tweet?url=#{CGI.escape(debate_share_url)}&text=#{CGI.escape(debate_share_text)}&via=hoojah_my", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+        <%= link_to "Telegram", "https://t.me/share/url?url=#{CGI.escape(debate_share_url)}&text=#{CGI.escape(debate_share_text)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+        <%= link_to "Reddit", "https://www.reddit.com/submit?url=#{CGI.escape(debate_share_url)}&title=#{CGI.escape(debate_share_text)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+        <%= link_to "Facebook", "https://www.facebook.com/sharer/sharer.php?u=#{CGI.escape(debate_share_url)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+        <%= mail_to "hello@hoojah.my", "Email", subject: debate_share_title, body: "#{debate_share_text}\n\n#{debate_share_url}", class: ds_menu_item_classes %>
+      <% end %>
+    </details>
   <% end %>
-<% end %>
+</div>

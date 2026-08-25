@@ -48,16 +48,45 @@
   see; both prefixes over the stance trio are covered by the `@source inline(...)`
   safelist in app/assets/tailwind/application.css. A NEW interpolated prefix here means a
   new entry there.
+
+  STACKED VARIANT (Hoojah 2026, Slice 2026 Phase 4.6) — mockup "Analytics · dashboard"
+  ~lines 1495-1507, the "Top hoojah" card. `stacked: true` swaps the three ROW form above
+  for a single `rounded-full` track split into three stance-coloured segments (width-%,
+  `gap-0.5` between them) plus a stance-coloured legend line below. This is a distinct
+  widget, not a restyle of the three-row form — the per-hoojah list keeps the row form
+  byte-for-byte, per the file-level note above about not softening the k=5 branch or
+  touching the pinned track/label markup. `heading:` is optional small print rendered
+  above the claim body (the mockup's "Top hoojah" label) — nil renders nothing, same
+  `local_assigns.fetch` idiom `shared/_screen_header` uses for its optional `back:`.
+  Suppression still applies to the stacked form: a top hoojah under k=5 shows the same
+  "fewer than 5 votes" line and no segments, exactly as the row form does — the privacy
+  floor is a property of `dist`, not of which markup renders it.
 %>
 <%
+  stacked = local_assigns.fetch(:stacked, false)
+  heading = local_assigns.fetch(:heading, nil)
   rows = [["agree", dist.agree, dist.agree_pct],
     ["neutral", dist.neutral, dist.neutral_pct],
     ["disagree", dist.disagree, dist.disagree_pct]]
 %>
 <%= render layout: "ui/card", locals: {padded: true, class: "mb-2 last:mb-0"} do %>
+  <% if heading.present? %>
+    <p class="text-xs font-bold text-ink-2 mb-1"><%= heading %></p>
+  <% end %>
   <p class="text-sm text-black mb-2 line-clamp-2"><%= strip_tags(dist.body) %></p>
   <% if dist.suppressed? %>
     <p class="text-xs text-light-grey">fewer than 5 votes</p>
+  <% elsif stacked %>
+    <div class="flex h-3 rounded-full overflow-hidden gap-0.5">
+      <% rows.each do |stance, _count, pct| %>
+        <div class="bg-<%= stance %>" style="width: <%= pct %>%"></div>
+      <% end %>
+    </div>
+    <div class="flex justify-between mt-2">
+      <% rows.each do |stance, _count, pct| %>
+        <small class="text-xs font-bold text-<%= stance %>"><%= stance.capitalize %> <%= pct %>%</small>
+      <% end %>
+    </div>
   <% else %>
     <% rows.each do |stance, count, pct| %>
       <div class="flex items-center mb-2 last:mb-0">

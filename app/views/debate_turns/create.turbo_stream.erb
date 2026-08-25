@@ -2,7 +2,7 @@
     composer (now "waiting for @opponent" for the mover). The pinned dom_ids let
     Increment 2b broadcasting drop in untouched. %>
 <%= turbo_stream.append dom_id(@debate, :transcript) do %>
-  <%= render "debates/debate_turn", debate_turn: @turn %>
+  <%= render "debates/debate_turn", debate_turn: @turn, debate: @debate %>
 <% end %>
 <%= turbo_stream.replace dom_id(@debate, :composer) do %>
   <%= render "debates/turn_composer", debate: @debate %>

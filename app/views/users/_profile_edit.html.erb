@@ -2,13 +2,21 @@
     `User/form.js`, minus the email field (email stays API-only).
 
     One wrapper drives two behaviors: `dialog` (native <dialog> open/close/backdrop/
-    focus-restore) and `cloudinary-upload` (photo widget → hidden field). The trigger
-    pencil sits top-right of the header card (absolute). The PATCH form posts to
-    /u/:username and comes back as a Turbo Stream (update.turbo_stream.erb) that
-    refreshes the header and fires `close_dialog`.
+    focus-restore) and `cloudinary-upload` (photo widget → hidden field). The PATCH
+    form posts to /u/:username and comes back as a Turbo Stream
+    (update.turbo_stream.erb) that refreshes the header and fires `close_dialog`.
 
     Locals: user. Optional: open (true renders the dialog inline for the no-JS
     /u/:username/edit fallback page).
+
+    TRIGGER (Hoojah 2026 redesign, Phase 4, Task 4.4): the trigger used to be a
+    bare pencil, absolutely positioned top-right of the header card. It now sits
+    inline in the gradient hero's action bar (`users/_profile_header`), so THIS
+    partial no longer positions itself — the caller wraps it. The trigger icon is
+    now `settings` (a gear, matching the mockup's action bar), not `edit`; the
+    `aria-label="Edit your profile"` is UNCHANGED on purpose —
+    spec/system/profile_spec.rb and spec/system/profile_redesign_spec.rb both
+    select on that label, not the icon.
 
     DESIGN SYSTEM (Slice 9, Task 4.6) — this dialog is the forms family's reference
     screen, and most of it was already conformant. What changed:
@@ -46,10 +54,11 @@
     `users/update.turbo_stream.erb` closes remotely), every `data-*` on the dialog, the
     upload button and the hidden photo field, and every placeholder. %>
 <% open = local_assigns.fetch(:open, false) %>
-<div data-controller="dialog cloudinary-upload" class="absolute top-4 right-4">
+<div data-controller="dialog cloudinary-upload" class="<%= local_assigns.fetch(:wrapper_class, "") %>">
   <button type="button" data-action="dialog#open"
-          class="border-0 bg-transparent p-0 text-white cursor-pointer" aria-label="Edit your profile">
-    <%= lucide_icon("edit", class: "w-5 h-5") %>
+          class="flex items-center justify-center w-10 h-10 rounded-full border-0 bg-transparent text-white cursor-pointer"
+          aria-label="Edit your profile">
+    <%= lucide_icon("settings", class: "w-5 h-5") %>
   </button>
 
   <dialog id="<%= dom_id(user, :edit_dialog) %>"

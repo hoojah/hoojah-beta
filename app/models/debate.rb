@@ -102,10 +102,22 @@ class Debate < ApplicationRecord
 
   def other(user) = (user.id == challenger_id) ? opponent : challenger
 
+  # opening_argument (nullable, set at challenge time) is the challenger's
+  # position-1 turn, posted atomically with the pending -> active transition so
+  # a debate never sits `active` with a stored opening argument still
+  # unposted. Blank opening_argument reproduces today's flow exactly: no turn,
+  # challenger still opens manually via post_turn. The "your turn" notification
+  # targets current_turn_user, NOT a hardcoded challenger: with no opening that
+  # IS the challenger (identical to before this column), but once the opening
+  # turn is posted the mover is the opponent, so notifying the challenger would
+  # misdirect "your turn" to someone whose turn it isn't.
   def accept!(by:)
     return false unless pending? && by == opponent
-    update!(status: :active)
-    notify(challenger, :debate_your_turn)
+    transaction do
+      update!(status: :active)
+      turns.create!(user: challenger, body: opening_argument, position: 1) if opening_argument.present?
+    end
+    notify(current_turn_user, :debate_your_turn)
     broadcast_state_change
     true
   end
@@ -150,7 +162,7 @@ class Debate < ApplicationRecord
     # the turn form — or both to "concluded" on the capping turn) on their
     # user-signed stream.
     broadcast_append_later_to self, target: dom_id(self, :transcript),
-      partial: "debates/debate_turn", locals: {debate_turn: turn}
+      partial: "debates/debate_turn", locals: {debate_turn: turn, debate: self}
     broadcast_to_each_participant(target: :composer, partial: "debates/turn_composer")
     # Slice 9: the status region carries "Round n of N" and the actions region carries
     # the Extend affordance, and EVERY transition of either is a post_turn — the round
@@ -201,6 +213,19 @@ class Debate < ApplicationRecord
   # Compute-on-read tally (renders on one page, not a list). No denormalized
   # columns on debates.
   def verdict_tally = debate_verdicts.group(:choice).count
+
+  # Hoojah 2026 (redesign Phase 3, Task 3.6) — the winner-hero verdict panel's single
+  # answer, derived from verdict_tally (no separate query, no per-voter read). A TIE for
+  # the max — including the zero-verdicts case, where every count ties at 0 — resolves to
+  # :draw, and so does a strict majority for the :draw choice itself: either way there is
+  # no single side to crown. Only a genuinely UNIQUE max returns :challenger/:opponent.
+  def verdict_winner
+    tally = verdict_tally
+    counts = {challenger: tally["challenger"].to_i, opponent: tally["opponent"].to_i, draw: tally["draw"].to_i}
+    max = counts.values.max
+    leaders = counts.select { |_, n| n == max }
+    (leaders.size == 1) ? leaders.keys.first : :draw
+  end
 
   private
 

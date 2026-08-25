@@ -3,6 +3,11 @@ require "rails_helper"
 # Cuprite (headless Chrome) coverage for the notifications screen. Deleting a
 # notification issues a DELETE via button_to; destroy.turbo_stream.erb removes the
 # card in place (no full reload), so the row disappears from the list.
+#
+# Task 4.2 moved the trash control off the row into a "More options" overflow
+# (`<details>` + `ui/_menu`), so opening it is now a required first step before the
+# Delete button is clickable — mirrors the existing idiom (share_spec/flag_spec
+# open their own `<details>` the same way before clicking inside it).
 RSpec.describe "Notifications", type: :system, js: true do
   let(:me) { create(:user) }
 
@@ -22,7 +27,10 @@ RSpec.describe "Notifications", type: :system, js: true do
     expect(page).to have_selector(card)
     expect(page).to have_content("@replier posted a new argument on your hoojah")
 
-    within(card) { click_button "Delete notification" }
+    within(card) do
+      find("summary[aria-label='More options']").click
+      click_button "Delete notification"
+    end
 
     expect(page).not_to have_selector(card)
     expect(Notification.exists?(notification.id)).to be(false)

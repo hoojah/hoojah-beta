@@ -26,6 +26,7 @@ class HujahsController < ApplicationController
       global
     end
     @pagy, @hujahs = pagy(:countless, base)
+    preload_active_debates(@hujahs)
 
     respond_to do |format|
       format.html
@@ -94,6 +95,44 @@ class HujahsController < ApplicationController
   end
 
   private
+
+  # Phase 1.5 (2026): the feed's live-debate strip needs to know, per top-level
+  # hujah, whether it has an active debate — WITHOUT an N+1. One bulk query for
+  # every id on the page, indexed by hujah_id, then assigned onto each record via
+  # Hujah#preloaded_active_debate= so #active_debate reads it for free. `@hujahs`
+  # may still be an unloaded pagy relation here; `.each` after `.map(&:id)` reuses
+  # the same loaded records rather than re-querying.
+  #
+  # Phase 1.7-fix (security): an ACTIVE debate is participant-only under
+  # DebatePolicy#show?, but the strip (hujahs/_live_debate_strip) and the
+  # swords/"Jump in" footer (hujahs/_hujah_card) render straight off this
+  # preload for EVERY feed viewer. Left unfiltered that broadcasts a private
+  # participant's handle + live activity to anonymous/stranger viewers, and a
+  # blocked participant's handle to a viewer who blocked them. So a debate is
+  # kept here only when BOTH participants are visible to the viewer (mirrors
+  # User#visible_to?, same shape as DebatePolicy::Scope#resolve) AND neither is
+  # in the viewer's `hidden_user_ids`. A filtered-out hujah gets an EXPLICIT nil
+  # write (not simply "no entry") — Hujah#active_debate's `defined?` check
+  # trusts an explicit nil from the preload and does not fall back to a live
+  # per-record query, which would silently re-leak the debate it was just
+  # filtered out for. This is a page-sized Ruby filter, not SQL: challenger/
+  # opponent are already `includes`-loaded, so `visible_to?` costs at most one
+  # `accepted_follower?` query per PRIVATE participant on the page, not per row.
+  def preload_active_debates(hujahs)
+    ids = hujahs.map(&:id)
+    active_by_hujah_id = Debate.active.where(hujah_id: ids).includes(:challenger, :opponent).index_by(&:hujah_id)
+    hujahs.each do |h|
+      debate = active_by_hujah_id[h.id]
+      debate = nil if debate && !debate_teaser_visible?(debate)
+      h.preloaded_active_debate = debate
+    end
+  end
+
+  def debate_teaser_visible?(debate)
+    debate.challenger.visible_to?(current_user) &&
+      debate.opponent.visible_to?(current_user) &&
+      (current_user.nil? || (current_user.hidden_user_ids & [debate.challenger_id, debate.opponent_id]).empty?)
+  end
 
   # Body is stored RAW (no <br> hack); it renders via the `format_body` helper.
   # A missing/spoofed parent_id makes `Hujah.find` raise RecordNotFound → 404,

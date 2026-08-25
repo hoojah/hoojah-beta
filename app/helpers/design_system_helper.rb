@@ -71,6 +71,15 @@ module DesignSystemHelper
     sm: "w-8 h-8 text-xs"       # 32px — DS 12px
   }.freeze
 
+  # `variant:` (SHAPE) and `size:` (PIXELS) are deliberately orthogonal parameters —
+  # Hoojah 2026 (redesign Phase 0, Task 0.2) adds the gradient initials tile as a
+  # second shape a photo OR an initials fallback can render in, at any of the five
+  # existing sizes. `:tile` is therefore NOT a key in AVATAR_SIZES: a tile still needs
+  # a size, so folding it in there would force every size to be duplicated per shape.
+  # `.avatar-tile` (app/assets/tailwind/application.css `@layer components`) supplies
+  # the gradient fill and white ink; `rounded-xl` is the shape class the caller sees.
+  AVATAR_VARIANTS = %i[photo tile].freeze
+
   # Same contract as `ds_button_classes`: nil is an unpassed local and takes the
   # default; anything else outside the set is a typo and says so.
   #
@@ -78,8 +87,10 @@ module DesignSystemHelper
   # pixel numbers 96/44/40/36/32 — so `size: 44` is the likeliest typo of all, and
   # `Integer#to_sym` does not exist. Coercing through a string routes it into the same
   # named error as any other unknown size instead of a bare NoMethodError.
-  def ds_avatar_classes(size: :md)
-    AVATAR_SIZES.fetch(ds_option(size&.to_s&.to_sym, :md, AVATAR_SIZES.keys, "size"))
+  def ds_avatar_classes(size: :md, variant: :photo)
+    dims = AVATAR_SIZES.fetch(ds_option(size&.to_s&.to_sym, :md, AVATAR_SIZES.keys, "size"))
+    shape = (ds_option(variant&.to_sym, :photo, AVATAR_VARIANTS, "variant") == :tile) ? "rounded-xl avatar-tile" : "rounded-full"
+    "#{shape} #{dims}"
   end
 
   # The 8px coloured left border of a compact card — Card.prompt.md and the design

@@ -1,0 +1,30 @@
+<%# Sticky contextual header for inner screens — debate, profile, dashboard, search
+    (Hoojah 2026, redesign Phase 0, Task 0.3). Distinct from the global `shared/_navbar`,
+    which stays fixed on every page; this partial is opt-in per screen and scrolls with
+    the page until it hits the top, then sticks.
+
+    Locals (plain partial, no strict locals — `action:` is free-form caller HTML, which a
+    strict signature would fight):
+      title:  required. Plain text, rendered as the screen's <h1>.
+      back:   optional. A path/URL for a back link (lucide `arrow-left`). Nil or omitted
+              renders no back link — `local_assigns.fetch(:back, nil)` so a caller that
+              never mentions `back:` behaves identically to one that passes `back: nil`.
+      action: optional. An html-safe string rendered in a right-hand slot (a button, a
+              menu, a link) — never plain text, since it is inserted as markup.
+%><% back = local_assigns.fetch(:back, nil) %>
+<header class="sticky top-0 z-20 bg-nav backdrop-blur border-b border-hairline">
+  <div class="max-w-xl mx-auto px-4 h-14 flex items-center gap-2">
+    <% if back.present? %>
+      <%# ~40px hit box, matching the navbar's tap targets. %>
+      <%= link_to back, class: "flex items-center justify-center w-10 h-10 -ml-2 shrink-0 text-ink no-underline", aria: {label: "Back"} do %>
+        <%= lucide_icon("arrow-left", class: "w-5 h-5") %>
+      <% end %>
+    <% end %>
+
+    <h1 class="flex-1 min-w-0 truncate text-base font-bold text-ink"><%= local_assigns[:title] %></h1>
+
+    <% if local_assigns[:action].present? %>
+      <div class="flex items-center shrink-0"><%= local_assigns[:action] %></div>
+    <% end %>
+  </div>
+</header>

@@ -7,15 +7,40 @@ class DebatePolicy < ApplicationPolicy
   # 2026: a concluded debate renders @debate.hujah.body in the transcript, so a
   # non-participant may read it only when BOTH participants AND the underlying claim
   # are visible to them (a followers_only claim must not leak via a public transcript).
+  #
+  # Hoojah 2026 (redesign Phase 3, Task 3.5): the same visibility clause now ALSO
+  # admits an ACTIVE debate, not only a concluded one — the mockup's spectator view
+  # (`debates/show`'s non-participant branch) reads a live transcript, so a visible
+  # spectator's page can subscribe to the debate's Cable stream (`DebateChannel`
+  # re-checks this same predicate at subscribe time) while turns are still being
+  # posted, not only after the debate concludes. This introduces no new leak surface
+  # beyond what the concluded branch already accepted: the exact same three
+  # `visible_to?` checks gate it, so anyone who could read tomorrow's concluded
+  # transcript could already read today's argument content via the Debates lens once
+  # it concludes — this only moves WHEN they can start reading it, not WHETHER. A
+  # `pending` debate is deliberately excluded — an unaccepted challenge is not yet a
+  # public back-and-forth, and `_debate_pending` (Phase 3.3) has no spectator layout.
   def show? = record.participant?(user) ||
-    (record.concluded? && record.challenger.visible_to?(user) &&
+    ((record.active? || record.concluded?) && record.challenger.visible_to?(user) &&
      record.opponent.visible_to?(user) && record.hujah.visible_to?(user))
 
   # Reject a challenge against a hidden (blocked/blocked-by) opponent — Slice 7 — and
   # honor the claim's 2026 allow_debates toggle (no challenge when it's off).
+  #
+  # Hoojah 2026 (redesign Phase 3.2): create? also gates `new?` (Pundit falls through
+  # new? → create?), and the new standalone `debates/new` page RENDERS @hujah.body and
+  # the @argument author card. Without a visibility clause here, GET
+  # /hoojah/:slug/debates/new?argument_id=N (an enumerable id) becomes a read primitive
+  # for a followers_only/private_only claim and a private argument author — content
+  # show? denies. So creating a challenge (and reaching its form) requires that the
+  # claim AND the opponent be visible to the actor, mirroring show?. Pre-2026 the
+  # stance dialog lived inside the policy-gated hujah page, so create?'s laxness leaked
+  # nothing readable; the standalone page changes that.
   def create? = user.present? &&
     !user.hidden_user_ids.include?(record.opponent_id) &&
-    record.hujah.allow_debates?
+    record.hujah.allow_debates? &&
+    record.hujah.visible_to?(user) &&
+    record.opponent.visible_to?(user)
 
   def accept? = user.present? && user == record.opponent && record.pending?
 
@@ -34,13 +59,19 @@ class DebatePolicy < ApplicationPolicy
   def extend? = record.participant?(user) && record.active?
 
   class Scope < ApplicationPolicy::Scope
-    # The Debates lens on the hoojah page. A participant sees all their own debates;
-    # everyone else sees a concluded debate only when both participants are visible
-    # (Slice 7b, Gate 8). Visibility depends on the accepted-follower graph, so the
-    # concluded set is filtered in Ruby — the lens is one hoojah's (small) debate set.
+    # The Debates lens on the hoojah page AND the 2026 profile "Debates" tab. A
+    # participant sees all their own debates; everyone else sees a concluded debate
+    # only when both participants are visible (Slice 7b, Gate 8) AND neither
+    # participant is in the viewer's bidirectional block set (2026 Phase 4.7-fix — the
+    # profile Debates tab opened a fresh surface on a gap that `visible_to?` alone
+    # doesn't close: `User#visible_to?` covers privacy, not blocks, so a stranger who
+    # blocked a co-participant would still see their concluded debate here). Filtered in
+    # Ruby — both surfaces are small sets. `mine` is never block-filtered: you can't
+    # block yourself, and you always see debates you are a party to.
     def resolve
       concluded_visible = scope.where(status: :concluded).includes(:challenger, :opponent, :hujah).select do |d|
-        d.challenger.visible_to?(user) && d.opponent.visible_to?(user) && d.hujah.visible_to?(user)
+        d.challenger.visible_to?(user) && d.opponent.visible_to?(user) && d.hujah.visible_to?(user) &&
+          (user.nil? || (user.hidden_user_ids & [d.challenger_id, d.opponent_id]).empty?)
       end
       return concluded_visible unless user
       mine = scope.where(challenger_id: user.id).or(scope.where(opponent_id: user.id)).to_a

@@ -20,29 +20,42 @@ RSpec.describe "Debate", type: :system, js: true do
   let!(:argument) { create(:hujah, parent: root, user: opponent, vote: 3, body: "Spaces win, obviously") }
 
   it "drives challenge → accept → alternating turns → conclude → read-only transcript" do
-    # 1. Challenger opens the challenge dialog on the argument and picks a stance.
+    # 1. Challenger follows the "Challenge to debate" link to the create page (Phase
+    # 3.2 — no more stance-only dialog), picks the opposing stance, and leaves the
+    # opening argument blank so `accept!` behaves exactly as before this page existed
+    # (no auto-posted opening turn) — the rest of this flow is otherwise unchanged.
     login_as_system(challenger)
     visit "/hoojah/#{root.slug}"
 
     expect(page).to have_content("Spaces win, obviously")
-    click_button "Challenge to debate"
+    click_link "Challenge to debate"
 
-    dialog = find("dialog##{dom_id(argument, :challenge_dialog)}", visible: true)
-    expect(dialog).to be_visible
-    within(dialog) { click_button "Argue Agree" } # challenger_stance 1 opposes the argument's 3
-
-    # create.turbo_stream.erb appends the debate card to the lens and closes the dialog.
-    within "##{dom_id(root, :debates)}" do
-      expect(page).to have_content("@challengerx vs @opponentx")
-    end
-    expect(page).to have_no_selector("dialog##{dom_id(argument, :challenge_dialog)}", visible: true)
+    expect(page).to have_current_path(%r{/hoojah/#{root.slug}/debates/new})
+    choose("challenger_stance", option: "1", allow_label_click: true) # opposes the argument's stance (3, Disagree)
+    click_button "Send challenge"
 
     debate = Debate.last
+    expect(page).to have_current_path("/debates/#{debate.slug}")
     expect(debate).to be_pending
+    expect(debate.opening_argument).to be_blank
 
-    # 2. Opponent accepts the challenge (from the debate transcript screen).
+    # 2. Opponent accepts the challenge (from the debate transcript screen). Phase 3.3
+    # (2026 redesign): a pending debate gets a dedicated accept/decline screen — assert
+    # its content (avatar trio, headline, motion, rules card, no timer row) BEFORE
+    # accepting, still via the pinned `_debate_actions` buttons.
     login_as_system(opponent)
     visit "/debates/#{debate.slug}"
+
+    within("##{dom_id(debate, :status)}") { expect(page).to have_content(/pending/i) } # CSS-uppercased
+    expect(page).to have_css("[aria-label='#{challenger.full_name}']")
+    expect(page).to have_css("[aria-label='#{opponent.full_name}']")
+    expect(page).to have_content("@#{challenger.username}")
+    expect(page).to have_content("Should tabs beat spaces?")
+    expect(page).to have_content("#{debate.rounds_limit} rounds")
+    expect(page).to have_content("Spectators")
+    expect(page).to have_no_content("per turn")
+    within("##{dom_id(debate, :actions)}") { expect(page).to have_button("Accept") and have_button("Decline") }
+
     click_button "Accept"
 
     # Status flips to Active in place; the opponent now waits for the challenger.
@@ -51,9 +64,26 @@ RSpec.describe "Debate", type: :system, js: true do
     expect(debate.reload).to be_active
 
     # 3. Challenger's turn: the composer renders focused (connect() refocus) on first paint.
+    # A fresh `visit` also picks up the else-branch's structural HTML for the first
+    # time — accept! only Turbo-Stream-replaces :status/:actions in place, so the
+    # scoreboard (rendered around, not inside, the pending screen it replaces) only
+    # appears after a real page load.
     login_as_system(challenger)
     visit "/debates/#{debate.slug}"
     expect(page).to have_css("textarea[aria-label='Your turn']:focus")
+
+    # 3a. Phase 3.4 — the VS scoreboard: both handles, the derived round/phase, and a
+    # Live pill with a pulsing (hbreathe) dot. No countdown, no spectator-lean bar.
+    # Round/VS/phase/Live are CSS-uppercased (`uppercase`), hence the case-insensitive
+    # matches — same convention `debate_phases_spec.rb` already uses for :status.
+    within(".debate-scoreboard") do
+      expect(page).to have_content("@challengerx")
+      expect(page).to have_content("@opponentx")
+      expect(page).to have_content(/round 1 of #{debate.rounds_limit}/i)
+      expect(page).to have_content(/opening statement/i)
+      expect(page).to have_content(/live/i)
+    end
+    expect(page).to have_no_content(/leaning/i)
 
     fill_in "Your turn", with: "Tabs are one keystroke."
     click_button "Post turn"
@@ -62,6 +92,15 @@ RSpec.describe "Debate", type: :system, js: true do
     # the waiting state for the mover (no full navigation).
     within("##{dom_id(debate, :transcript)}") { expect(page).to have_content("Tabs are one keystroke.") }
     within("##{dom_id(debate, :composer)}") { expect(page).to have_content("Waiting for @opponentx") }
+
+    # 3b. Phase 3.4 — the challenger's turn renders as a chat bubble aligned to the
+    # start, agree-coloured, carrying the "Phase · @handle" micro-label (also
+    # CSS-uppercased).
+    challenger_turn = debate.turns.find_by!(user: challenger)
+    # The alignment class lives on the dom_id ROOT itself, not a descendant — combine
+    # both into one selector rather than `within`, which only searches descendants.
+    expect(page).to have_css("##{dom_id(challenger_turn)}.self-start")
+    within("##{dom_id(challenger_turn)}") { expect(page).to have_content(/opening statement · @challengerx/i) }
 
     # 4. Opponent's turn: composer refocuses again on render, then they post.
     login_as_system(opponent)
@@ -75,6 +114,11 @@ RSpec.describe "Debate", type: :system, js: true do
       expect(page).to have_content("Tabs are one keystroke.")
       expect(page).to have_content("Spaces are unambiguous.")
     end
+
+    # 4b. The opponent's turn bubble aligns to the end, disagree-coloured.
+    opponent_turn = debate.turns.find_by!(user: opponent)
+    expect(page).to have_css("##{dom_id(opponent_turn)}.self-end")
+    within("##{dom_id(opponent_turn)}") { expect(page).to have_content(/opening statement · @opponentx/i) }
 
     # 5. Either participant concludes (opponent is the current viewer).
     click_button "Conclude"
@@ -90,5 +134,63 @@ RSpec.describe "Debate", type: :system, js: true do
     expect(page).to have_content("Spaces are unambiguous.")
     expect(page).to have_no_css("textarea")
     expect(page).to have_no_button("Post turn")
+  end
+
+  # Phase 3.5: a signed-in non-participant watching a LIVE debate — the scoreboard and
+  # the chat bubbles render exactly as they do for a participant (both are
+  # viewer-agnostic), but the composer's turn-form never appears for them: they get the
+  # read-only "verdict opens when concluded" note instead. No watcher stack, no typing
+  # indicator (both deferred) — DebatePolicy#show? now admits this spectator to an
+  # ACTIVE debate the same way it already admitted one to a concluded transcript.
+  it "lets a signed-in non-participant watch an active debate read-only" do
+    login_as_system(challenger)
+    visit "/hoojah/#{root.slug}"
+    click_link "Challenge to debate"
+    choose("challenger_stance", option: "1", allow_label_click: true)
+    click_button "Send challenge"
+    debate = Debate.last
+
+    login_as_system(opponent)
+    visit "/debates/#{debate.slug}"
+    click_button "Accept"
+    expect(debate.reload).to be_active
+
+    spectator = create(:user, username: "spectatorx")
+    login_as_system(spectator)
+    visit "/debates/#{debate.slug}"
+
+    within(".debate-scoreboard") do
+      expect(page).to have_content("@challengerx")
+      expect(page).to have_content("@opponentx")
+      expect(page).to have_content(/round 1 of #{debate.rounds_limit}/i) # CSS-uppercased
+    end
+    within("##{dom_id(debate, :composer)}") do
+      expect(page).to have_content("The verdict opens when the debate concludes.")
+    end
+    expect(page).to have_no_css("textarea")
+    expect(page).to have_no_button("Post turn")
+    # No participant-only affordances leak to the spectator either.
+    within("##{dom_id(debate, :actions)}") { expect(page).to have_no_button("Conclude") }
+  end
+
+  # Phase 3.3: the pending accept/decline screen's Decline path — still the existing
+  # `_debate_actions` `button_to`, just reached through the new layout.
+  it "opponent can decline from the pending accept/decline screen" do
+    login_as_system(challenger)
+    visit "/hoojah/#{root.slug}"
+    click_link "Challenge to debate"
+    expect(page).to have_current_path(%r{/hoojah/#{root.slug}/debates/new})
+    choose("challenger_stance", option: "1", allow_label_click: true)
+    click_button "Send challenge"
+    debate = Debate.last
+
+    login_as_system(opponent)
+    visit "/debates/#{debate.slug}"
+    within("##{dom_id(debate, :actions)}") { click_button "Decline" }
+
+    within("##{dom_id(debate, :status)}") { expect(page).to have_content(/declined/i) } # CSS-uppercased
+    expect(page).to have_no_button("Accept")
+    expect(page).to have_no_button("Decline")
+    expect(debate.reload).to be_declined
   end
 end

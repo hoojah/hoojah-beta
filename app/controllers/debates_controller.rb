@@ -23,9 +23,42 @@ class DebatesController < ApplicationController
     @turns = @debate.turns.includes(:user).order(:position)
   end
 
+  # Debate create PAGE (2026, Phase 3.2) — rounds picker + opening argument, the
+  # full-page replacement for the old stance-only <dialog>. Shares the exact same
+  # forged-argument guard as `create` (same 422, same skip_authorization-before-
+  # return shape) because it resolves the identical @hujah/@argument/@debate. The
+  # `new?` Pundit lookup falls through to ApplicationPolicy#new? -> create?, so
+  # DebatePolicy needs no new method: the built @debate INSTANCE is what gets
+  # checked (record.hujah.allow_debates?, the hidden-user guard), same as create.
+  # challenger_stance is intentionally left unset here — that is the one thing the
+  # page still asks the challenger to pick, same as the dialog did.
+  def new
+    @hujah = Hujah.friendly.find(params[:slug])
+    argument = @hujah.children.find_by(id: params[:argument_id])
+    unless argument
+      skip_authorization
+      return head :unprocessable_content
+    end
+
+    @argument = argument
+    @debate = current_user.challenged_debates.new(
+      hujah: @hujah,
+      opponent: argument.user,
+      opponent_stance: argument.vote
+    )
+    authorize @debate
+    # Self-challenge is a semantically invalid row (the model's own
+    # "opponent_id must differ" validation would refuse it on save) rather than an
+    # authorization denial — mirrors that as a 422, not a 403. In practice the
+    # trigger is already hidden from a response's own author (`_child_card`), so
+    # this only catches someone hitting the URL directly.
+    head :unprocessable_content if @debate.challenger_id == @debate.opponent_id
+  end
+
   # Challenge escalated from an argument on THIS hoojah. The actor is always the
   # current_user (challenged_debates) — opponent/stances are DERIVED from the
-  # argument, never accepted from params (only :argument_id + :challenger_stance).
+  # argument, never accepted from params (only :argument_id + :challenger_stance,
+  # plus :rounds_limit / :opening_argument since Phase 3.2 — see `new` above).
   def create
     @hujah = Hujah.friendly.find(params[:slug])
     # The argument must be a direct child of the URL's hoojah, else it is forged, so
@@ -48,6 +81,15 @@ class DebatesController < ApplicationController
       opponent_stance: argument.vote,
       challenger_stance: challenge_params[:challenger_stance]
     )
+    # rounds_limit/opening_argument are assigned only when present, rather than
+    # always passed into .new — the old dialog's POST (still the shape any
+    # existing caller sends) carries neither key, and an explicit
+    # `rounds_limit: nil` would override the column default (4) with a NULL that
+    # then fails the numericality validation instead of quietly keeping the
+    # default. Blank opening_argument is handled by Debate#accept! itself (see its
+    # comment) so it is fine to assign through unconditionally.
+    @debate.rounds_limit = challenge_params[:rounds_limit] if challenge_params[:rounds_limit].present?
+    @debate.opening_argument = challenge_params[:opening_argument]
     authorize @debate, :create?
 
     if @debate.save
@@ -112,7 +154,7 @@ class DebatesController < ApplicationController
 
   def render_unprocessable = head :unprocessable_content
 
-  def challenge_params = params.permit(:argument_id, :challenger_stance)
+  def challenge_params = params.permit(:argument_id, :challenger_stance, :rounds_limit, :opening_argument)
 
   def render_status
     respond_to do |format|

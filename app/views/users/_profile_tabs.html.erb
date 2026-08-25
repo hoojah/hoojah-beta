@@ -1,0 +1,28 @@
+<%# Profile count tabs — Hoojah 2026 (redesign Phase 4, Task 4.5), mockup ~1421-1425.
+    Locals: user, active_tab, hoojahs_count, responses_count, debates_count.
+
+    Three equal-width pills, the active one filled primary, the other two the
+    neutral `bg-card-2` chip surface (same idiom as `hujahs/_response_filter`'s
+    filter chips). Both class strings are STATIC — this is a ternary between two
+    literal strings, not a `bg-#{tone}` interpolation, so it needs no
+    `@source inline(...)` safelist entry (Tailwind gotcha #1/#2 in CLAUDE.md): the
+    scanner reads the raw ERB bytes and both branches are already spelled out here.
+
+    Each tab is a plain `?tab=<key>` link — `data: {turbo_frame: "profile-list"}`
+    only changes what Turbo does with the response (replace the frame instead of
+    the whole page) when JS is present; a JS-off click still lands on the right
+    tab because the controller reads `params[:tab]` on every full-page GET too. %>
+<% tabs = [["hoojahs", "Hoojahs", hoojahs_count], ["responses", "Responses", responses_count],
+     ["debates", "Debates", debates_count]] %>
+<div class="flex gap-2" data-testid="profile-tabs">
+  <% tabs.each do |key, label, count| %>
+    <% active = active_tab == key %>
+    <%= link_to profile_path(user.username, tab: key),
+          data: {turbo_frame: "profile-list", testid: "profile-tab-#{key}"},
+          aria: {current: (active ? "page" : nil)},
+          class: "flex-1 text-center py-2.5 rounded-xl font-bold text-[13px] no-underline " \
+            "#{active ? "bg-primary text-white" : "bg-card-2 text-ink-2"}" do %>
+      <%= label %> · <%= count %>
+    <% end %>
+  <% end %>
+</div>

@@ -1,9 +1,21 @@
 <%= render "shared/navbar" %>
 
 <%# Standalone, publicly reachable trending page (nav link) — also the source the
-    feed's lazy `turbo_frame_tag "trending"` sidebar extracts by matching id. %>
+    feed's lazy `turbo_frame_tag "trending"` sidebar extracts by matching id.
+
+    Two renderings of the SAME `Hujah.trending` set share this one action/template
+    (Phase 2.5): a direct/full-page hit renders the rich, ranked cards; the feed
+    sidebar's lazy frame request renders the original minimal list unchanged.
+    `turbo_frame_request?` (turbo-rails) is the load-bearing signal — Turbo tags a
+    frame's own fetch with a `Turbo-Frame: <id>` request header, which is exactly how
+    the sidebar's `turbo_frame_tag "trending", src: trending_path, loading: :lazy`
+    asks for this page. No second query: both branches render the same @hujahs. %>
 <main class="max-w-xl mx-auto px-4 py-6">
   <%= turbo_frame_tag "trending" do %>
-    <%= render "trending", hujahs: @hujahs %>
+    <% if turbo_frame_request? %>
+      <%= render "trending", hujahs: @hujahs %>
+    <% else %>
+      <%= render "trending_rich", hujahs: @hujahs %>
+    <% end %>
   <% end %>
 </main>

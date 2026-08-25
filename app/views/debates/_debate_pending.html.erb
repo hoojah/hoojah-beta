@@ -1,0 +1,62 @@
+<%# The 2026 redesign's dedicated pending-debate screen (Phase 3.3, mockup "Debate ·
+    challenge" ~lines 1023-1064). Replaces the plain status-card row on `debates/show`
+    for a PENDING debate ONLY — active/concluded/declined debates keep rendering the
+    original row untouched (see `debates/show.html.erb`).
+
+    This partial does not reimplement accept/decline: it composes the EXISTING
+    `_debate_status` / `_debate_actions` partials so the pinned Turbo Stream + Action
+    Cable targets (`dom_id(debate, :status)` / `dom_id(debate, :actions)`) —
+    `Debate#broadcast_state_change` replaces exactly these on accept!/decline! — stay
+    the same element, in the same place in the DOM, doing the same thing. Neither the
+    accept/decline routes nor their Turbo Stream responses change here.
+
+    Locals: debate, viewer (the same `viewer:` `_debate_actions` already takes —
+    `_debate_actions` alone decides whether Accept/Decline render, by `viewer ==
+    debate.opponent`; this partial does not duplicate that check).
+
+    No timer row: the mockup's "2 minutes per turn" is deferred (Debate has no
+    per-turn time-limit column to show a real value for) — the rules card below lists
+    only the two facts the model actually has: the real rounds count and the
+    (currently static, always-on) spectator verdict. %>
+<%= render layout: "ui/card", locals: {padded: true, class: "flex flex-col items-center text-center gap-1"} do %>
+  <%= render "debates/debate_status", debate: debate %>
+
+  <div class="flex items-center gap-3 mt-2">
+    <%= render "ui/avatar", user: debate.challenger, size: :lg, variant: :tile %>
+    <span class="w-11 h-11 rounded-xl bg-disagree shadow flex items-center justify-center shrink-0">
+      <%= lucide_icon("swords", class: "w-5 h-5 text-white") %>
+    </span>
+    <%= render "ui/avatar", user: debate.opponent, size: :lg, variant: :tile %>
+  </div>
+
+  <p class="mt-3 text-lg font-bold text-ink">
+    <span class="text-agree">@<%= debate.challenger.username %></span>
+    <% if viewer == debate.opponent %>
+      challenged you to a debate
+    <% else %>
+      challenged <span class="text-disagree">@<%= debate.opponent.username %></span> to a debate
+    <% end %>
+  </p>
+
+  <%= render layout: "ui/card", locals: {stance: "primary", padded: true, class: "mt-3 text-sm text-ink text-left w-full"} do %>
+    &ldquo;<%= strip_tags(debate.hujah.body) %>&rdquo;
+  <% end %>
+
+  <%# Rules card — real rounds count, then the static spectator-verdict row.
+      `ui/_divider` is the house internal-separator (never a second shadow). %>
+  <%= render layout: "ui/card", locals: {class: "mt-3 w-full text-left"} do %>
+    <div class="flex items-center gap-2 px-3 py-2 text-sm text-ink">
+      <%= lucide_icon("swords", class: "w-4 h-4 text-primary shrink-0") %>
+      <span><strong><%= debate.rounds_limit %> rounds</strong></span>
+    </div>
+    <%= render "ui/divider", class: "mx-3" %>
+    <div class="flex items-center gap-2 px-3 py-2 text-sm text-ink">
+      <%= lucide_icon("users", class: "w-4 h-4 text-primary shrink-0") %>
+      <span><strong>Spectators</strong> decide the winner</span>
+    </div>
+  <% end %>
+
+  <div class="mt-3 w-full">
+    <%= render "debates/debate_actions", debate: debate, viewer: viewer %>
+  </div>
+<% end %>

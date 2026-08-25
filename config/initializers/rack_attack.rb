@@ -52,6 +52,7 @@ class Rack::Attack
   TURNS_PATH = throttled_path("debates", ANY_SEGMENT, "turns")
   VERDICTS_PATH = throttled_path("debates", ANY_SEGMENT, "verdicts")
   EXTEND_PATH = throttled_path("debates", ANY_SEGMENT, "extend")
+  SEARCH_PATH = throttled_path("search")
 
   # --- Throttles -------------------------------------------------------------
 
@@ -109,5 +110,10 @@ class Rack::Attack
   # rounds_limit itself.
   throttle("debate_extend/user", limit: 10, period: 1.minute) do |req|
     req.env["warden"]&.user&.id if req.post? && req.path.match?(EXTEND_PATH)
+  end
+  # Search is public (anonymous included), so key on IP rather than user id — a
+  # per-user throttle would leave an anonymous scraper entirely uncapped.
+  throttle("search/ip", limit: 30, period: 1.minute) do |req|
+    req.ip if req.get? && req.path.match?(SEARCH_PATH)
   end
 end

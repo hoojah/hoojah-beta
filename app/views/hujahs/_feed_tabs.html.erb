@@ -1,5 +1,6 @@
-<%# Server-rendered feed tabs: Everyone (global) | Following (signed-in only).
-    Not a client filter — plain links that reload the feed with ?filter=.
+<%# Server-rendered feed tabs: Everyone (global) | Following (signed-in only) |
+    Discover (search, Phase 2.3). Not a client filter — plain links that reload the
+    feed with ?filter= (Everyone/Following) or navigate to the search page (Discover).
 
     14px medium, hairline rule underneath, active tab indigo with a 2px indigo underline
     (docs/design-system/components/navigation/FeedTabs.prompt.md). That is what the markup
@@ -11,19 +12,27 @@
     `active:scale-95`, and carries no underline, which IS the active state here. A helper
     that has to be overridden on every axis is not the helper for the job.
 
+    Discover is a distinct controller (SearchController), not a `?filter=` value, so its
+    "active" check is `controller_name == "search"` rather than reading `params[:filter]` —
+    on the feed itself it is simply a link, never active.
+
     `aria-current` because the active scope is otherwise signalled by colour alone. %>
 <% following = params[:filter] == "following" && user_signed_in? %>
+<% discover = controller_name == "search" %>
 <%# One string per state rather than two mirrored ternaries: the colour and the underline
     must never disagree about which scope is showing. %>
 <% active = "py-2 no-underline text-primary border-b-2 border-primary" %>
 <% idle = "py-2 no-underline text-grey" %>
 <nav class="flex gap-4 border-b border-gray-100 mb-4 text-sm font-medium">
   <%= link_to "Everyone", root_path,
-        class: following ? idle : active,
-        aria: {current: ("page" unless following)} %>
+        class: (following || discover) ? idle : active,
+        aria: {current: ("page" unless following || discover)} %>
   <% if user_signed_in? %>
     <%= link_to "Following", root_path(filter: "following"),
           class: following ? active : idle,
           aria: {current: ("page" if following)} %>
   <% end %>
+  <%= link_to "Discover", search_path,
+        class: discover ? active : idle,
+        aria: {current: ("page" if discover)} %>
 </nav>

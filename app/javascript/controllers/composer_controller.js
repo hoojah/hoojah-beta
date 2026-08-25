@@ -6,6 +6,7 @@ import { Controller } from "@hotwired/stimulus"
 // target) — the canonical, always-submitted control, so it needs no JS to work.
 export default class extends Controller {
   static targets = ["body", "post", "select", "collapsed", "expanded"]
+  static classes = ["hrise"]
   static values = { min: { type: Number, default: 8 }, requireMin: { type: Boolean, default: true } }
 
   connect() { this.sync() }
@@ -35,5 +36,14 @@ export default class extends Controller {
     this.sync(); this.autogrow()
   }
 
-  expand() { if (this.hasCollapsedTarget) { this.collapsedTarget.hidden = true; this.expandedTarget.hidden = false; this.bodyTarget.focus() } }
+  expand() {
+    if (!this.hasCollapsedTarget) return
+    this.collapsedTarget.hidden = true
+    this.expandedTarget.hidden = false
+    // Class name comes from markup (data-composer-hrise-class) via the Stimulus
+    // classes API, not a literal baked into this controller — toggling `hidden`
+    // off replays the CSS animation the class names, same as a fresh element.
+    if (this.hasHriseClass) this.expandedTarget.classList.add(...this.hriseClasses)
+    this.bodyTarget.focus()
+  }
 }

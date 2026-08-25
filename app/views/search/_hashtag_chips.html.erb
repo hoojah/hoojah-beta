@@ -1,0 +1,11 @@
+<%# A wrapping pill cloud over `hashtags` — reused for BOTH "Trending hashtags" and
+    "Browse hashtags" in `search/_results` (two calls, two different subsets of the
+    same `@browse_hashtags` list; there is deliberately no second hashtag-chip
+    partial). The first chip gets the primary accent treatment the mockup gives its
+    top entry; the rest get the quieter grey pill. %>
+<div class="flex gap-2 flex-wrap">
+  <% hashtags.each_with_index do |hashtag, index| %>
+    <%= link_to "##{hashtag.display}", tag_path(hashtag.name),
+          class: "text-sm px-3.5 py-2 rounded-full no-underline #{index.zero? ? "font-bold bg-primary-soft text-primary" : "font-semibold bg-card-2 text-ink-2"}" %>
+  <% end %>
+</div>

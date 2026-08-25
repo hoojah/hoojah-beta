@@ -1,23 +1,40 @@
 <%# Faithful port of the legacy SPA `Hujah/card_header.js`: avatar + full_name + @handle,
-    plus a share menu (native <details>, no JS needed). Optional `parent:` local
+    plus a menu (native <details>, no JS needed). Optional `parent:` local
     renders the "Response to ..." parent stub (port of card_parent.js).
 
-    DESIGN SYSTEM (Slice 9, Task 4.3) —
-    docs/design-system/components/hujah/HujahHeader.prompt.md: "full name is indigo
-    medium; `@handle · date` is 14px grey underneath. Timestamps are always the compact
-    `%b %-d` form." The name and the timestamp format were already right; the 14px was
-    not. A bare `<small>` is 0.8em, i.e. 12.8px against the body's 16px — the design
-    system's UI text is 14px, so both `<small>`s here now say `text-sm` outright. Same
-    correction, same reason, as the navbar labels in Task 4.1: they were inheriting a
-    size rather than being assigned one.
+    HOOJAH 2026 (redesign Phase 1, Task 1.3) — mockup ~217-224. Two changes from the
+    Slice 9 shape:
 
-    Both avatars go through `ui/_avatar` — 44px (`md`) for the byline, 32px (`sm`) for
-    the parent stub, which are the design system's own boxes for those two slots. That
-    is not only tidiness: `image_tag user.photo` RAISES when `photo` is blank, and
-    `:photo` is user-editable while `assign_random_photo` only backfills on create. This
-    partial renders inside every feed card, so one photoless author 500s the whole feed.
-    Pass the box through `size:`, never a `w-*` in `class:` — those compete rather than
-    override, and the bundle's order decides (see the partial's own header).
+    - The avatar is now the gradient-initials TILE (`variant: :tile`, `size: :row` —
+      40px, docs/design-system/components/hujah/HujahHeader.prompt.md's byline box),
+      not the round photo. The name drops the Slice-9 `text-primary` — the mockup's
+      byline name is `font-weight:700` in `var(--ink)`, indigo is no longer the
+      identity colour here — and `@handle · date` moves from `text-sm text-grey` to
+      the 2026 caption pairing `text-xs text-ink-2` used everywhere else this shape
+      appears (`hujahs/show`'s own byline, `debates/_debate_card`'s label). There is no
+      verified badge: this product has no `User#verified?` concept, so none is added.
+    - The two separate triggers Slice 9 left here — a bare `share-2` icon for
+      `_share_menu`'s own `<details>`, no flag control at all — collapse into ONE
+      `more-vertical` trigger (mockup: a single circle-dots glyph, not two icons). The
+      panel underneath is both existing menus' content unchanged — the six share intent
+      links plus the native-share button (still carrying `_share_menu`'s
+      `data-controller="share"` and its three `data-share-*-value` attributes, unmoved,
+      because `spec/system/share_spec.rb` selects on them) and the flag dialog trigger
+      (`hujahs/_flag_dialog`, its own `data-controller="dialog"` also unmoved) — so
+      neither flow's HTML contract changes, only their shared entry point. There was no
+      flag control on the feed card before this task; the show page's separate "More
+      actions" menu (which does the same share+flag consolidation, just under a
+      `more-horizontal` glyph) is untouched — it renders its own header, not this
+      partial, and its system specs (`share_spec`, `flag_spec`) exercise it directly.
+
+    Both avatars go through `ui/_avatar` — the tile (`row`, 40px) for the byline, 32px
+    (`sm`) for the parent stub, which are the design system's own boxes for those two
+    slots. That is not only tidiness: `image_tag user.photo` RAISES when `photo` is
+    blank, and `:photo` is user-editable while `assign_random_photo` only backfills on
+    create. This partial renders inside every feed card, so one photoless author 500s
+    the whole feed. Pass the box through `size:`, never a `w-*` in `class:` — those
+    compete rather than override, and the bundle's order decides (see the partial's own
+    header).
 
     The stub's `shadow-sm` stays. It is the only `shadow-sm` in the app and it is NOT
     the card shadow: this strip sits above the byline inside a card that already has
@@ -40,11 +57,11 @@
 <div class="px-4 pt-3 pb-0 flex justify-between items-center">
   <div class="flex items-center min-w-0">
     <%= link_to "#", class: "shrink-0" do %>
-      <%= render "ui/avatar", user: hujah.user, size: :md, class: "mr-3" %>
+      <%= render "ui/avatar", user: hujah.user, variant: :tile, size: :row, class: "mr-3" %>
     <% end %>
     <div class="flex flex-col min-w-0">
-      <%= link_to hujah.user.full_name, "#", class: "text-primary font-medium no-underline truncate" %>
-      <small class="text-sm text-grey">
+      <%= link_to hujah.user.full_name, "#", class: "text-ink font-bold no-underline truncate" %>
+      <small class="text-xs text-ink-2">
         @<%= hujah.user.username %>
         <span class="mx-1">·</span>
         <%# `data-local="time-ago"` is local_time's hook — the compact "%b %-d" here is
@@ -54,5 +71,5 @@
     </div>
   </div>
 
-  <%= render "hujahs/share_menu", hujah: hujah %>
+  <%= render "hujahs/card_menu", hujah: hujah %>
 </div>

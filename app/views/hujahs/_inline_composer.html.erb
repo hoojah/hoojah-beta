@@ -5,15 +5,16 @@
     POSTs /hoojah and gets create.turbo_stream.erb (prepend the new card to #hujah-feed).
     JS-off users reach the full working composer through the maximize link to
     new_hujah_path. Theme-token utilities only, so it follows the runtime theme. %>
-<div id="inline-composer" data-controller="composer" data-composer-require-min-value="true" class="mb-4">
+<div id="inline-composer" data-controller="composer" data-composer-require-min-value="true"
+  data-composer-hrise-class="hrise" class="mb-4">
   <button type="button" data-composer-target="collapsed" data-action="click->composer#expand"
-    class="w-full flex items-center gap-3 px-4 py-3 bg-card shadow text-left">
+    class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-card shadow text-left">
     <%= render "ui/avatar", user: current_user, size: :row %>
     <span class="flex-1 text-ink-2 text-base">What's your hoojah?</span>
     <span class="px-4 py-1.5 rounded-full bg-primary text-white text-sm font-bold">Post</span>
   </button>
 
-  <div data-composer-target="expanded" hidden class="bg-card shadow">
+  <div data-composer-target="expanded" hidden class="rounded-2xl bg-card shadow">
     <%= form_with model: Hujah.new, url: "/hoojah", method: :post, local: true, class: "block" do |f| %>
       <div class="flex items-start gap-3 px-4 pt-4">
         <%= render "ui/avatar", user: current_user, size: :row %>

@@ -1,6 +1,8 @@
 <%# Debate transcript screen. Read-only once concluded; the composer renders only for
     the current_turn_user. Access is gated by DebatePolicy#show? in the controller
-    (concluded → anyone incl. logged-out; active → participants only). %>
+    (participants always; plus, since 2026 Phase 3.5, any viewer to whom BOTH
+    participants and the claim are visible may spectate an ACTIVE or CONCLUDED debate —
+    a pending one stays participants-only). %>
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
@@ -31,10 +33,23 @@
       different utility family from the padding so it cannot collide with the flag.
       The two children are the pinned broadcast regions and stay siblings: `:status` is
       viewer-agnostic and rides the debate stream, `:actions` is viewer-scoped and rides
-      this viewer's user-signed stream, so `viewer:` is passed EXPLICITLY here. %>
-  <%= render layout: "ui/card", locals: {padded: true, class: "flex items-center justify-between gap-2"} do %>
-    <%= render "debates/debate_status", debate: @debate %>
-    <%= render "debates/debate_actions", debate: @debate, viewer: current_user %>
+      this viewer's user-signed stream, so `viewer:` is passed EXPLICITLY here.
+
+      PENDING gets its own dedicated accept/decline screen instead (Phase 3.3,
+      `debates/_debate_pending`) — it composes these same two partials at the same
+      pinned dom_ids, so the branch below still holds for every other status. %>
+  <% if @debate.pending? %>
+    <%= render "debates/debate_pending", debate: @debate, viewer: current_user %>
+  <% else %>
+    <%= render layout: "ui/card", locals: {padded: true, class: "flex items-center justify-between gap-2"} do %>
+      <%= render "debates/debate_status", debate: @debate %>
+      <%= render "debates/debate_actions", debate: @debate, viewer: current_user %>
+    <% end %>
+    <%# The VS scoreboard (Phase 3.4) sits alongside the card above, not inside it — it
+        owns no pinned dom_id, so it never competes with the `:status`/`:actions`
+        Turbo-Stream targets those two partials already carry. Declined has neither
+        turns nor a meaningful VS, so it is excluded here same as pending. %>
+    <%= render "debates/debate_scoreboard", debate: @debate unless @debate.declined? %>
   <% end %>
 
   <%= render "debates/debate_transcript", debate: @debate, turns: @turns %>

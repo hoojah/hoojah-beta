@@ -77,6 +77,27 @@ class User < ApplicationRecord
     viewer.present? && passive_follows.accepted.exists?(follower_id: viewer.id)
   end
 
+  # SQL counterpart to #visible_to? for LIST surfaces (search, Phase 2). Must match
+  # #visible_to? exactly.
+  scope :visible_to, ->(viewer) {
+    if viewer
+      where("users.private = FALSE OR users.id = :s OR users.id IN (:f)",
+        s: viewer.id, f: viewer.following_ids.presence || [-1])
+        .where.not(id: viewer.hidden_user_ids)
+    else
+      where(private: false)
+    end
+  }
+
+  # Full-text search (Phase 2.2). Reuses .visible_to (above), so a private account
+  # can never surface to a non-follower via search even though it matched. `?`
+  # bind PLUS `sanitize_sql_like` on the term — the bind alone stops SQL injection
+  # but not the user's own `%`/`_` being read as a wildcard.
+  scope :search, ->(q, viewer:) {
+    like = "%#{sanitize_sql_like(q)}%"
+    visible_to(viewer).where("username ILIKE :l OR full_name ILIKE :l", l: like).limit(8)
+  }
+
   # The single source of truth every block filter/policy consults (bidirectional):
   # users I blocked ∪ users who blocked me. Memoized because the trending
   # post-filter consults it once per candidate — current_user is one memoized

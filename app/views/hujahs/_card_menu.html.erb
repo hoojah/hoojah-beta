@@ -1,0 +1,66 @@
+<%# Feed-card "more options" menu — Hoojah 2026 (redesign Phase 1, Task 1.3), mockup
+    ~217-224's single `more-vertical` trigger. Before this task the card carried a bare
+    `share-2` icon (`hujahs/_share_menu`'s own trigger) and no flag control at all; the
+    mockup shows one glyph, so this partial is the feed card's OWN combined trigger —
+    the show page keeps its separate share (`share-2`) + "More actions" (`more-horizontal`)
+    pair untouched, because that screen renders its own header, not `_hujah_header`, and
+    `spec/system/share_spec.rb` / `spec/system/flag_spec.rb` exercise it directly by
+    aria-label.
+
+    The six share intent links + native-share button below are the same markup
+    `_share_menu` renders (WhatsApp/X/Telegram/Reddit/Facebook/Email, byte-identical
+    copy and URLs — this IS the share payload `share_spec` and `_share_menu`'s own
+    header call "the only place Hoojah shouts in caps"), duplicated rather than shared
+    because `_share_menu` bundles its own `<details>` around them and splitting that
+    partial is out of scope for this task. `data-controller="share"` and the three
+    `data-share-*-value` attributes stay on THIS `<details>` — share_controller.js reads
+    them off its nearest `data-controller="share"` ancestor, so the native-share button
+    inside this panel needs them here, not on `_share_menu`'s (which the feed no longer
+    renders).
+
+    The flag row is `hujahs/_flag_dialog` unmodified — it is already a self-contained
+    unit (its own `data-controller="dialog"` scope, its own POST), designed to be
+    embedded as one menu row, exactly how `hujahs/show` uses it today.
+
+    Locals: hujah. %>
+<% share_url = hujah_url(hujah.slug) %>
+<% share_text = "\"#{strip_tags(hujah.body)} (by @#{hujah.user.username})\" Do you AGREE? NEUTRAL? DISAGREE?" %>
+<% share_title = "Hoojah by @#{hujah.user.username}" %>
+
+<details class="relative shrink-0"
+         data-controller="share"
+         data-share-title-value="<%= share_title %>"
+         data-share-text-value="<%= share_text %>"
+         data-share-url-value="<%= share_url %>">
+  <summary class="list-none cursor-pointer text-faint" aria-label="More options">
+    <%= lucide_icon("more-vertical", class: "w-5 h-5") %>
+  </summary>
+  <%= render layout: "ui/menu", locals: {width: "w-52"} do %>
+    <h6 class="text-xs text-grey px-3 pb-1">Share this hoojah via</h6>
+
+    <%# Native OS share sheet — hidden until the share controller confirms support. %>
+    <button type="button" hidden
+            data-share-target="button"
+            data-action="share#share"
+            class="<%= ds_menu_item_classes %> border-0 bg-transparent cursor-pointer">
+      Share…
+    </button>
+
+    <%= link_to "WhatsApp", "https://wa.me/?text=#{CGI.escape("#{share_text} #{share_url}")}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+    <%= link_to "X", "https://x.com/intent/tweet?url=#{CGI.escape(share_url)}&text=#{CGI.escape(share_text)}&via=hoojah_my", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+    <%= link_to "Telegram", "https://t.me/share/url?url=#{CGI.escape(share_url)}&text=#{CGI.escape(share_text)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+    <%= link_to "Reddit", "https://www.reddit.com/submit?url=#{CGI.escape(share_url)}&title=#{CGI.escape(share_text)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+    <%= link_to "Facebook", "https://www.facebook.com/sharer/sharer.php?u=#{CGI.escape(share_url)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
+    <%= mail_to "hello@hoojah.my", "Email", subject: share_title, body: "#{share_text}\n\n#{share_url}", class: ds_menu_item_classes %>
+
+    <%= render "ui/divider" %>
+    <% if user_signed_in? %>
+      <%= render "hujahs/flag_dialog", hujah: hujah %>
+    <% else %>
+      <%= link_to new_user_session_path,
+            class: "#{ds_menu_item_classes(tone: "neutral")} flex items-center gap-1" do %>
+        <%= lucide_icon("flag", class: "w-4 h-4") %> Login to flag this hoojah
+      <% end %>
+    <% end %>
+  <% end %>
+</details>

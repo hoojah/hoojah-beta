@@ -99,6 +99,7 @@
  * so it needs the same treatment.
  */
 @source inline("{bg,text,border}-{agree,neutral,disagree,primary}");
+@source inline("{bg,text,border}-{agree,neutral,disagree,primary}-soft");
 @source inline("border-{read,unread}");
 @source inline("text-white bg-white");
 
@@ -124,6 +125,55 @@
 @layer components {
   .debate-composer-field {
     field-sizing: content;
+  }
+
+  /* Hoojah 2026's initials-avatar treatment (`ui/_avatar`'s `variant: :tile`, backed
+     by `ds_avatar_classes`). `#7d92ff` is a fixed gradient companion stop from the
+     mockup, not a stance colour — `--primary` still carries the theme. A component
+     class rather than a `bg-gradient-to-br` utility because Tailwind's gradient
+     utilities resolve against `--color-*` stops, and this gradient's second stop is
+     an intentionally-literal hex with no token of its own. */
+  .avatar-tile {
+    background: linear-gradient(135deg, var(--primary), #7d92ff);
+    color: #fff;
+  }
+
+  /* Trending page (Phase 2.5), rank-1 hero card
+     (`trending/_trending_rich.html.erb`). Same rationale as `.avatar-tile` above:
+     `#5b74f0` is a fixed gradient companion stop straight from the mockup, not a
+     stance colour, so it can't be expressed as a `bg-gradient-to-*` utility (those
+     resolve against `--color-*` theme stops, and this second stop has none). */
+  .trending-hero {
+    background: linear-gradient(120deg, var(--primary), #5b74f0);
+    color: #fff;
+  }
+
+  /* Debate winner-hero (Hoojah 2026 redesign, Phase 3, Task 3.6) —
+     `debates/_verdict.html.erb`'s CONCLUDED-debate verdict panel. Same rationale as
+     `.trending-hero` immediately above (and `.avatar-tile` before it): `#5b74f0` is
+     the mockup's fixed gradient companion stop, not a stance colour, so this can't be
+     expressed as a `bg-gradient-to-*` utility (those resolve against `--color-*`
+     theme stops, and this second stop has none). Same companion stop as
+     `.trending-hero`, only the angle differs (150deg in the verdict mockup vs 120deg
+     on /trending) — intentionally not unified into one class, since the two surfaces
+     are free to diverge again and sharing a name would couple them by accident. */
+  .verdict-hero {
+    background: linear-gradient(150deg, var(--primary), #5b74f0);
+    color: #fff;
+  }
+
+  /* Profile header hero (Hoojah 2026 redesign, Phase 4, Task 4.4) —
+     `users/_profile_header.html.erb`'s gradient block. Same rationale as
+     `.trending-hero`/`.verdict-hero` above: `#5b74f0` is the mockup's fixed
+     gradient companion stop, not a stance colour, so this can't be expressed as a
+     `bg-gradient-to-*` utility (those resolve against `--color-*` theme stops, and
+     this second stop has none). Angle (160deg) is the mockup's own, distinct from
+     the other two heroes for the same "free to diverge, not worth coupling"
+     reason `.verdict-hero`'s comment gives. `_gated_header` stays on the older
+     flat `bg-primary` on purpose — Gate 4's whitelist is deliberately plainer. */
+  .profile-hero {
+    background: linear-gradient(160deg, var(--primary), #5b74f0);
+    color: #fff;
   }
 }
 
@@ -158,6 +208,7 @@
   --color-faint: var(--faint);
   --color-hairline: var(--hairline);
   --color-field: var(--field);
+  --color-nav: var(--nav);
 
   /* Tailwind's own neutrals, REMAPPED onto the surface tokens (Task 1.4) so the
      legacy chrome adapts to dark without a per-view rewrite. The site-wide toggle
@@ -319,6 +370,13 @@
 @keyframes hbar{from{width:0}}
 @keyframes hbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
 @keyframes hrise{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* `.hrise` pairs with the keyframe above so a Stimulus controller can toggle the
+   expand animation via the classes API (`data-composer-hrise-class`) instead of
+   hardcoding the animation shorthand as a literal string in controller logic.
+   Toggling the `hidden` attribute off replays the animation each time, same as
+   the inline `style="animation:hrise …"` usage elsewhere in this file's callers. */
+.hrise{animation:hrise .3s cubic-bezier(.34,1.56,.64,1)}
 
 /* Port of docs/design-system/tokens/base.css — this is what gives the layout's
    `<body class="body">` an actual definition. */

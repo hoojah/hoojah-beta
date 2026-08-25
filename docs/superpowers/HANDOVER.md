@@ -24,6 +24,71 @@ them.
 
 Next up: **Project 3 (Hotwire Native)** — not started.
 
+## Hoojah 2026 FULL-APP redesign — DONE ✅ (branch `hoojah-2026-full-redesign`, not merged)
+
+_2026-08-25. Extends the earlier 2-surface redesign to the **whole app**. `bin/ci` green:
+**864 examples / 0 failures**, brakeman 0, standardrb + bundler-audit clean, prosopite 179
+(≈146 baseline — no N+1 regression). 31 commits. Spec:
+`docs/superpowers/specs/2026-08-24-hoojah-2026-full-app-redesign-design.md`; plan:
+`docs/superpowers/plans/2026-08-24-hoojah-2026-full-app-redesign.md`. Built via
+brainstorm→spec→plan (reviewed by rails-simplifier + better-stimulus + rails-security-auditor)
+→ subagent-driven development, with a **Fable architecture/leak audit gating every phase**._
+
+**All 11 remaining surfaces brought onto the 2026 language, in 5 gated phases:**
+- **P0 Foundation** — `-soft` safelist; `ui/_avatar` gradient tile `variant:` (orthogonal to
+  `size:`, so the photoless fallback is now a tile app-wide); `shared/_screen_header`; navbar
+  restyle (`bg-nav`, filled trending, tile avatar; theme/scheme pill KEPT). `--color-nav` bridge
+  added so `bg-nav` compiles.
+- **P1 Auth + Feed** — Devise login/signup/reset restyle + inert "Continue with Google" +
+  `password_visibility` controller; **vote-widget redesign** (`_vote_bars`: segmented aggregate bar
+  + pill buttons; vote POST contract unchanged); feed card `rounded-2xl` + swords/"Jump in";
+  `_live_debate_strip`; feed active-debate **preload** (`Hujah#active_debate`, single query);
+  composer polish (`hrise` via classes API).
+- **P2 Discover + Trending** — **NEW full-text search** (`SearchController`, `Hujah/User/Hashtag.search`
+  reusing the new **`Hujah.visible_to`/`User.visible_to` SQL scopes**, `sanitize_sql_like`,
+  `search/ip` rack-attack throttle, live-suggest Stimulus with frame-wraps-form JS-off); Discover
+  feed tab; `_follow_button surface:` local; rich `/trending` page (reuses `Hujah.trending`, sidebar
+  stays minimal).
+- **P3 Debates** — `debates.opening_argument` column (posted as the challenger's opening turn on
+  `accept!`; **`accept!` now notifies `current_turn_user`**, not always the challenger); debate
+  **create page** (rounds 2/3/5, instance-authorize, flat permit — supersedes `_challenge_dialog`,
+  now orphaned); pending accept/decline screen; transcript **VS scoreboard + chat bubbles**;
+  read-only **spectator view** (extended `DebatePolicy#show?` so a visible spectator may read an
+  ACTIVE debate — pending stays participant-only); **verdict winner-hero** (draw-safe, closings,
+  share; secret-ballot tally). Pinned dom_ids + derived phase logic preserved throughout.
+- **P4 You** — notifications filter tabs + scope-only `read_all` (IDOR-safe) + card restyle
+  (soft-tint tiles, secret-ballot `new_vote`); profile gradient header + conviction card (real
+  votes-cast, **no level/streak fiction**) + visibility-filtered live-debate card; profile
+  count-tabs (Hoojahs/Responses/Debates, responses `visible_to?`-filtered, debates via
+  `DebatePolicy::Scope`); analytics KPI pair (+ Followers, kept OUT of `UserAnalytics`) + stacked
+  distribution bar (k=5 kept). **No 7-day chart** (deferred).
+
+**Security — 4 real leaks caught by the per-phase Fable audits and fixed (each with a named spec):**
+1. **Live-debate teaser** (feed strip + swords/Jump-in) leaked private/blocked debate participants
+   to any feed viewer → `HujahsController#preload_active_debates` now gates on both participants
+   `visible_to?` + block (`4f24faa`, `spec/requests/feed_live_debate_visibility_spec.rb`).
+2. **Debate create/new page** was a read primitive for `followers_only`/`private_only` claims +
+   private argument authors (enumerable `argument_id`) → `DebatePolicy#create?` (which `new?` falls
+   through to) gained the `hujah.visible_to? && opponent.visible_to?` clause (`bd6f427`,
+   `spec/requests/debate_create_visibility_spec.rb`).
+3. **`DebatePolicy::Scope`** gated debates on `visible_to?` (privacy) but not blocks; the profile
+   Debates tab opened a fresh surface → block filter added to `Scope#resolve` (closes the tab AND
+   the pre-existing hoojah-page Debates lens) (`01e10e3`).
+4. **`accept!` notification** misdirected "your turn" to the challenger when an opening argument was
+   posted (mover is then the opponent) → `notify(current_turn_user, …)` (`58854f8`).
+
+**Deferred (per the approved scope boundary — real-data substitutes shipped instead; these are a
+follow-up program):** turn timers + expiry; live presence / typing indicators / watcher counts;
+verdict-during-active + live lean bar; conviction **levels & streaks** gamification; analytics
+**time-series + WoW deltas**; trending period toggle / %-deltas / category-vote data. Also deferred:
+re-mirror `docs/design-system/` to the rounded/schemed 2026 language (the redesign **supersedes the
+square-card + neutral-is-pink house rules**); server-side length cap on `debates.opening_argument`
+(parity Low with `DebateTurn#body`); consolidate the duplicated share intent-links in
+`hujahs/_card_menu` vs `_share_menu`; delete the orphaned `_challenge_dialog`; harden the
+order-dependent feed/trending **request-spec isolation** (`trending:v1` memory-store; passes in the
+full `bin/ci` order — see the [[hoojah-ci-shared-db-gotchas]] memory). Pre-existing count-vs-visible
+aggregate leaks (tab badges, hashtag `hujahs_count`) unchanged (same class as the Slice-5 2a item).
+
 ## Hoojah 2026 redesign — DONE ✅ (branch `hoojah-2026-redesign`, not merged)
 
 A deliberate **rebrand** of the new-post composer and the single-hujah "argument" view, imported from

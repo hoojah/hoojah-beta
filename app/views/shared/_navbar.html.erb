@@ -5,9 +5,10 @@
       "Log Out" via button_to DELETE /logout)
     - "New Claim" compose entry (compose form itself lands in Slice 2).
 
-    Fixed, 56px, `bg-white/90 backdrop-blur` over a hairline — this bar is the ONLY blur
-    in the product (docs/design-system/readme.md, VISUAL FOUNDATIONS). Its icons are 24px;
-    16px is for inline icons elsewhere.
+    Fixed, 56px, `bg-nav backdrop-blur` over a hairline (theme-aware — `bg-nav`/
+    `border-hairline` retint with the active theme+scheme, Hoojah 2026 redesign Phase 0
+    Task 0.4) — this bar is the ONLY blur in the product (docs/design-system/readme.md,
+    VISUAL FOUNDATIONS). Its icons are 24px; 16px is for inline icons elsewhere.
 
     Every piece of text in here is `text-sm`. That is the design system's "UI text 14px",
     and it is stated on each element rather than once on the `<nav>` because the menu
@@ -16,12 +17,14 @@
     and would read as the exception rather than the rule. Before Slice 9 these labels
     inherited 16px from the body, which was drift, not a decision.
 
-    The three icon links below are deliberately NOT `ds_button_classes`. That helper emits
-    the house *button* — a pill, or the `link` variant used by the bare text controls in a
-    notification row — and both carry `active:scale-95`, which the design system assigns to
-    vote buttons, not to chrome. Navbar entries are icon links; the DS gives them no button
-    treatment, so they stay anchors. %>
-<nav class="fixed top-0 inset-x-0 z-20 bg-card/90 backdrop-blur border-b border-gray-100">
+    The icon links below are deliberately NOT `ds_button_classes`. That helper emits the
+    house *button* — a pill, or the `link` variant used by the bare text controls in a
+    notification row — and both carry `active:scale-95`, which the design system assigns
+    to vote buttons, not to chrome. Navbar entries stay anchors, `New Claim` included.
+    Trending is the one 2026 exception: it gets a filled `bg-card-2` icon-button LOOK
+    (Task 0.4) without switching to `ds_button_classes` itself — same anchor, same lack
+    of `active:scale-95`, just a coloured box instead of a bare icon. %>
+<nav class="fixed top-0 inset-x-0 z-20 bg-nav backdrop-blur border-b border-hairline">
   <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
     <%= link_to root_path, class: "flex items-center no-underline", aria: { label: "Hoojah" } do %>
       <%= image_tag "logo.svg", alt: "Hoojah", class: "h-7 w-auto" %>
@@ -46,9 +49,12 @@
         </button>
       </div>
 
-      <%= link_to trending_path, class: "flex items-center text-grey hover:text-primary no-underline", aria: {label: "Trending"} do %>
-        <%= lucide_icon("flame", class: "w-6 h-6") %>
-        <span class="hidden lg:inline ml-1 text-sm">Trending</span>
+      <%# Hoojah 2026: a filled icon-button box (bg-card-2, ~38px), not a bare icon link —
+          see the note above about why every OTHER navbar entry stays a plain anchor;
+          trending is the one exception the 2026 mockup gives a button treatment. %>
+      <%= link_to trending_path, class: "flex items-center justify-center gap-1 h-[38px] px-2 bg-card-2 text-neutral rounded-xl no-underline", aria: {label: "Trending"} do %>
+        <%= lucide_icon("flame", class: "w-5 h-5") %>
+        <span class="hidden lg:inline text-sm">Trending</span>
       <% end %>
 
       <% if user_signed_in? %>
@@ -61,8 +67,12 @@
                 `image_tag current_user.photo`, which raises on a user whose photo is
                 blank — reachable, since `:photo` is permitted in `user_params` and
                 `assign_random_photo` only backfills on create. That would 500 the
-                navbar, i.e. every signed-in page at once. %>
-            <%= render "ui/avatar", user: current_user, size: :nav %>
+                navbar, i.e. every signed-in page at once.
+
+                `variant: :tile` (Hoojah 2026, Task 0.4): the gradient-initials TREATMENT
+                on purpose, not merely the no-photo fallback — every signed-in user gets
+                the tile here, photo or not. %>
+            <%= render "ui/avatar", user: current_user, variant: :tile, size: :nav %>
             <% if current_user.unread_notifications_count > 0 %>
               <%# 8px pink dot, never a count badge — the design system is explicit.
                   `role="img"` for the same reason `ui/_avatar`'s fallback carries one:

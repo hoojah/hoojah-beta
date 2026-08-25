@@ -40,8 +40,12 @@ RSpec.describe "ui/_avatar", type: :view do
       expect(avatar).to have_css("span[role='img'][aria-label='Maya Zaharudin']", text: "MZ")
     end
 
-    it "is white on primary, per the design system" do
-      expect(avatar).to have_css("span.bg-primary.text-white")
+    # Hoojah 2026: the photoless fallback IS the gradient tile —
+    # `.avatar-tile` (app/assets/tailwind/application.css `@layer components`) supplies
+    # both the gradient fill and the white ink, so `bg-primary` is no longer the
+    # fallback's background.
+    it "is the gradient tile, white on the gradient, per the 2026 design system" do
+      expect(avatar).to have_css("span.avatar-tile.rounded-xl.text-white")
     end
 
     it "falls back to ? rather than an empty circle when the name is unusable" do
@@ -67,11 +71,43 @@ RSpec.describe "ui/_avatar", type: :view do
     end
   end
 
+  # Hoojah 2026 (redesign Phase 0, Task 0.2): `variant:` (shape) is orthogonal to
+  # `size:` (pixels) — a tile still needs a size, so it is a separate parameter rather
+  # than a new AVATAR_SIZES key (see spec/helpers/design_system_helper_spec.rb).
+  describe "variant: :tile" do
+    let(:user) { photo_user }
+
+    # The tile wins over the photo — this is the gradient-initials TREATMENT
+    # (Avatar.jsx / the 2026 mockup), not merely a "no photo yet" fallback, so a
+    # user with a photo still renders initials when a caller asks for the tile.
+    it "renders the gradient tile with white initials, even for a user with a photo" do
+      html = avatar(variant: :tile)
+
+      expect(html).to have_no_css("img")
+      expect(html).to have_css(
+        "span[role='img'][aria-label='Maya Zaharudin'].avatar-tile.rounded-xl.text-white",
+        text: "MZ"
+      )
+    end
+
+    it "sizes the tile independently of its shape — variant: and size: are orthogonal" do
+      expect(avatar(variant: :tile, size: :lg)).to have_css("span.w-24.h-24.text-4xl")
+      expect(avatar(variant: :tile, size: :sm)).to have_css("span.w-8.h-8.text-xs")
+    end
+
+    it "defaults to :photo, so an existing caller passing only size: keeps rendering the photo" do
+      expect(avatar(user: photo_user)).to have_css("img")
+    end
+  end
+
   # The two branches must be interchangeable in a layout: a feed row cannot reflow
   # depending on whether that particular user happens to have uploaded a photo.
-  describe "the circle, on either branch" do
-    it "is round and never shrinks in a flex row" do
-      expect(avatar).to have_css("span.rounded-full.shrink-0")
+  describe "the box, on either branch" do
+    # Hoojah 2026: the two branches are no longer the same shape. A photo stays a
+    # circle; the photoless fallback is the `rounded-xl` gradient tile (the same shape
+    # `variant: :tile` renders on demand, above).
+    it "never shrinks in a flex row, and shapes per branch — circle for a photo, tile for initials" do
+      expect(avatar).to have_css("span.avatar-tile.rounded-xl.shrink-0")
       expect(avatar(user: photo_user)).to have_css("img.rounded-full.shrink-0")
     end
 

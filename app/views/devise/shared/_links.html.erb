@@ -1,29 +1,32 @@
-<%# The cross-links under every auth card ("Log in", "Sign up", "Forgot your
+<%# The cross-links under every auth screen ("Log in", "Sign up", "Forgot your
     password?"). Each branch is Devise's own guard on the mapping and the current
     controller, and the link text is frozen product copy.
 
-    DESIGN SYSTEM (Slice 9, Task 4.6) — the stack owns its own box now instead of
-    relying on the caller. Four of the six auth views wrapped this render in an
-    identical spacing-plus-14px-type div and two did not, so the two that did not got
-    16px links hard against the form. Preflight zeroes the paragraph margins, so the
-    rows also needed an explicit gap or they sat flush against each other.
+    HOOJAH 2026 (Phase 1.1) — restyled into the mockup's footer strip: a single
+    hairline-topped row, centered, muted body text with a bold primary-coloured
+    call-to-action span, replacing the plain bulleted-link stack from Slice 9.
 
-    No colour class: the base layer already paints every anchor with the link token.
+    The recoverable branch below now ALSO excludes `sessions`, which it didn't
+    before this restyle: "Forgot password?" moved onto the log-in screen itself,
+    inline under the primary submit button (see devise/sessions/new, matching the
+    mockup). Rendering it again down here would duplicate the link. passwords/
+    registrations were already excluded (a screen doesn't link to itself).
 
-    This app is neither confirmable nor lockable and has no omniauth providers, so the
-    last three branches never render today. They are Devise's, they cost nothing, and
-    deleting them would silently drop the links if a module is ever switched on.
+    This app is neither confirmable nor lockable and has no omniauth providers, so
+    the last three branches never render today. They are Devise's, they cost
+    nothing, and deleting them would silently drop the links if a module is ever
+    switched on — left unstyled since there is no mockup for them to match.
 %>
-<div class="mt-6 flex flex-col gap-1 text-sm">
+<div class="mt-6 pt-5 border-t border-hairline text-center text-[13.5px] text-ink-2">
   <%- if controller_name != 'sessions' %>
-    <p><%= link_to "Log in", new_session_path(resource_name) %></p>
+    <p>Already have an account? <%= link_to "Log in", new_session_path(resource_name), class: "text-primary font-bold" %></p>
   <% end %>
 
   <%- if devise_mapping.registerable? && controller_name != 'registrations' %>
-    <p><%= link_to "Sign up", new_registration_path(resource_name) %></p>
+    <p>New here? <%= link_to "Sign up", new_registration_path(resource_name), class: "text-primary font-bold" %></p>
   <% end %>
 
-  <%- if devise_mapping.recoverable? && controller_name != 'passwords' && controller_name != 'registrations' %>
+  <%- if devise_mapping.recoverable? && controller_name != 'passwords' && controller_name != 'registrations' && controller_name != 'sessions' %>
     <p><%= link_to "Forgot your password?", new_password_path(resource_name) %></p>
   <% end %>
 

@@ -1,0 +1,18 @@
+<%# One "Top matches" hoojah row — message-circle tile, a plain highlighted snippet of
+    the body, "Hoojah by @handle"; the whole row links to the hoojah.
+
+    Deliberately NOT `HujahsHelper#format_body`: that helper auto_links @mentions and
+    #hashtags INSIDE the body into their own <a> tags, and this row is itself an <a>
+    (the whole card is the link target) — nesting an anchor inside an anchor is
+    invalid markup this partial has no reason to reintroduce for a search snippet. A
+    plain truncated, highlighted excerpt is what the mockup shows here anyway (no
+    inline mention/tag links inside a search result row). %>
+<%= link_to hujah_path(hujah.slug), class: "flex items-center gap-3 p-3 bg-card shadow rounded-xl no-underline" do %>
+  <span class="w-[38px] h-[38px] rounded-xl bg-card-2 text-ink-2 flex items-center justify-center shrink-0">
+    <%= lucide_icon "message-circle", class: "w-[18px] h-[18px]" %>
+  </span>
+  <div class="flex-1 min-w-0">
+    <div class="text-sm font-semibold text-ink leading-snug line-clamp-2"><%= highlight_match(hujah.body.to_s.truncate(120), @query) %></div>
+    <div class="text-xs text-ink-2 mt-0.5">Hoojah by @<%= hujah.user.username %></div>
+  </div>
+<% end %>

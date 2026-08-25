@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_24_190001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_24_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -52,6 +52,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_190001) do
     t.integer "challenger_stance", null: false
     t.datetime "created_at", null: false
     t.bigint "hujah_id", null: false
+    t.text "opening_argument"
     t.bigint "opponent_id", null: false
     t.integer "opponent_stance", null: false
     t.integer "rounds_limit", default: 4, null: false

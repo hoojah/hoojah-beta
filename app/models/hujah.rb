@@ -25,6 +25,23 @@ class Hujah < ApplicationRecord
     user.present? && votes.exists?(user_id: user.id)
   end
 
+  # Set by the feed controller after a single bulk `Debate.active.where(hujah_id:
+  # [...])` query for the whole page (Phase 1.5), so #active_debate below reads it
+  # for free instead of issuing one query per card. `defined?` (not `presence` or a
+  # nil-check) is deliberate: it distinguishes "the controller preloaded and found
+  # none" (explicit nil — trust it) from "nothing preloaded this record at all"
+  # (fall back to a live lookup), which is what keeps this method correct OFF the
+  # feed too (e.g. a future profile page that never sets this writer).
+  attr_writer :preloaded_active_debate
+
+  # This hoojah's current active Debate (challenger/opponent eager-loaded), or nil.
+  # Prefers the feed's bulk preload; falls back to a per-record lookup so callers
+  # outside the feed still get a correct answer, just not a preloaded one.
+  def active_debate
+    return @preloaded_active_debate if defined?(@preloaded_active_debate)
+    debates.active.includes(:challenger, :opponent).first
+  end
+
   # A hoojah is visible when BOTH the author is visible to the viewer (account
   # privacy, Slice 7b) AND the per-post visibility (2026) permits it. A REPLY
   # (parent_id present) is gated by the parent AND by the reply author's OWN account
@@ -71,6 +88,32 @@ class Hujah < ApplicationRecord
       self.hashtags = tags # replaces the join set; counter_cache adjusts on add/remove
     end
   end
+
+  # Top-level visibility for LIST surfaces (search). Replies are excluded on purpose:
+  # Hujah#visible_to? recurses through parent.visible_to?, which is not expressible in
+  # one SQL predicate.
+  scope :visible_to, ->(viewer) {
+    base = where(parent_id: nil).joins(:user)
+    if viewer
+      ids = viewer.following_ids # accepted-only
+      base.where(
+        "(users.private = FALSE OR hujahs.user_id = :s OR hujahs.user_id IN (:f)) AND " \
+        "(hujahs.visibility = 0 OR hujahs.user_id = :s OR (hujahs.visibility = 1 AND hujahs.user_id IN (:f)))",
+        s: viewer.id, f: ids.presence || [-1]
+      ).where.not(user_id: viewer.hidden_user_ids)
+    else
+      base.where(visibility: :visible_public).where(users: {private: false})
+    end
+  }
+
+  # Full-text search (Phase 2.2). Reuses .visible_to (top-level only, which is why
+  # a reply's body can never surface here — see that scope's comment) so a search
+  # result can never leak content the feed/profile wouldn't already show. `?` bind
+  # PLUS `sanitize_sql_like` on the term: the bind alone stops SQL injection but
+  # NOT a `%`/`_` in the user's own query being (mis)read as a wildcard.
+  scope :search, ->(q, viewer:) {
+    visible_to(viewer).where("hujahs.body ILIKE ?", "%#{sanitize_sql_like(q)}%").limit(8)
+  }
 
   # Home timeline: top-level hoojahs from the people you follow, plus your own,
   # minus any hidden (blocked/blocked-by) author. The follow-removal on block already

@@ -49,16 +49,21 @@ RSpec.describe "Debate phases", type: :system, js: true do
   end
 
   it "labels each turn with its phase, counts rounds, and caps at the rounds limit" do
-    # 1. Challenge → accept, exactly as debates/_debate_actions drives it.
+    # 1. Challenge → accept, exactly as debates/_debate_actions drives it. The
+    # challenge itself now goes through the 2026 create page (Phase 3.2) — its own
+    # coverage lives in debate_create_spec.rb — so only the stance is picked here;
+    # rounds_limit is forced to 4 right after, since THIS test is about phase
+    # derivation at 4 rounds/8 turns, not about which of the picker's 2/3/5 options
+    # a person tapped (the picker doesn't even offer 4).
     login_as_system(challenger)
     visit "/hoojah/#{root.slug}"
-    click_button "Challenge to debate"
-    dialog = find("dialog##{dom_id(argument, :challenge_dialog)}", visible: true)
-    within(dialog) { click_button "Argue Agree" }
+    click_link "Challenge to debate"
+    choose("challenger_stance", option: "1", allow_label_click: true)
+    click_button "Send challenge"
 
-    within("##{dom_id(root, :debates)}") { expect(page).to have_content("@challengerx vs @opponentx") }
     debate = Debate.last
-    expect(debate.rounds_limit).to eq(4) # the default — 4 rounds, 8 turns
+    expect(page).to have_current_path("/debates/#{debate.slug}")
+    debate.update!(rounds_limit: 4) # 4 rounds, 8 turns — see comment above
 
     login_as_system(opponent)
     visit "/debates/#{debate.slug}"

@@ -5,41 +5,43 @@
 
   Locals: hujah, current_user_vote (one of "agree"/"neutral"/"disagree"/nil).
 
-  VOTE-FEEDBACK LATENCY DECISION (Task 4.4 Step 5): CSS-only, no vote_controller.js.
-  Each stance button is a Turbo-driven button_to form; Turbo natively disables the
-  submitter during the request and the same-origin round-trip is effectively instant,
-  so a Stimulus controller would add nothing but code. Immediate press feedback comes
-  from `active:scale-95` (CSS :active). Revisit only if a real deployment shows lag.
+  HOOJAH 2026 (redesign Phase 1, Task 1.2) — replaces the old per-stance 3-row layout
+  (circular 44px button + 8px track + right-aligned percent, one row per stance) with
+  the mockup shape (Hoojah-2026.dc.html ~228-247):
 
-  DESIGN SYSTEM (Slice 9, Task 4.2) — docs/design-system/components/voting/VoteBars.prompt.md
-  and VoteButton.prompt.md. Both halves of a row are spec'd to the pixel and neither is
-  free to drift:
+  - ONE segmented aggregate bar: all three stance counts share a single
+    `flex h-2 rounded-full overflow-hidden` track, each stance a `bg-<stance>` div
+    sized `style="width: N%"` of the total. `gap-[2px]` seams the segments apart the
+    way the mockup does rather than letting adjacent same-ish colours run together.
+  - a percent legend directly under it, `flex justify-between`, one `text-<stance>
+    text-xs font-bold` label per stance — the same numbers, now read as a caption
+    for the bar instead of trailing each dead row.
+  - three PILL vote buttons below that (icon + label, not a bare 44px circle):
+    `rounded-xl border-[1.5px] border-<stance> text-<stance> bg-card`, equal-width
+    (`flex-1`) with the stance glyph and its name. `active:scale-95` is the only press
+    feedback, same call as before — see the latency note this replaces.
 
-  - the button is CIRCULAR 44px (`w-11 h-11 rounded-full`) with a 2px stance border,
-    white fill and a stance-coloured glyph — INVERTED to a solid stance fill with a
-    white glyph when it is the viewer's vote. That inversion is the only "you voted"
-    signal in the product, so `voted` drives colour, not an extra checkmark or badge.
-  - the track is 8px (`h-2`) on `bg-gray-200` (`#e5e7eb`), filled by percentage in the
-    stance colour, with the label right-aligned in a fixed 10-unit column so the three
-    rows line up at any width.
-  - press feedback is `active:scale-95` and nothing else: no ripple, no spinner, no
-    fade. `transition` is here to smooth that one scale step.
+  VOTE-FEEDBACK LATENCY DECISION (Task 4.4 Step 5, still true): CSS-only, no
+  vote_controller.js. Each stance button is a Turbo-driven button_to form; Turbo
+  natively disables the submitter during the request and the same-origin round-trip
+  is effectively instant, so a Stimulus controller would add nothing but code.
+  Immediate press feedback comes from `active:scale-95` (CSS :active). Revisit only
+  if a real deployment shows lag.
 
-  It does NOT go through `ds_button_classes`. That helper's every variant is a PILL
-  with horizontal padding and a font size (`px-5 py-2 text-base` / `px-4 py-1 text-sm`);
-  this is a fixed 44px square box with no text in it at all. Asking for it would mean
-  overriding padding, width, height and font size — same-family Tailwind utilities,
-  which resolve by their order in the bundle rather than by the order the caller wrote
-  them (see the `padded:` note in ui/_card), so the overrides would be a coin flip
-  rather than a decision. The `voted` background would fight `bg-white` the same way.
-  A circular icon button is a DIFFERENT component from the DS Button — VoteButton.jsx,
-  not Button.jsx — and is spelled out here rather than bent out of the pill.
+  The vote POST itself — path, method, `vote:` param, dom_id target — is UNCHANGED
+  from the old layout: same `hujah_votes_path`, same `choice` (1/agree, 2/neutral,
+  3/disagree) fed to VotesController -> Hujah#cast_vote. Only this wrapper markup
+  moved; do not read this rewrite as touching the controller/route contract.
+
+  This does NOT go through `ds_button_classes` even though it is now pill-shaped: the
+  1.5px stance-coloured border and equal `flex-1` width are specific to this widget
+  and the DS pill's variants (`px-5 py-2 text-base` / `px-4 py-1 text-sm`) fight a
+  same-family override the same way the old circular button's note explained — see
+  that reasoning in git history for the fuller version.
 
   Stance names are interpolated into `border-`/`bg-`/`text-`, which the Tailwind
   scanner cannot see; all three prefixes over the stance trio are covered by the
-  `@source inline(...)` safelist in app/assets/tailwind/application.css (and `bg-white`
-  /`text-white` by the line under it). Adding a NEW interpolated prefix here means
-  adding it there too.
+  `@source inline(...)` safelist in app/assets/tailwind/application.css.
 %>
 <%
   agree = hujah.agree_count.to_i
@@ -47,24 +49,31 @@
   disagree = hujah.disagree_count.to_i
   total = agree + neutral + disagree
   rows = [["agree", 1, agree], ["neutral", 2, neutral], ["disagree", 3, disagree]]
+  pct = rows.to_h { |stance, _choice, count| [stance, total.zero? ? 0 : (count * 100.0 / total).round] }
 %>
 <div id="<%= dom_id(hujah, :vote_bars) %>" class="px-4 py-3">
-  <% rows.each do |stance, choice, count| %>
-    <% pct = total.zero? ? 0 : (count * 100.0 / total).round %>
-    <% voted = current_user_vote == stance %>
-    <% colours = voted ? "bg-#{stance} text-white" : "bg-card text-#{stance}" %>
-    <div class="flex items-center mb-3 last:mb-0">
+  <div class="flex h-2 rounded-full overflow-hidden gap-[2px]">
+    <% rows.each do |stance, _choice, _count| %>
+      <div class="bg-<%= stance %>" style="width: <%= pct[stance] %>%"></div>
+    <% end %>
+  </div>
+  <div class="flex justify-between mt-2 text-xs font-bold">
+    <% rows.each do |stance, _choice, _count| %>
+      <span class="text-<%= stance %>"><%= pct[stance] %>% <%= stance %></span>
+    <% end %>
+  </div>
+  <div class="flex gap-2 mt-3">
+    <% rows.each do |stance, choice, _count| %>
+      <% voted = current_user_vote == stance %>
       <%= button_to hujah_votes_path(hujah.slug),
             params: { vote: choice },
             aria: { label: stance.capitalize, pressed: voted.to_s },
-            class: "shrink-0 w-11 h-11 rounded-full border-2 border-#{stance} #{colours} " \
-                   "flex items-center justify-center shadow transition active:scale-95" do %>
+            class: "flex-1 h-11 rounded-xl border-[1.5px] border-#{stance} " \
+                   "#{voted ? "bg-#{stance} text-white" : "bg-card text-#{stance}"} " \
+                   "flex items-center justify-center gap-1.5 text-xs font-bold transition active:scale-95" do %>
         <%= stance_icon(stance, class: "w-4 h-4") %>
+        <%= stance.capitalize %>
       <% end %>
-      <div class="flex-1 mx-3 h-2 bg-gray-200 rounded overflow-hidden">
-        <div class="h-2 rounded bg-<%= stance %>" style="width: <%= pct %>%"></div>
-      </div>
-      <small class="w-10 text-right text-<%= stance %>"><%= pct %>%</small>
-    </div>
-  <% end %>
+    <% end %>
+  </div>
 </div>

@@ -8,5 +8,13 @@ class AnalyticsController < ApplicationController
   def show
     skip_authorization
     @analytics = UserAnalytics.new(current_user)
+
+    # Followers KPI (Slice 2026 Phase 4.6). Deliberately NOT on UserAnalytics: its
+    # header comment forbids that object from ever touching `users`, so a follower
+    # count is computed here instead, off `User#followers` (accepted-only,
+    # `app/models/user.rb`). This is a single extra COUNT query, not a join folded
+    # into any UserAnalytics aggregate, so the vote-privacy provenance test (which
+    # only inspects UserAnalytics' own queries) is untouched by this line.
+    @followers_count = current_user.followers.count
   end
 end

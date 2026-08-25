@@ -81,6 +81,9 @@ Rails.application.routes.draw do
   # RESTful member actions only (no generic PATCH /debates/:slug); every write
   # derives the actor from `current_user`. `create` is nested under the hoojah so
   # the argument can be validated against the URL's :slug. Turns POST to the debate.
+  # `new` (2026 Phase 3.2) is the create PAGE — rounds picker + opening argument —
+  # that replaced the old stance-only <dialog>; same nesting, same reason.
+  get "/hoojah/:slug/debates/new", to: "debates#new", as: :new_hujah_debate
   post "/hoojah/:slug/debates", to: "debates#create"
   get "/debates/:slug", to: "debates#show", as: :debate
   patch "/debates/:slug/accept", to: "debates#accept", as: :accept_debate
@@ -107,7 +110,18 @@ Rails.application.routes.draw do
   # (canonical lower-cased). A hand-written path (no `resources`) addressed by tag
   # name — not id — like the rest of the app; mirrors the feed's per-post visibility.
   get "/t/:name", to: "tags#show", as: :tag
+  # Search (2026 Phase 2.2). Public, read-only — a MAIN route (NOT Api::V1) so CSRF
+  # stays on for the app's writes elsewhere; this action never writes. Results are
+  # filtered through Hujah.visible_to / User.visible_to (SearchController), so it
+  # can never surface content a normal feed/profile visit wouldn't already show.
+  get "/search", to: "search#index", as: :search
   get "/notifications", to: "notifications#index", as: :notifications
+  # Scope-only mark-all-read (Task 4.1) — no id/ids param, so there is nothing here
+  # for a forged param to select; it can only ever touch the signed-in user's own
+  # unread rows via policy_scope. Declared BEFORE the `:id` routes below: both are
+  # `/notifications/<segment>`, and Rails matches in declaration order, so
+  # "read_all" would otherwise be swallowed as `params[:id] == "read_all"`.
+  patch "/notifications/read_all", to: "notifications#read_all", as: :read_all_notifications
   patch "/notifications/:id", to: "notifications#update", as: :notification
   delete "/notifications/:id", to: "notifications#destroy"
 end
