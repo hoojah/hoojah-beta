@@ -1,6 +1,13 @@
 class ErrorsController < ApplicationController
-  # Rendered by config.exceptions_app (production) for unhandled 404/422/500, and
-  # reachable directly at /404, /422, /500. No resource to authorize; no login.
+  # Rendered by config.exceptions_app (production) for unhandled 404/422/500 — the
+  # real path: ShowExceptions redispatches the failed request straight to this Rack
+  # endpoint (bypassing ActionDispatch::Static), so it runs for genuine errors and
+  # honours the original Accept header. A directly-typed GET /404 in production is a
+  # different story: ActionDispatch::Static sits ahead of routing and serves the
+  # (branded) public/404.html at 200 before the router is reached — so the /404,/422,
+  # /500 routes below are for the exceptions_app dispatch and for tests (which disable
+  # static serving), NOT a promise that typing the URL hits this controller in prod.
+  # No resource to authorize; no login.
   skip_before_action :authenticate_user!, raise: false
 
   # CRITICAL (security): exceptions_app redispatches the ORIGINAL request — same verb —

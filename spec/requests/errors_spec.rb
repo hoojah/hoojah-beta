@@ -26,6 +26,21 @@ RSpec.describe "Branded error pages", type: :request do
     expect(response.body).to include("That request couldn't be processed")
   end
 
+  it "skips CSRF on the error route so a tokenless POST still renders (H1)" do
+    # The test env disables forgery protection, so the plain POST above can't prove
+    # the skip does anything. Flip it ON: without ErrorsController's
+    # `skip_before_action :verify_authenticity_token`, this tokenless POST would raise
+    # InvalidAuthenticityToken inside ShowExceptions and collapse to Rails' bare
+    # failsafe. It must still render the branded 422.
+    original = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    post "/422"
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.body).to include("That request couldn't be processed")
+  ensure
+    ActionController::Base.allow_forgery_protection = original
+  end
+
   it "returns JSON for a JSON client instead of the HTML body" do
     get "/404", headers: {"Accept" => "application/json"}
     expect(response).to have_http_status(:not_found)
