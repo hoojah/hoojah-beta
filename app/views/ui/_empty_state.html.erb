@@ -4,7 +4,9 @@
 
     Locals: `message` (REQUIRED); `icon:` a Lucide name, or nil for no glyph
     (default "message-circle"); `tone:` :faint (default) or :muted; `align:` :left
-    (default) or :center; `class:` extra utilities.
+    (default) or :center; `class:` extra utilities; `cta_label:` / `cta_href:` — when
+    BOTH are present, a single pill CTA renders below the sentence in a centred
+    stacked layout.
 
     `message` is fetched, not defaulted: it is the entire component, so a caller who
     forgets it would otherwise get a faint glyph beside an empty span — a row that
@@ -51,8 +53,8 @@
     <%= link_to cta_label, cta_href, class: ds_button_classes(tone: "primary", size: :sm) %>
   </div>
 <% else %>
-  <div class="flex items-center gap-1 text-sm p-3 bg-white <%= tone %> <%= align %> <%= local_assigns[:class] %>">
-    <%= lucide_icon(icon, class: "w-4 h-4") if icon.present? %>
-    <span><%= message %></span>
-  </div>
+<div class="flex items-center gap-1 text-sm p-3 bg-white <%= tone %> <%= align %> <%= local_assigns[:class] %>">
+  <%= lucide_icon(icon, class: "w-4 h-4") if icon.present? %>
+  <span><%= message %></span>
+</div>
 <% end %>
