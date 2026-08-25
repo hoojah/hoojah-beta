@@ -1,0 +1,23 @@
+<%# The moderator review queue (2026 moderation). Staff-only — ModerationController
+    authorizes :moderation, :index? before this renders. One row per pending-flagged
+    hujah via `_flagged_hujah`, oldest report first. The pending-count element carries
+    the FROZEN id `moderation-pending-count`; the dismiss/remove/warn Turbo Streams
+    replace it in place after each action. %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-5xl mx-auto px-4 py-6">
+  <div class="w-full max-w-xl mx-auto">
+    <header class="flex items-center justify-between mb-4">
+      <h1 class="text-xl font-extrabold text-ink tracking-tight">Moderation</h1>
+      <%= render "moderation/pending_count" %>
+    </header>
+
+    <div id="moderation-queue">
+      <% if @hujahs.empty? %>
+        <%= render "ui/empty_state", message: "Nothing to review.", icon: "shield" %>
+      <% else %>
+        <%= render partial: "flagged_hujah", collection: @hujahs, as: :hujah %>
+      <% end %>
+    </div>
+  </div>
+</main>

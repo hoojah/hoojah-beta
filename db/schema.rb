@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_24_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_25_120003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -69,10 +69,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_200000) do
   create_table "flags", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "hujah_id", null: false
+    t.datetime "resolved_at"
+    t.bigint "resolved_by_id"
+    t.integer "status", default: 0, null: false
     t.integer "subject"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["hujah_id"], name: "index_flags_on_hujah_id"
+    t.index ["user_id", "hujah_id"], name: "index_flags_on_user_and_hujah", unique: true
     t.index ["user_id"], name: "index_flags_on_user_id"
   end
 
@@ -125,6 +129,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_200000) do
     t.integer "conviction_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.integer "disagree_count", default: 0
+    t.integer "moderation_status", default: 0, null: false
     t.integer "neutral_count", default: 0
     t.integer "parent_id"
     t.string "slug"
@@ -171,6 +176,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_200000) do
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
+    t.integer "role", default: 0, null: false
     t.datetime "updated_at", null: false
     t.string "username"
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -199,6 +205,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_200000) do
   add_foreign_key "debates", "users", column: "opponent_id"
   add_foreign_key "flags", "hujahs"
   add_foreign_key "flags", "users"
+  add_foreign_key "flags", "users", column: "resolved_by_id"
   add_foreign_key "follows", "users", column: "followed_id"
   add_foreign_key "follows", "users", column: "follower_id"
   add_foreign_key "hashtag_hujahs", "hashtags"

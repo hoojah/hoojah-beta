@@ -40,7 +40,9 @@ class UserAnalytics
   # Count of child hoojahs (arguments) whose parent is one of the user's hoojahs.
   # Sub-select keeps it a single query over `hujahs` only.
   def total_arguments_received
-    Hujah.where(parent_id: own_hoojahs.select(:id)).count
+    # Moderation: E10 — count only non-removed arguments under the user's non-removed
+    # claims (own_hoojahs is already swept below).
+    Hujah.not_removed.where(parent_id: own_hoojahs.select(:id)).count
   end
 
   # The user's top-level hoojahs as read-only Distribution value objects, built
@@ -59,6 +61,8 @@ class UserAnalytics
   attr_reader :user
 
   def own_hoojahs
-    Hujah.where(user_id: user.id)
+    # Moderation: E10 — removed content is hidden from its author, so the author's
+    # own dashboard aggregates must exclude it too.
+    Hujah.not_removed.where(user_id: user.id)
   end
 end

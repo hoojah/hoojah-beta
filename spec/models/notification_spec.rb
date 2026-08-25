@@ -4,7 +4,7 @@ RSpec.describe Notification, type: :model do
   describe "the category enum" do
     # `category` is a plain integer column with existing rows, so the integers are
     # the contract — renumbering or reordering these reinterprets history.
-    it "maps all fourteen categories to stable integers" do
+    it "maps all sixteen categories to stable integers" do
       expect(Notification.categories).to eq(
         "admin" => 0,
         "announcement" => 1,
@@ -19,8 +19,17 @@ RSpec.describe Notification, type: :model do
         "debate_concluded" => 10,
         "badge_earned" => 11,
         "follow_request" => 12,
-        "follow_accepted" => 13
+        "follow_accepted" => 13,
+        "moderation_removed" => 14,
+        "moderation_warning" => 15
       )
+    end
+
+    # Moderation (2026): the exact integers are load-bearing — the legacy API
+    # serializes the category as its integer, so renumbering reinterprets rows.
+    it "assigns the two moderation categories the next free integers" do
+      expect(Notification.categories["moderation_removed"]).to eq(14)
+      expect(Notification.categories["moderation_warning"]).to eq(15)
     end
 
     it "refuses a category outside the enum" do

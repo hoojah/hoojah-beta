@@ -84,3 +84,44 @@ RSpec.describe "Feed tabs", type: :request do
     expect(response.body).to match(/<a[^>]*aria-current="page"[^>]*>Everyone/)
   end
 end
+
+# The moderator review queue is reachable only from staff sessions. The entry is a row
+# in the signed-in avatar menu, gated on `can_moderate?`, carrying the pending-review
+# count as text (the navbar's design rule forbids a count badge ON THE BAR, not a
+# count word inside a menu row). Ordinary members and anonymous visitors must not see
+# the link at all — and, since the count query only runs for staff, must not pay for it.
+RSpec.describe "Moderation navbar entry", type: :request do
+  it "shows a Moderation menu row with the pending count for a staff user" do
+    moderator = create(:user, :moderator)
+    hujah = create(:hujah)
+    create(:flag, hujah: hujah)
+    sign_in moderator
+    get "/"
+
+    expect(response.body).to include(%(href="#{moderation_path}"))
+    expect(response.body).to match(/Moderation/)
+    expect(response.body).to include(%(id="nav-moderation-count"))
+    expect(response.body).to match(/nav-moderation-count[^>]*>\(1\)/)
+  end
+
+  it "shows no count element when there is nothing pending" do
+    sign_in create(:user, :moderator)
+    get "/"
+
+    expect(response.body).to include(%(href="#{moderation_path}"))
+    expect(response.body).not_to include(%(id="nav-moderation-count"))
+  end
+
+  it "hides the Moderation entry from a plain member" do
+    sign_in create(:user)
+    get "/"
+
+    expect(response.body).not_to include(%(href="#{moderation_path}"))
+  end
+
+  it "hides the Moderation entry from an anonymous visitor" do
+    get "/"
+
+    expect(response.body).not_to include(%(href="#{moderation_path}"))
+  end
+end

@@ -38,8 +38,11 @@
     <% end %>
   </p>
 
+  <%# Moderation (H-1): gate the quoted claim per-record — a removed claim is
+      staff-only, so a non-staff participant sees a placeholder, not the body. Mirrors
+      the same gate in debates/show.html.erb and _verdict.html.erb. %>
   <%= render layout: "ui/card", locals: {stance: "primary", padded: true, class: "mt-3 text-sm text-ink text-left w-full"} do %>
-    &ldquo;<%= strip_tags(debate.hujah.body) %>&rdquo;
+    &ldquo;<%= debate.hujah.visible_to?(viewer) ? strip_tags(debate.hujah.body) : "a removed hoojah" %>&rdquo;
   <% end %>
 
   <%# Rules card — real rounds count, then the static spectator-verdict row.

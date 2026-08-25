@@ -11,7 +11,8 @@ class Api::V1::HujahsController < Api::V1::BaseController
     # replies too, leaking a public reply's body from under a restricted/private parent
     # (Hujah#visible_to? is false for it via parent recursion). Matches the HTML global
     # feed shape. Follower-aware parity for restricted top-level claims stays deferred.
-    hujahs = Hujah.where(parent_id: nil).joins(:user).where(users: {private: false})
+    # Moderation: E9 sweep — the JSON index never serves removed claims.
+    hujahs = Hujah.not_removed.where(parent_id: nil).joins(:user).where(users: {private: false})
       .where(visibility: :visible_public).order(updated_at: :desc)
     # Drop blocked/blocked-by authors for a signed-in caller — mirrors the HTML feed.
     # Anonymous callers are unfiltered (no social graph).

@@ -1,0 +1,44 @@
+<%# One row in the moderator queue. Wrapped in dom_id(hujah, :moderation_item) — FROZEN:
+    the dismiss/remove/warn Turbo Streams remove this exact target, and the system spec
+    asserts on it. The pending count + per-reason breakdown are computed in Ruby from the
+    preloaded :flags association (see ModerationController#index), so no extra query fires. %>
+<% pending = hujah.flags.select(&:pending?)
+   by_reason = pending.group_by(&:subject) %>
+<%= render layout: "ui/card", locals: {id: dom_id(hujah, :moderation_item), padded: true, class: "mb-3"} do %>
+  <div class="flex items-center gap-2">
+    <%= render "ui/avatar", user: hujah.user, size: :row %>
+    <div class="min-w-0">
+      <div class="font-bold text-ink truncate"><%= hujah.user.full_name %></div>
+      <div class="text-sm text-grey truncate">@<%= hujah.user.username %></div>
+    </div>
+  </div>
+
+  <% if hujah.parent_id %>
+    <p class="text-sm text-grey mt-2">Reply to a hoojah</p>
+  <% end %>
+
+  <p class="text-ink mt-2"><%= truncate(strip_tags(hujah.body), length: 200) %></p>
+
+  <div class="text-sm text-grey mt-2">
+    <%= pluralize(pending.size, "pending report") %>
+    <% if by_reason.any? %>
+      (<%= by_reason.map { |reason, flags| "#{reason} #{flags.size}" }.join(", ") %>)
+    <% end %>
+  </div>
+
+  <% if pending.any? %>
+    <div class="text-sm text-grey mt-1">
+      First reported <%= time_ago_in_words(pending.map(&:created_at).min) %> ago
+    </div>
+  <% end %>
+
+  <div class="flex items-center gap-2 mt-3">
+    <%= button_to "Dismiss", dismiss_moderation_path(hujah.slug), method: :patch,
+          class: ds_button_classes(tone: "grey", size: :sm) %>
+    <%= button_to "Warn author", warn_moderation_path(hujah.slug), method: :post,
+          class: ds_button_classes(tone: "neutral", size: :sm) %>
+    <%= button_to "Remove", remove_moderation_path(hujah.slug), method: :delete,
+          class: ds_button_classes(tone: "disagree", size: :sm),
+          form: {data: {turbo_confirm: "Remove this hoojah for everyone, including its author?"}} %>
+  </div>
+<% end %>

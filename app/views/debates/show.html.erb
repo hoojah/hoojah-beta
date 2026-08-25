@@ -24,7 +24,9 @@
       @<%= @debate.challenger.username %> vs @<%= @debate.opponent.username %>
     </h1>
     <p class="text-sm text-grey truncate">
-      On “<%= strip_tags(@debate.hujah.body) %>”
+      <%# Moderation: gate the quoted claim per-record — a removed claim is staff-only,
+          so a non-staff spectator (or participant) sees a placeholder, not the body. %>
+      On “<%= @debate.hujah.visible_to?(current_user) ? strip_tags(@debate.hujah.body) : "a removed hoojah" %>”
     </p>
   </header>
 

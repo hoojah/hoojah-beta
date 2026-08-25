@@ -8,7 +8,11 @@ class FlagsController < ApplicationController
   def create
     authorize Flag
     @hujah = Hujah.friendly.find(params[:slug])
-    current_user.flags.create!(hujah: @hujah, subject: flag_params[:subject])
+    # Idempotent under the [user, hujah] unique index (2026 moderation): a re-flag
+    # updates the reason instead of raising RecordInvalid. Deliberately does NOT touch
+    # `status` — re-flagging already-reviewed content must not re-open a resolved report.
+    flag = current_user.flags.find_or_initialize_by(hujah: @hujah)
+    flag.update!(subject: flag_params[:subject])
 
     respond_to do |format|
       format.turbo_stream
