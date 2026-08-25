@@ -19,6 +19,20 @@ RSpec.describe UserAnalytics do
     expect(d[hi.id].suppressed?).to be(false)
   end
 
+  # Moderation (2026): removed content is hidden from its author, so the author's own
+  # dashboard must not count it either — every aggregate excludes the removed hoojah.
+  it "excludes removed content from votes, arguments, and distributions" do
+    active = create(:hujah, user: user, agree_count: 3, neutral_count: 1, disagree_count: 1)
+    removed = create(:hujah, user: user, agree_count: 10, neutral_count: 10, disagree_count: 10)
+    create(:hujah, user: create(:user), parent: active)  # argument on the active claim
+    create(:hujah, user: create(:user), parent: removed) # argument on the removed claim
+    removed.update!(moderation_status: :removed)
+
+    expect(a.total_votes_received).to eq(5)             # 3+1+1 from active only (30 excluded)
+    expect(a.total_arguments_received).to eq(1)         # only the active claim's argument
+    expect(a.distributions.map(&:id)).to eq([active.id])
+  end
+
   it "reads only the hujahs table (never joins votes or users)" do
     create(:hujah, user: user, agree_count: 3, neutral_count: 1, disagree_count: 1)
     queries = []

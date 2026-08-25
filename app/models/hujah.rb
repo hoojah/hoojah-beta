@@ -14,6 +14,17 @@ class Hujah < ApplicationRecord
   # `visibility_private_only?` so they don't collide with User#private? semantics.
   enum :visibility, {visible_public: 0, followers_only: 1, private_only: 2}, prefix: :visibility
 
+  # Moderation (2026): the single visibility-enforcement point. `removed` content is
+  # staff-only everywhere. The :moderation prefix avoids clashing with visibility_*
+  # and the debate `status` enum — predicates are moderation_active? / moderation_removed?.
+  enum :moderation_status, {active: 0, removed: 1}, default: :active, prefix: :moderation
+
+  # Moderation (2026): the SQL counterpart to the visible_to? early gate below, for
+  # LIST surfaces that never call visible_to? per record. Every feed/count sweep
+  # site applies this unconditionally — staff read removed content on /moderation
+  # and via direct URL, not in feeds.
+  scope :not_removed, -> { where(moderation_status: :active) }
+
   validates :body, presence: true
   # 2026: a top-level claim must be a substantial statement (>= 8 chars); replies
   # (parent_id present) stay unconstrained so a terse "Agreed." still posts.
@@ -49,7 +60,14 @@ class Hujah < ApplicationRecord
   # under a public claim must stay hidden from non-followers; the API show +
   # notification cards rely on this). Every content surface that renders a hoojah
   # gates through this.
+  #
+  # Moderation (2026): a removed hoojah is staff-only EVERYWHERE — including its
+  # author, who learns via the moderation_removed notification instead. This gate is
+  # the FIRST line, before the parent-recursion branch, so a removed REPLY is gated
+  # on its OWN status, not just its parent's (an active reply under a removed parent
+  # is still hidden by the parent recursion below).
   def visible_to?(viewer)
+    return !!viewer&.can_moderate? if moderation_removed?
     return parent.visible_to?(viewer) && user.visible_to?(viewer) if parent_id
     return false unless user.visible_to?(viewer)
 
@@ -69,10 +87,46 @@ class Hujah < ApplicationRecord
   # predicate; anonymous: public authors only. Accepted followers (+ self) see a
   # private author's reply via following_ids.
   def visible_children_for(viewer)
-    scope = children.includes(user: {avatar_attachment: :blob}).order(updated_at: :desc)
+    # Moderation: E5 sweep — removed replies vanish from the HTML thread AND the API
+    # serializer's children list/count (both share this one gate).
+    scope = children.not_removed.includes(user: {avatar_attachment: :blob}).order(updated_at: :desc)
     scope = scope.where.not(user_id: viewer.hidden_user_ids) if viewer
     visible_ids = viewer ? viewer.following_ids + [viewer.id] : []
     scope.joins(:user).where("users.private = false OR hujahs.user_id IN (?)", visible_ids)
+  end
+
+  # Moderation (2026): the dismiss/remove/warn composition. Lifted off
+  # ModerationController so the transactional invariants live next to the state they
+  # protect. Each resolves the pending reports; only `by:` (the acting moderator) is
+  # used for flag resolution — the notifications carry NO subject_user_id, the same
+  # secret-ballot rule the vote notification follows (the moderator is never
+  # identified to the author). `flags.pending.find_each` is idempotent by
+  # construction: a second call finds zero pending flags and touches nothing.
+
+  # Resolve every pending report; content untouched, no author notification.
+  def dismiss_flags!(by:)
+    flags.pending.find_each { |flag| flag.resolve!(by:, as: :dismissed) }
+  end
+
+  # Hide from everyone but staff + notify the author. One transaction: a half-applied
+  # removal (hidden but unresolved flags, or the reverse) must not exist. The
+  # `moderation_removed?` early return makes a second removal a no-op so the author is
+  # never re-notified (L-1).
+  def remove!(by:)
+    return if moderation_removed?
+    transaction do
+      update!(moderation_status: :removed)
+      flags.pending.find_each { |flag| flag.resolve!(by:, as: :actioned) }
+      Notification.create!(user_id:, category: :moderation_removed, hujah_id: id)
+    end
+  end
+
+  # Content untouched; author notified (anonymously); reports closed as actioned.
+  def warn_author!(by:)
+    transaction do
+      flags.pending.find_each { |flag| flag.resolve!(by:, as: :actioned) }
+      Notification.create!(user_id:, category: :moderation_warning, hujah_id: id)
+    end
   end
 
   # @handle mention pattern. The `(?<!\w)` lookbehind means an `@` preceded by a
@@ -107,7 +161,9 @@ class Hujah < ApplicationRecord
   # Hujah#visible_to? recurses through parent.visible_to?, which is not expressible in
   # one SQL predicate.
   scope :visible_to, ->(viewer) {
-    base = where(parent_id: nil).joins(:user)
+    # Moderation: E3 sweep — removed claims never surface on search (Hujah.search
+    # feeds off this scope).
+    base = where(parent_id: nil).not_removed.joins(:user)
     if viewer
       ids = viewer.following_ids # accepted-only
       base.where(
@@ -134,7 +190,8 @@ class Hujah < ApplicationRecord
   # drops a blocked author from `following_ids`; the `hidden_user_ids` exclusion is
   # belt-and-suspenders (Slice 7).
   scope :timeline_for, ->(user) {
-    where(parent_id: nil).where(user_id: user.following_ids + [user.id])
+    # Moderation: E2 sweep — the Following feed never shows removed claims.
+    where(parent_id: nil).not_removed.where(user_id: user.following_ids + [user.id])
       .where.not(user_id: user.hidden_user_ids)
   }
 
@@ -143,6 +200,11 @@ class Hujah < ApplicationRecord
   # Off the hot path (after commit, never inside cast_vote's transaction): the
   # first top-level hoojah earns first_hoojah; the first reply earns first_argument.
   after_create_commit :award_authoring_badge
+
+  # Moderation (2026): a cached trending hoojah must not linger up to 15 min after
+  # removal. Mirrors User#bust_trending_cache (the private-flip case) — bust on the
+  # moderation flip so the next Hujah.trending recomputes without the removed id.
+  after_update_commit :bust_trending_cache, if: -> { saved_change_to_moderation_status? }
 
   extend FriendlyId
 
@@ -171,7 +233,7 @@ class Hujah < ApplicationRecord
     ids = Rails.cache.fetch("trending:v1", expires_in: 15.minutes) do
       # Slice 7b: trending candidates exclude a private author's hoojahs (with the
       # User#after_update_commit cache-bust so the flip is reflected immediately).
-      where(parent_id: nil).where("hujahs.updated_at > ?", 48.hours.ago)
+      where(parent_id: nil).not_removed.where("hujahs.updated_at > ?", 48.hours.ago) # Moderation: E4 — removed claims never trend
         .where(visibility: :visible_public) # 2026: a non-public claim never trends
         .joins(:user).where(users: {private: false}).to_a
         .map { |h|
@@ -246,6 +308,8 @@ class Hujah < ApplicationRecord
   end
 
   private
+
+  def bust_trending_cache = Rails.cache.delete("trending:v1")
 
   def award_authoring_badge
     UserBadge.award(user, is_parent? ? "first_hoojah" : "first_argument")

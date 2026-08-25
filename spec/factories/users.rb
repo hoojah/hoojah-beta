@@ -10,5 +10,8 @@ FactoryBot.define do
     full_name { "FullName" }
     password { "hoojah88" }
     password_confirmation { "hoojah88" }
+
+    trait(:moderator) { role { :moderator } }
+    trait(:admin) { role { :admin } }
   end
 end

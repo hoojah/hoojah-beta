@@ -18,7 +18,11 @@ class Notification < ApplicationRecord
     debate_concluded: 10,
     badge_earned: 11,
     follow_request: 12,
-    follow_accepted: 13
+    follow_accepted: 13,
+    # Moderation (2026): author-facing. Exact integers are load-bearing — the legacy
+    # API serializes the category as its integer.
+    moderation_removed: 14,
+    moderation_warning: 15
   }
 
   scope :unread, -> { where(read: false) }

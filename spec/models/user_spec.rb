@@ -45,6 +45,30 @@ RSpec.describe User, type: :model do
     expect(user.photo).to be_present
   end
 
+  # Moderation (2026): `role` is the moderator identity; `can_moderate?` is the ONLY
+  # capability gate the rest of the app reads (policies, nav, views), never `role`.
+  describe "role" do
+    it "maps the three roles to stable integers" do
+      expect(User.roles).to eq("member" => 0, "moderator" => 1, "admin" => 2)
+    end
+
+    it "defaults a new user to member" do
+      expect(create(:user)).to be_member
+      expect(create(:user).can_moderate?).to be(false)
+    end
+
+    it "exposes moderator? / admin? predicates via the factory traits" do
+      expect(create(:user, :moderator)).to be_moderator
+      expect(create(:user, :admin)).to be_admin
+    end
+
+    it "grants can_moderate? to a moderator and an admin, but not a member" do
+      expect(create(:user, :moderator).can_moderate?).to be(true)
+      expect(create(:user, :admin).can_moderate?).to be(true)
+      expect(create(:user).can_moderate?).to be(false)
+    end
+  end
+
   # Canonical SQL visibility scope for LIST surfaces (search, Phase 2). Must match
   # User#visible_to? exactly.
   describe ".visible_to scope" do

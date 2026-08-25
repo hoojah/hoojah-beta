@@ -299,4 +299,53 @@ RSpec.describe "Debates", type: :request do
       expect(response.body).not_to include(">Conclude<")
     end
   end
+
+  # Moderation (2026): the transcript header quotes the claim body per-record via
+  # visible_to?. A concluded (publicly readable) debate whose claim is then removed
+  # must not leak that body through the header — not even to a participant (the claim
+  # author IS a participant, and removed content is hidden from its author too).
+  describe "transcript quote gate (Moderation)" do
+    it "hides a removed claim's body from a member participant but shows it to staff" do
+      d = challenge!
+      d.accept!(by: opponent)
+      d.conclude!(by: challenger)
+      hujah.update!(body: "DEBATEMOTIONXYZ distinctive claim", moderation_status: :removed)
+
+      sign_in challenger # a participant, but a plain member — must not read removed content
+      get "/debates/#{d.slug}"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("DEBATEMOTIONXYZ")
+      expect(response.body).to include("a removed hoojah")
+
+      sign_in create(:user, :moderator) # non-participant staff; both participants public
+      get "/debates/#{d.slug}"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("DEBATEMOTIONXYZ")
+    end
+  end
+
+  # H-1: the pending-debate screen (`_debate_pending`) re-quotes the claim body with no
+  # gate. A pending debate is participants-only (DebatePolicy#show?), but a participant
+  # who is a plain member must still not read a REMOVED claim — removed content is
+  # staff-only everywhere, including from the claim author who is a participant.
+  describe "pending debate claim quote gate (Moderation, H-1)" do
+    it "hides a removed claim's body from a member participant but shows it to a moderator participant" do
+      mod = create(:user, :moderator)
+      plain = create(:user)
+      motion = create(:hujah, body: "PENDINGMOTIONXYZ distinctive claim")
+      d = create(:debate, hujah: motion, challenger: mod, opponent: plain, status: :pending)
+      motion.update!(moderation_status: :removed)
+
+      sign_in plain # a participant, but a plain member — must not read removed content
+      get "/debates/#{d.slug}"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("PENDINGMOTIONXYZ")
+      expect(response.body).to include("a removed hoojah")
+
+      sign_in mod # a participant AND staff
+      get "/debates/#{d.slug}"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("PENDINGMOTIONXYZ")
+    end
+  end
 end

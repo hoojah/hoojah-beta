@@ -90,6 +90,20 @@
             <h6 class="text-xs text-grey px-3 pb-1">@<%= current_user.username %></h6>
             <%= link_to "Your profile", profile_path(current_user.username), class: ds_menu_item_classes %>
             <%= link_to "Dashboard", dashboard_path, class: ds_menu_item_classes %>
+            <%# Staff-only review queue (2026 moderation). Gated on can_moderate? so the
+                pending_moderation_count query runs only for moderators/admins — an ordinary
+                page load never pays for it. The count is a text suffix in the row, not a
+                bar badge: the navbar's "8px dot, never a count" rule governs the bar itself,
+                and a menu row may state a number in words. %>
+            <% if current_user.can_moderate? %>
+              <%= link_to moderation_path, class: ds_menu_item_classes do %>
+                Moderation
+                <% count = pending_moderation_count %>
+                <% if count > 0 %>
+                  <span id="nav-moderation-count" class="ml-1 text-xs text-grey">(<%= count %>)</span>
+                <% end %>
+              <% end %>
+            <% end %>
             <%= link_to notifications_path, class: ds_menu_item_classes do %>
               Your notifications
               <%# The same dot, unlabelled and hidden: the row it sits in already says

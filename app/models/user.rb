@@ -32,6 +32,13 @@ class User < ApplicationRecord
 
   has_one_attached :avatar
 
+  # Moderation (2026): the moderator identity. No prefix — moderator?/admin? don't
+  # collide with anything today.
+  enum :role, {member: 0, moderator: 1, admin: 2}, default: :member
+
+  # The ONLY capability gate the rest of the app reads (policies, nav, views).
+  def can_moderate? = moderator? || admin?
+
   before_validation { self.email = email.to_s.downcase.strip }
 
   RESERVED_USERNAMES = %w[login signup logout password edit cancel new hoojah hoojahs u users
@@ -153,7 +160,9 @@ class User < ApplicationRecord
       else
         hujahs.where(visibility: :visible_public)
       end
-    base.where(parent_id: nil).includes(user: {avatar_attachment: :blob}).order(updated_at: :desc)
+    # Moderation: E6 sweep — the profile Hoojahs tab (HTML + API UserSerializer)
+    # never lists removed claims.
+    base.not_removed.where(parent_id: nil).includes(user: {avatar_attachment: :blob}).order(updated_at: :desc)
   end
 
   # SQL counterpart to #visible_to? for LIST surfaces (search, Phase 2). Must match

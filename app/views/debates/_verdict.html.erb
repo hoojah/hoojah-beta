@@ -129,7 +129,10 @@
         the one prominent CTA on the hero, not a corner affordance. %>
     <%
       debate_share_url = debate_url(debate.slug)
-      debate_share_text = "\"#{strip_tags(debate.hujah.body)}\" — @#{debate.challenger.username} vs @#{debate.opponent.username} on Hoojah. Who won?"
+      # Moderation: gate the quoted claim per-record — the concluded transcript's share
+      # text must not leak a removed claim's body to a non-staff spectator/participant.
+      debate_share_motion = debate.hujah.visible_to?(current_user) ? strip_tags(debate.hujah.body) : "a removed hoojah"
+      debate_share_text = "\"#{debate_share_motion}\" — @#{debate.challenger.username} vs @#{debate.opponent.username} on Hoojah. Who won?"
       debate_share_title = "@#{debate.challenger.username} vs @#{debate.opponent.username} on Hoojah"
     %>
     <details class="relative"
