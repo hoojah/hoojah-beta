@@ -1,0 +1,33 @@
+<%# App-wide flash region. The auth screens rely on this being here: the log-in
+    view (devise/sessions/new) carries NO error summary on purpose because "Devise
+    answers a bad login with a flash", and invisible_captcha's spam responses
+    communicate only through flash too. Without this partial every such message was
+    invisible and a blocked/failed submit looked like a dead button.
+
+    `flash` in a view includes `flash.now` values for the current render, so this
+    catches both the redirect case (a successful "Signed in" notice) and the inline
+    re-render case (Devise's `flash.now[:alert]` on a bad login).
+
+    The whole region — container included — renders ONLY when there is a non-blank
+    message, so it adds no vertical footprint to the (overwhelming majority of)
+    pages that carry no flash.
+
+    Colour: this is NOT the red validation panel. Red is reserved to
+    devise/shared/_error_messages ("the only place red appears in Hoojah"), so the
+    banner uses the neutral `card-2`/`ink` surface tokens with a `primary` left
+    accent — visible, on-palette, and it introduces no new colour.
+
+    `data-turbo-temporary` so Turbo discards the banner on the next visit and a
+    stale message never outlives the request that produced it. %>
+<% messages = flash.to_h.reject { |_type, message| message.blank? } %>
+<% if messages.any? %>
+  <div class="max-w-2xl mx-auto px-6 pt-4">
+    <% messages.each do |type, message| %>
+      <div data-turbo-temporary
+           class="mb-4 rounded bg-card-2 text-ink text-sm px-3 py-2 border-l-4 border-primary"
+           data-flash="<%= type %>" role="<%= type.to_s == "alert" ? "alert" : "status" %>">
+        <%= message %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

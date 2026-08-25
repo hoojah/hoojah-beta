@@ -28,6 +28,7 @@
     <%= javascript_importmap_tags %>
   </head>
   <body>
+    <%= render "layouts/flash" %>
     <%= yield %>
     <%# Third-party widgets (Cloudinary upload + Drift live chat). Skipped in test:
         headless Chrome would hang on these external hosts, surfacing as intermittent
