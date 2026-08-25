@@ -38,6 +38,39 @@ RSpec.describe "Api::V1 visibility parity", type: :request do
     end
   end
 
+  describe "GET /api/v1/hoojah/:slug — parent block" do
+    it "omits the parent block when the viewer has blocked the parent's (public) author" do
+      alice = create(:user) # public
+      p = create(:hujah, user: alice, visibility: :visible_public, body: "alice parent claim")
+      bob = create(:user)
+      r = create(:hujah, user: bob, parent: p, visibility: :visible_public, body: "bob reply body")
+
+      me = create(:user)
+      me.blocks_made.create!(blocked: alice)
+      sign_in me
+
+      get "/api/v1/hoojah/#{r.slug}"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("bob reply body") # the reply itself is visible
+      expect(response.body).not_to include("alice parent claim")
+      expect(response.body).not_to include(alice.username)
+    end
+
+    it "includes the parent block for a viewer who has NOT blocked the parent author (positive control)" do
+      alice = create(:user)
+      p = create(:hujah, user: alice, visibility: :visible_public, body: "alice parent claim")
+      bob = create(:user)
+      r = create(:hujah, user: bob, parent: p, visibility: :visible_public, body: "bob reply body")
+
+      sign_in create(:user) # unrelated viewer, no block
+      get "/api/v1/hoojah/#{r.slug}"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("alice parent claim")
+    end
+  end
+
   describe "GET /api/v1/hoojah/index — feed index" do
     it "does not serve replies (a public reply under a restricted parent must not leak)" do
       restricted_parent = create(:hujah, user: create(:user), visibility: :private_only)
