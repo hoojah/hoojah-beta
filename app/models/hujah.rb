@@ -61,6 +61,20 @@ class Hujah < ApplicationRecord
     end
   end
 
+  # Reply-visibility gate for a single parent's children — the SQL counterpart to
+  # #visible_to? for a REPLY list. Extracted verbatim from HujahsController#show so
+  # the HTML thread and the JSON API serializer share ONE gate (a private/blocked
+  # author's reply must be hidden identically on both surfaces). One query, no N+1.
+  # Signed-in: drop hidden (blocked/blocked-by) authors, then the per-viewer privacy
+  # predicate; anonymous: public authors only. Accepted followers (+ self) see a
+  # private author's reply via following_ids.
+  def visible_children_for(viewer)
+    scope = children.includes(:user).order(updated_at: :desc)
+    scope = scope.where.not(user_id: viewer.hidden_user_ids) if viewer
+    visible_ids = viewer ? viewer.following_ids + [viewer.id] : []
+    scope.joins(:user).where("users.private = false OR hujahs.user_id IN (?)", visible_ids)
+  end
+
   # @handle mention pattern. The `(?<!\w)` lookbehind means an `@` preceded by a
   # word char (e.g. inside an email `foo@bar`) is NOT a mention.
   MENTION_RE = /(?<!\w)@([a-zA-Z0-9_]+)/
