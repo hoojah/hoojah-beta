@@ -140,4 +140,32 @@ RSpec.describe User, type: :model do
       expect(User.search("capuser", viewer: viewer).size).to eq(8)
     end
   end
+
+  describe "#visible_hujahs_for" do
+    let(:owner) { create(:user) }
+    let(:viewer) { create(:user) }
+
+    it "returns only visible_public top-level hoojahs to a stranger/anonymous" do
+      pub = create(:hujah, user: owner, visibility: :visible_public)
+      create(:hujah, user: owner, visibility: :followers_only)
+      create(:hujah, user: owner, visibility: :private_only)
+      create(:hujah, user: owner, visibility: :visible_public, parent: create(:hujah)) # a reply
+      expect(owner.visible_hujahs_for(nil)).to contain_exactly(pub)
+      expect(owner.visible_hujahs_for(viewer)).to contain_exactly(pub)
+    end
+
+    it "adds followers_only for an accepted follower" do
+      pub = create(:hujah, user: owner, visibility: :visible_public)
+      fo = create(:hujah, user: owner, visibility: :followers_only)
+      create(:hujah, user: owner, visibility: :private_only)
+      owner.passive_follows.create!(follower: viewer, status: :accepted)
+      expect(owner.visible_hujahs_for(viewer)).to contain_exactly(pub, fo)
+    end
+
+    it "returns all top-level hoojahs to the owner themselves" do
+      a = create(:hujah, user: owner, visibility: :visible_public)
+      b = create(:hujah, user: owner, visibility: :private_only)
+      expect(owner.visible_hujahs_for(owner)).to contain_exactly(a, b)
+    end
+  end
 end

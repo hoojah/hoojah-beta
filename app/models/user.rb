@@ -77,6 +77,24 @@ class User < ApplicationRecord
     viewer.present? && passive_follows.accepted.exists?(follower_id: viewer.id)
   end
 
+  # Profile "Hoojahs" tab visibility — top-level hoojahs this viewer may see,
+  # gated by per-post visibility (2026). Extracted from UsersController#profile_tab_list
+  # so the HTML profile and the API UserSerializer share ONE gate. Block filtering is
+  # intentionally absent: every row here is authored by `self`, and Block does not hide
+  # a user's own profile (Slice 7 direct-URL boundary) — the account-level gate is the
+  # caller's responsibility (HTML: _gated_header; API: users#show visible_to? → 404).
+  def visible_hujahs_for(viewer)
+    base =
+      if viewer == self
+        hujahs
+      elsif accepted_follower?(viewer)
+        hujahs.where(visibility: [:visible_public, :followers_only])
+      else
+        hujahs.where(visibility: :visible_public)
+      end
+    base.where(parent_id: nil).includes(:user).order(updated_at: :desc)
+  end
+
   # SQL counterpart to #visible_to? for LIST surfaces (search, Phase 2). Must match
   # #visible_to? exactly.
   scope :visible_to, ->(viewer) {
