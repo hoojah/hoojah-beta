@@ -18,6 +18,9 @@ gem "bcrypt", "~> 3.1.7"
 gem "devise", "~> 5.0"
 # Cloudinary storage service for ActiveStorage (profile photos)
 gem "cloudinary", "~> 2.2"
+# Google OAuth2 sign-in via Devise/OmniAuth
+gem "omniauth-google-oauth2", "~> 1.1"
+gem "omniauth-rails_csrf_protection", "~> 1.0"
 gem "jsonapi-serializer"
 gem "friendly_id", "~> 5.7"
 gem "rails_autolink"
