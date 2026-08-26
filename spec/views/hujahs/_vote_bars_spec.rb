@@ -37,14 +37,17 @@ RSpec.describe "hujahs/_vote_bars", type: :view do
       expect(w).to have_css(".flex.rounded-full.overflow-hidden > div.bg-disagree[style='width: 36%']")
     end
 
-    it "guards divide-by-zero: all-zero counters render three 0% segments, not a crash" do
+    # Secret ballot (2a/A7): an all-zero hoojah is below k=5, so the bar is now
+    # suppressed entirely (see the suppression group below) rather than rendering three
+    # 0% segments. This still exercises the "no crash on all-zero" guard — the render
+    # must not raise — it just asserts the new suppressed shape.
+    it "suppresses the bar for all-zero counters (below k), rendering no crash" do
       empty = create(:hujah, agree_count: 0, neutral_count: 0, disagree_count: 0)
 
       w = widget(hujah: empty)
 
-      expect(w).to have_css(".flex.rounded-full.overflow-hidden > div.bg-agree[style='width: 0%']")
-      expect(w).to have_css(".flex.rounded-full.overflow-hidden > div.bg-neutral[style='width: 0%']")
-      expect(w).to have_css(".flex.rounded-full.overflow-hidden > div.bg-disagree[style='width: 0%']")
+      expect(w).to have_no_css(".flex.rounded-full.overflow-hidden")
+      expect(w).to have_text("No votes yet")
     end
   end
 
@@ -61,6 +64,59 @@ RSpec.describe "hujahs/_vote_bars", type: :view do
       expect(w).to have_css(".flex.justify-between > .text-agree", text: "51%")
       expect(w).to have_css(".flex.justify-between > .text-neutral", text: "13%")
       expect(w).to have_css(".flex.justify-between > .text-disagree", text: "36%")
+    end
+  end
+
+  # Secret ballot (2a/A7): below k=5 total votes the per-stance split is a
+  # de-anonymization vector, so the segmented bar + percent legend are suppressed and
+  # only the total vote count is shown. The three vote buttons stay — you can still vote,
+  # you just don't see the split.
+  describe "secret-ballot suppression below k" do
+    let(:sub_k) { create(:hujah, agree_count: 2, neutral_count: 1, disagree_count: 1) } # total 4
+
+    it "hides the segmented bar and the percent legend below k" do
+      w = widget(hujah: sub_k)
+
+      expect(w).to have_no_css(".flex.rounded-full.overflow-hidden")
+      expect(w).to have_no_css("[style*='width:']")
+    end
+
+    it "renders none of the per-stance percentages below k" do
+      w = widget(hujah: sub_k)
+
+      expect(w).to have_no_text("%")
+      expect(w).to have_no_css(".text-agree", text: "%")
+    end
+
+    it "shows the compact total vote count below k" do
+      expect(widget(hujah: sub_k)).to have_text("4 votes")
+    end
+
+    it "shows 'No votes yet' when there are zero votes" do
+      empty = create(:hujah, agree_count: 0, neutral_count: 0, disagree_count: 0)
+      expect(widget(hujah: empty)).to have_text("No votes yet")
+    end
+
+    it "still renders all three vote buttons below k" do
+      w = widget(hujah: sub_k)
+
+      expect(w).to have_css("form[action='#{hujah_votes_path(sub_k.slug)}'][method='post']", count: 3)
+      expect(w).to have_css("button", text: "Agree", visible: :all)
+      expect(w).to have_css("button", text: "Neutral", visible: :all)
+      expect(w).to have_css("button", text: "Disagree", visible: :all)
+    end
+
+    it "preserves the viewer's own-stance highlight below k" do
+      w = widget(hujah: sub_k, current_user_vote: "agree")
+      expect(w).to have_css("button[aria-pressed='true'][class*='bg-agree']")
+    end
+
+    it "shows the full split at exactly k (positive control)" do
+      at_k = create(:hujah, agree_count: 3, neutral_count: 1, disagree_count: 1) # total 5
+      w = widget(hujah: at_k)
+
+      expect(w).to have_css(".flex.rounded-full.overflow-hidden", count: 1)
+      expect(w).to have_css(".flex.justify-between > .text-agree", text: "60%")
     end
   end
 

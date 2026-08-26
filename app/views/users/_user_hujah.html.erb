@@ -34,12 +34,18 @@
           <small class="text-sm text-grey">@<%= hujah.user.username %></small>
         </div>
         <div class="mb-0 text-black break-words"><%= format_body(hujah.body) %></div>
+        <%# Secret ballot (2a/A7): below k=5 total votes the per-stance split is a
+            de-anonymization vector — replaced by the total-only label. %>
         <div class="flex items-center text-sm text-light-grey">
-          <%= stance_icon("agree", class: "w-4 h-4") %><span class="ml-1"><%= hujah.agree_count.to_i %></span>
-          <span class="mx-2">·</span>
-          <%= stance_icon("neutral", class: "w-4 h-4") %><span class="ml-1"><%= hujah.neutral_count.to_i %></span>
-          <span class="mx-2">·</span>
-          <%= stance_icon("disagree", class: "w-4 h-4") %><span class="ml-1"><%= hujah.disagree_count.to_i %></span>
+          <% if hujah.breakdown_visible? %>
+            <%= stance_icon("agree", class: "w-4 h-4") %><span class="ml-1"><%= hujah.agree_count.to_i %></span>
+            <span class="mx-2">·</span>
+            <%= stance_icon("neutral", class: "w-4 h-4") %><span class="ml-1"><%= hujah.neutral_count.to_i %></span>
+            <span class="mx-2">·</span>
+            <%= stance_icon("disagree", class: "w-4 h-4") %><span class="ml-1"><%= hujah.disagree_count.to_i %></span>
+          <% else %>
+            <span><%= vote_total_label(hujah) %></span>
+          <% end %>
         </div>
       </div>
     </div>

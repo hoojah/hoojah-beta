@@ -65,7 +65,7 @@
     <div class="px-4 py-2 flex items-center text-sm text-ink-2">
       <%= link_to hujah_path(hujah.slug), class: "flex items-center text-ink-2 no-underline" do %>
         <%= lucide_icon("bar-chart-3", class: "w-4 h-4") %>
-        <span class="ml-1"><%= hujah.agree_count.to_i + hujah.neutral_count.to_i + hujah.disagree_count.to_i %></span>
+        <span class="ml-1"><%= hujah.total_votes %></span>
         <span class="mx-2">·</span>
         <%= lucide_icon("message-circle", class: "w-4 h-4") %>
         <span class="ml-1"><%= hujah.children.size %></span>

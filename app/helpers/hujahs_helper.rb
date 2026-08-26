@@ -50,4 +50,13 @@ module HujahsHelper
       .delete(MENTION_OPEN + MENTION_CLOSE + HASHTAG_OPEN + HASHTAG_CLOSE)
       .html_safe
   end
+
+  # Secret ballot (2a/A7): the compact total-only label shown in place of the
+  # per-stance breakdown when a hoojah is below k=5 total votes. One phrasing shared
+  # across every surface (_vote_bars, _vote_hero, _child_card, _user_hujah) so they
+  # can't drift. Zero reads "No votes yet"; otherwise "N vote"/"N votes".
+  def vote_total_label(hujah)
+    n = hujah.total_votes
+    n.zero? ? "No votes yet" : "#{n} #{"vote".pluralize(n)}"
+  end
 end

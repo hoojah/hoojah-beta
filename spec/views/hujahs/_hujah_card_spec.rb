@@ -77,6 +77,28 @@ RSpec.describe "hujahs/_hujah_card", type: :view do
     end
   end
 
+  # Secret ballot (2a/A7): a below-k card suppresses the per-stance split inside the
+  # embedded vote widget while the footer total (never a per-stance breakdown) stays.
+  describe "the embedded vote widget below k" do
+    let(:author) { create(:user, full_name: "Quiet Poster", username: "quiet") }
+    let(:hujah) do
+      create(:hujah, user: author, body: "A brand new low-vote claim.",
+        agree_count: 2, neutral_count: 1, disagree_count: 1) # total 4
+    end
+
+    before { allow(view).to receive_messages(user_signed_in?: false, current_user: nil) }
+
+    it "suppresses the percentage legend but keeps the three vote buttons" do
+      c = card
+      expect(c).to have_no_css("##{ActionView::RecordIdentifier.dom_id(hujah, :vote_bars)} .text-agree", text: "%")
+      expect(c).to have_css("##{ActionView::RecordIdentifier.dom_id(hujah, :vote_bars)} form", count: 3)
+    end
+
+    it "still shows the aggregate footer total (not a per-stance breakdown)" do
+      expect(card).to have_content("4")
+    end
+  end
+
   describe "the counts footer" do
     it "shows total votes behind a bar-chart-3 glyph" do
       c = card

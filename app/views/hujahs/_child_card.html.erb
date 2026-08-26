@@ -55,10 +55,16 @@
         </div>
       </div>
       <div class="mt-2 text-sm leading-relaxed text-ink break-words"><%= format_body(child.body) %></div>
+      <%# Secret ballot (2a/A7): the per-stance tally is a de-anonymization vector below
+          k=5 total votes — replaced by the total-only label until the electorate grows. %>
       <div class="mt-3 flex items-center gap-4 text-xs text-ink-2 font-semibold">
-        <span class="inline-flex items-center gap-1"><%= stance_icon("agree", class: "w-3.5 h-3.5") %><%= child.agree_count.to_i %></span>
-        <span class="inline-flex items-center gap-1"><%= stance_icon("neutral", class: "w-3.5 h-3.5") %><%= child.neutral_count.to_i %></span>
-        <span class="inline-flex items-center gap-1"><%= stance_icon("disagree", class: "w-3.5 h-3.5") %><%= child.disagree_count.to_i %></span>
+        <% if child.breakdown_visible? %>
+          <span class="inline-flex items-center gap-1"><%= stance_icon("agree", class: "w-3.5 h-3.5") %><%= child.agree_count.to_i %></span>
+          <span class="inline-flex items-center gap-1"><%= stance_icon("neutral", class: "w-3.5 h-3.5") %><%= child.neutral_count.to_i %></span>
+          <span class="inline-flex items-center gap-1"><%= stance_icon("disagree", class: "w-3.5 h-3.5") %><%= child.disagree_count.to_i %></span>
+        <% else %>
+          <span><%= vote_total_label(child) %></span>
+        <% end %>
       </div>
     </div>
   </div>

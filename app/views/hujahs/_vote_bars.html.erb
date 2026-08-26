@@ -52,16 +52,23 @@
   pct = rows.to_h { |stance, _choice, count| [stance, total.zero? ? 0 : (count * 100.0 / total).round] }
 %>
 <div id="<%= dom_id(hujah, :vote_bars) %>" class="px-4 py-3">
-  <div class="flex h-2 rounded-full overflow-hidden gap-[2px]">
-    <% rows.each do |stance, _choice, _count| %>
-      <div class="bg-<%= stance %>" style="width: <%= pct[stance] %>%"></div>
-    <% end %>
-  </div>
-  <div class="flex justify-between mt-2 text-xs font-bold">
-    <% rows.each do |stance, _choice, _count| %>
-      <span class="text-<%= stance %>"><%= pct[stance] %>% <%= stance %></span>
-    <% end %>
-  </div>
+  <%# Secret ballot (2a/A7): below k=5 total votes the segmented bar + percent legend
+      are a de-anonymization vector, so they are replaced by the total-only label. The
+      vote buttons + own-stance highlight below still render. %>
+  <% if hujah.breakdown_visible? %>
+    <div class="flex h-2 rounded-full overflow-hidden gap-[2px]">
+      <% rows.each do |stance, _choice, _count| %>
+        <div class="bg-<%= stance %>" style="width: <%= pct[stance] %>%"></div>
+      <% end %>
+    </div>
+    <div class="flex justify-between mt-2 text-xs font-bold">
+      <% rows.each do |stance, _choice, _count| %>
+        <span class="text-<%= stance %>"><%= pct[stance] %>% <%= stance %></span>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="text-xs font-bold text-ink-2"><%= vote_total_label(hujah) %></div>
+  <% end %>
   <div class="flex gap-2 mt-3">
     <% rows.each do |stance, choice, _count| %>
       <% voted = current_user_vote == stance %>

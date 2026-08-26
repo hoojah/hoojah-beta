@@ -15,7 +15,7 @@
     width are the same Tailwind family and the bundle's order, not the caller's, decides
     which wins. The `<details class="relative">` stays here: the primitive is the panel
     only, and `absolute` needs this element to position against. %>
-<% total_votes = @hujah.agree_count.to_i + @hujah.neutral_count.to_i + @hujah.disagree_count.to_i %>
+<% total_votes = @hujah.total_votes %>
 
 <%= render "shared/navbar" %>
 
