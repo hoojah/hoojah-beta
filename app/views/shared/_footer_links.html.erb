@@ -6,9 +6,9 @@
 <%= render layout: "ui/card", locals: {padded: true, class: "mt-6"} do %>
   <nav class="text-sm text-grey" aria-label="Legal">
     <%= link_to "FAQ", faq_path, class: "text-grey hover:text-primary no-underline" %>
-    <span class="text-grey">&middot;</span>
+    <span class="text-grey" aria-hidden="true">&middot;</span>
     <%= link_to "Privacy", privacy_path, class: "text-grey hover:text-primary no-underline" %>
-    <span class="text-grey">&middot;</span>
+    <span class="text-grey" aria-hidden="true">&middot;</span>
     <%= link_to "Terms", terms_path, class: "text-grey hover:text-primary no-underline" %>
   </nav>
 
