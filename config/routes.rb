@@ -65,6 +65,10 @@ Rails.application.routes.draw do
   # + follower-count chip in place.
   post "/u/:username/follow", to: "follows#create", as: :follow_user
   delete "/u/:username/follow", to: "follows#destroy", as: :unfollow_user
+  # Remove a follower (2026 follow gaps): the FOLLOWED user severs an accepted
+  # follow pointed at them. :username is the FOLLOWER being removed — the mirror
+  # image of DELETE /u/:username/follow, where :username is the followed target.
+  delete "/u/:username/follower", to: "follows#remove_follower", as: :remove_follower
   # Public followers / following lists (Slice 3, Task 2.2).
   get "/u/:username/followers", to: "users#followers", as: :user_followers
   get "/u/:username/following", to: "users#following", as: :user_following

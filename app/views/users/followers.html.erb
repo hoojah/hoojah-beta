@@ -8,7 +8,15 @@
 
   <div class="flex flex-col shadow">
     <% if @users.any? %>
-      <%= render partial: "user_row", collection: @users, as: :user %>
+      <%# Owner-only "Remove follower" control: pass remove_path per row ONLY on my
+          own followers page. On anyone else's followers page (owner false) every
+          row gets nil → the byte-identical bare row. Following / blocks lists render
+          `_user_row` without any remove_path at all, so they are unaffected. %>
+      <% owner = current_user == @user %>
+      <% @users.each do |user| %>
+        <%= render "user_row", user: user,
+              remove_path: (owner ? remove_follower_path(user.username) : nil) %>
+      <% end %>
     <% else %>
       <%= render "ui/empty_state", message: "No followers yet", icon: "users" %>
     <% end %>

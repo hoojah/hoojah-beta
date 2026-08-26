@@ -26,6 +26,21 @@ class FollowsController < ApplicationController
     render_button
   end
 
+  # Sever an accepted follow pointed at me. @target (set_target, :username) is the
+  # FOLLOWER being removed. Scoped .accepted: a pending request is not a follower —
+  # it is declined via follow_requests#destroy, and removing it here would skip the
+  # request-notification dismissal that path owns.
+  def remove_follower
+    @follow = current_user.passive_follows.accepted.find_by(follower: @target)
+    authorize @follow, :remove_follower? if @follow
+    skip_authorization if @follow.nil?
+    @follow&.destroy # accepted → Follow's after_destroy decrements both counters
+    respond_to do |f|
+      f.turbo_stream
+      f.html { redirect_to user_followers_path(current_user.username), status: :see_other }
+    end
+  end
+
   private
 
   def set_target = @target = User.find_by!(username: params[:username])

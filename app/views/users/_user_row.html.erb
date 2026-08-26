@@ -1,5 +1,14 @@
 <%# Compact user row for the followers / following lists (and, via
-    `blocks/index`, the blocked-users list). Locals: user.
+    `blocks/index`, the blocked-users list). Locals: user, and an OPTIONAL
+    `remove_path` (Slice C, gap 2). When `remove_path` is nil (the following /
+    blocks / other-user-followers callers) the row renders exactly as it always
+    has — a bare profile `link_to`. When present (only the owner's own followers
+    page passes it) the row gains a trailing "Remove follower" pill: the outer
+    element becomes a div carrying dom_id(user, :follower_row) so the
+    remove_follower Turbo Stream can drop the row in place, the profile link takes
+    `flex-1` inside it, and the DELETE button_to is a SIBLING of that link (never
+    nested — a form inside an <a> is invalid HTML). The outline pill class literal
+    is copied verbatim from `_follow_button`'s `:card` `outline_classes`.
 
     DESIGN SYSTEM (Slice 9, Task 4.4) —
     docs/design-system/components/social/UserRow.prompt.md: "40px avatar, medium name,
@@ -25,6 +34,22 @@
     A row is NOT a `ui/_card`: the list is one white surface with hairlines through it,
     and giving each row a shadow would grow the edges that `ui/_divider`'s header
     describes. The `shadow` lives on the list wrapper in each of the three callers. %>
+<% remove_path = local_assigns[:remove_path] %>
+<% if remove_path %>
+  <div id="<%= dom_id(user, :follower_row) %>"
+       class="flex items-center gap-3 p-3 bg-white border-b border-gray-100 hover:bg-gray-50">
+    <%= link_to profile_path(user.username), class: "flex items-center gap-3 flex-1" do %>
+      <%= render "ui/avatar", user: user, size: :row %>
+      <div class="flex flex-col">
+        <span class="font-medium"><%= user.full_name %></span>
+        <span class="text-sm text-light-grey">@<%= user.username %></span>
+      </div>
+    <% end %>
+    <%= button_to "Remove", remove_path, method: :delete,
+          form: {data: {turbo_confirm: "Remove @#{user.username} from your followers?"}},
+          class: "px-4 py-1 text-sm rounded-full border border-primary text-primary bg-card" %>
+  </div>
+<% else # nil remove_path: bytes IDENTICAL to the pre-Slice-C row (kept at column 0) %>
 <%= link_to profile_path(user.username),
       class: "flex items-center gap-3 p-3 bg-white border-b border-gray-100 hover:bg-gray-50" do %>
   <%= render "ui/avatar", user: user, size: :row %>
@@ -32,4 +57,5 @@
     <span class="font-medium"><%= user.full_name %></span>
     <span class="text-sm text-light-grey">@<%= user.username %></span>
   </div>
+<% end %>
 <% end %>

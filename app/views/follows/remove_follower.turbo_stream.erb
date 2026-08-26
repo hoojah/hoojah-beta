@@ -1,0 +1,6 @@
+<%# Remove the row on my followers list; refresh my follower-count chip if one is
+    on the page (profile header — absent target is a no-op). %>
+<%= turbo_stream.remove dom_id(@target, :follower_row) %>
+<%= turbo_stream.replace dom_id(current_user, :follower_count) do %>
+  <%= render "users/follower_count", user: current_user %>
+<% end %>

@@ -27,3 +27,35 @@ RSpec.describe "Follow", type: :system, js: true do
     expect(target.followers).to include(me)
   end
 end
+
+# Cuprite coverage for the owner-only "Remove follower" control (Slice C, gap 2)
+# on the followers list. The Remove pill renders only on the owner's own followers
+# page; clicking it fires a turbo_confirm then drops the row via Turbo Stream.
+RSpec.describe "Remove follower", type: :system, js: true do
+  it "lets the owner remove a follower in place" do
+    me = create(:user, username: "me")
+    fan = create(:user, username: "fan")
+    fan.active_follows.create!(followed: me, status: :accepted)
+
+    login_as_system(me)
+    visit "/u/me/followers"
+    expect(page).to have_content("@fan")
+
+    accept_confirm { click_button "Remove" }
+
+    expect(page).not_to have_content("@fan")
+    expect(me.reload.followers).not_to include(fan)
+  end
+
+  it "hides the Remove control on another user's followers page" do
+    me = create(:user, username: "me")
+    fan = create(:user, username: "fan")
+    other = create(:user, username: "other")
+    fan.active_follows.create!(followed: me, status: :accepted)
+
+    login_as_system(other)
+    visit "/u/me/followers"
+    expect(page).to have_content("@fan")
+    expect(page).not_to have_button("Remove")
+  end
+end
