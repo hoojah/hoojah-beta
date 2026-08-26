@@ -41,11 +41,16 @@ RSpec.describe "Block enforcement (policy-layer rejections)", type: :request do
     expect(Debate.count).to eq(0)
   end
 
-  it "still records B's vote on A's hoojah — new_vote IS created (anonymous, deliberately not filtered)" do
+  # vote?-block (SECURITY-FINDINGS, closed 2026-08-26): voting used to be the ONE
+  # interaction not block-gated — HujahPolicy#vote? checked visibility but not the
+  # bidirectional hidden_user_ids block that #create?/follow/challenge apply. Now it is
+  # consistent: B cannot vote on A's hoojah once a block exists in either direction.
+  it "rejects B's vote on A's hoojah — 403, no new_vote notification" do
     hoojah = create(:hujah, user: a)
     sign_in b
     expect {
       post "/hoojah/#{hoojah.slug}/votes", params: {vote: 1}, headers: ts
-    }.to change { Notification.where(category: "new_vote").count }.by(1)
+    }.not_to change { Notification.where(category: "new_vote").count }
+    expect(response).to have_http_status(:forbidden)
   end
 end
