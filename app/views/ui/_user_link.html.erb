@@ -1,0 +1,22 @@
+<%# Slice B. A real <a> to the profile that also triggers the hovercard. Genuine anchor so
+    keyboard focus, middle-click, and JS-off all navigate. Wrap avatar and/or name at each
+    user render point with it. Do NOT nest inside another <a> (invalid HTML) — see the plan's
+    nested-anchor note; card-wrapped bylines use the stretched-link restructure instead.
+    class:/data attrs literal → no Tailwind interpolation here.
+
+    THIS IS A LAYOUT PARTIAL, like `ui/_card` / `ui/_menu`. It wraps a block, so it must be
+    called as
+
+      render layout: "ui/user_link", locals: {user: some_user, class: "…"} do … end
+
+    inside an ERB output tag. `class` cannot be a strict-locals param, so there is no strict
+    signature (same constraint as `ui/_card` / `ui/_menu` / `ui/_avatar`).
+%><%= link_to profile_path(local_assigns.fetch(:user).username),
+      class: "no-underline #{local_assigns[:class]}".squish,
+      data: {
+        controller: "hovercard",
+        hovercard_username_value: local_assigns.fetch(:user).username,
+        hovercard_url_value: user_card_path(local_assigns.fetch(:user).username),
+        action: "mouseenter->hovercard#scheduleShow mouseleave->hovercard#scheduleHide " \
+                "focusin->hovercard#scheduleShow focusout->hovercard#scheduleHide"
+      } do %><%= yield %><% end %>

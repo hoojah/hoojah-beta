@@ -114,6 +114,10 @@
  */
 @source inline("{bg,text,border}-{grey,light-grey}");
 
+/* Slice B hovercard panel chrome — assembled in hovercard_controller.js, so safelisted
+   rather than trusted to the JS source scan. Positioning is inline style, not utilities. */
+@source inline("fixed z-50 w-72 opacity-0 opacity-100 pointer-events-none transition-opacity duration-150");
+
 /*
  * The debate turn composer auto-grows with its content via the native CSS
  * `field-sizing` property (no JS auto-grow controller). `rows="3"` stays on the
