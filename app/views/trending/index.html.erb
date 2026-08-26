@@ -11,7 +11,7 @@
     the sidebar's `turbo_frame_tag "trending", src: trending_path, loading: :lazy`
     asks for this page. No second query: both branches render the same @hujahs. %>
 <main class="max-w-xl mx-auto px-4 py-6">
-  <%= turbo_frame_tag "trending" do %>
+  <%= turbo_frame_tag "trending", target: "_top" do %>
     <% if turbo_frame_request? %>
       <%= render "trending", hujahs: @hujahs %>
     <% else %>
