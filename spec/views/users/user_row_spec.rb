@@ -45,4 +45,16 @@ RSpec.describe "users/_user_row", type: :view do
   it "is not a card" do
     expect(row).to have_no_css("a.shadow")
   end
+
+  # Slice B: the row's profile link is now a `ui/_user_link`, so it resolves to
+  # `profile_path` AND carries the hovercard trigger. The Remove-follower form (Slice C)
+  # is a sibling, never nested inside the anchor.
+  it "links to the profile with the hovercard trigger" do
+    doc = Nokogiri::HTML(render(partial: "users/user_row", locals: {user: user}))
+    link = doc.at_css('a[href="/u/nurul"]')
+    expect(link).to be_present
+    expect(link["data-controller"]).to eq("hovercard")
+    expect(link["data-hovercard-url-value"]).to eq("/u/nurul/card")
+    expect(doc.css("a a")).to be_empty
+  end
 end

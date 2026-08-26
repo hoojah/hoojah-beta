@@ -23,16 +23,27 @@
     `padded:` stays unset (the inner row owns its padding) and `pr-2 flex items-center
     mb-1` rides in `class:`; 4px between compact cards, not the feed's 8px. %>
 <% stance = {1 => "agree", 2 => "neutral", 3 => "disagree"}[hujah.vote] || "primary" %>
-<%= link_to hujah_path(hujah.slug), class: "block no-underline" do %>
-  <%= render layout: "ui/card",
-        locals: {stance: stance, class: "pr-2 flex items-center mb-1"} do %>
-    <div class="flex py-1">
-      <%= render "ui/avatar", user: hujah.user, size: :sm, class: "mx-2" %>
-      <div class="flex flex-col min-w-0">
-        <div>
+<%# Slice B (hovercard): the card is no longer a single outer <a>. The stretched-link
+    pattern keeps the whole-card click reaching the hoojah while giving the author
+    byline its own profile link + hovercard trigger without nesting an <a> in an <a>:
+    the `ui/_card` surface is the `relative` container, the hoojah link is an inset
+    overlay anchor (`absolute inset-0 z-0`), and the avatar + name byline are
+    `ui/_user_link`s lifted above the overlay with `relative z-10`. %>
+<%= render layout: "ui/card",
+      locals: {stance: stance, class: "relative pr-2 flex items-center mb-1"} do %>
+  <%= link_to hujah_path(hujah.slug), class: "absolute inset-0 z-0",
+        "aria-label": "Hoojah: #{truncate(strip_tags(hujah.body.to_s), length: 90)}" do %><% end %>
+  <div class="flex py-1">
+    <%= render layout: "ui/user_link", locals: {user: hujah.user, class: "relative z-10 mx-2 shrink-0"} do %>
+      <%= render "ui/avatar", user: hujah.user, size: :sm %>
+    <% end %>
+    <div class="flex flex-col min-w-0">
+      <div>
+        <%= render layout: "ui/user_link", locals: {user: hujah.user, class: "relative z-10"} do %>
           <span class="mr-1 text-primary"><%= hujah.user.full_name %></span>
           <small class="text-sm text-grey">@<%= hujah.user.username %></small>
-        </div>
+        <% end %>
+      </div>
         <div class="mb-0 text-black break-words"><%= format_body(hujah.body) %></div>
         <%# Secret ballot (2a/A7): below k=3 total votes the per-stance split is a
             de-anonymization vector — replaced by the total-only label. %>
@@ -49,5 +60,4 @@
         </div>
       </div>
     </div>
-  <% end %>
 <% end %>

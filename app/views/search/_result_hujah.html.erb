@@ -1,18 +1,27 @@
 <%# One "Top matches" hoojah row — message-circle tile, a plain highlighted snippet of
     the body, "Hoojah by @handle"; the whole row links to the hoojah.
 
+    Slice B (hovercard): the row is NO LONGER a single outer <a>. To give the
+    "@handle" its own profile link + hovercard trigger without nesting an <a> inside
+    an <a>, this uses the stretched-link pattern — a `relative` container, an
+    absolutely-positioned inset overlay anchor to the hoojah (`absolute inset-0 z-0`,
+    empty body, aria-label carries the destination), and the author byline as a
+    `ui/_user_link` lifted above the overlay with `relative z-10` so it captures its
+    own clicks/hover. Everything else (icon, snippet) stays below the overlay, so a
+    click anywhere on the row still opens the hoojah.
+
     Deliberately NOT `HujahsHelper#format_body`: that helper auto_links @mentions and
-    #hashtags INSIDE the body into their own <a> tags, and this row is itself an <a>
-    (the whole card is the link target) — nesting an anchor inside an anchor is
-    invalid markup this partial has no reason to reintroduce for a search snippet. A
-    plain truncated, highlighted excerpt is what the mockup shows here anyway (no
-    inline mention/tag links inside a search result row). %>
-<%= link_to hujah_path(hujah.slug), class: "flex items-center gap-3 p-3 bg-card shadow rounded-xl no-underline" do %>
+    #hashtags INSIDE the body into their own <a> tags; a plain truncated, highlighted
+    excerpt is what the mockup shows here anyway (no inline mention/tag links inside a
+    search result row). %>
+<div class="relative flex items-center gap-3 p-3 bg-card shadow rounded-xl">
+  <%= link_to hujah_path(hujah.slug), class: "absolute inset-0 z-0",
+        "aria-label": "Hoojah: #{truncate(strip_tags(hujah.body.to_s), length: 90)}" do %><% end %>
   <span class="w-[38px] h-[38px] rounded-xl bg-card-2 text-ink-2 flex items-center justify-center shrink-0">
     <%= lucide_icon "message-circle", class: "w-[18px] h-[18px]" %>
   </span>
   <div class="flex-1 min-w-0">
     <div class="text-sm font-semibold text-ink leading-snug line-clamp-2"><%= highlight_match(hujah.body.to_s.truncate(120), @query) %></div>
-    <div class="text-xs text-ink-2 mt-0.5">Hoojah by @<%= hujah.user.username %></div>
+    <div class="text-xs text-ink-2 mt-0.5">Hoojah by <%= render layout: "ui/user_link", locals: {user: hujah.user, class: "relative z-10 text-ink-2"} do %>@<%= hujah.user.username %><% end %></div>
   </div>
-<% end %>
+</div>

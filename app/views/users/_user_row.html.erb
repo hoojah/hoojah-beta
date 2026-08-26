@@ -38,7 +38,7 @@
 <% if remove_path %>
   <div id="<%= dom_id(user, :follower_row) %>"
        class="flex items-center gap-3 p-3 bg-white border-b border-gray-100 hover:bg-gray-50">
-    <%= link_to profile_path(user.username), class: "flex items-center gap-3 flex-1" do %>
+    <%= render layout: "ui/user_link", locals: {user: user, class: "flex items-center gap-3 flex-1"} do %>
       <%= render "ui/avatar", user: user, size: :row %>
       <div class="flex flex-col">
         <span class="font-medium"><%= user.full_name %></span>
@@ -49,9 +49,9 @@
           form: {data: {turbo_confirm: "Remove @#{user.username} from your followers?"}},
           class: "px-4 py-1 text-sm rounded-full border border-primary text-primary bg-card" %>
   </div>
-<% else # nil remove_path: bytes IDENTICAL to the pre-Slice-C row (kept at column 0) %>
-<%= link_to profile_path(user.username),
-      class: "flex items-center gap-3 p-3 bg-white border-b border-gray-100 hover:bg-gray-50" do %>
+<% else # nil remove_path: the plain profile row (kept at column 0) %>
+<%= render layout: "ui/user_link",
+      locals: {user: user, class: "flex items-center gap-3 p-3 bg-white border-b border-gray-100 hover:bg-gray-50"} do %>
   <%= render "ui/avatar", user: user, size: :row %>
   <div class="flex flex-col">
     <span class="font-medium"><%= user.full_name %></span>

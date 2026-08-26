@@ -14,6 +14,18 @@ RSpec.describe "users/_user_hujah", type: :view do
     Capybara.string(html(hujah))
   end
 
+  # Slice B: the compact profile hoojah card is a stretched-link container, not a single
+  # outer <a>. The hoojah link is an inset overlay anchor; the author avatar + name are
+  # their own profile links (hovercard triggers) above it. The two must not nest.
+  it "exposes a hoojah overlay link and a separate non-nested profile byline link" do
+    hujah = create(:hujah, user: author, body: "a claim on my profile")
+    doc = Nokogiri::HTML(html(hujah))
+
+    expect(doc.css(%(a[href="/hoojah/#{hujah.slug}"])).size).to be >= 1
+    expect(doc.css('a[href="/u/debat"][data-controller="hovercard"]').size).to be >= 1
+    expect(doc.css("a a")).to be_empty
+  end
+
   context "at or above k" do
     it "renders the per-stance footer (three stance glyphs) with counts" do
       hujah = create(:hujah, user: author, agree_count: 3, neutral_count: 1, disagree_count: 1) # total 5

@@ -16,6 +16,24 @@ RSpec.describe "hujahs/_child_card", type: :view do
 
   before { allow(view).to receive_messages(user_signed_in?: false, current_user: nil) }
 
+  # Slice B: the card is a stretched-link container <div>, not a single <a>. The
+  # response-filter data attributes moved verbatim onto that container (the controller
+  # selects by data-target, not by tag); the hoojah link is an inset overlay anchor and
+  # the responder byline is its own non-nested profile link with a hovercard trigger.
+  it "is a stretched-link container carrying the response-filter attrs, with non-nested anchors" do
+    responder = create(:user, username: "responder")
+    child = create(:hujah, parent: root, user: responder, vote: 1, body: "a threaded reply")
+    doc = Nokogiri::HTML(html(child))
+
+    item = doc.at_css('[data-response-filter-target="item"]')
+    expect(item.name).to eq("div")
+    expect(item["data-response-filter-vote"]).to eq("agree")
+
+    expect(doc.css(%(a[href="/hoojah/#{child.slug}"])).size).to be >= 1
+    expect(doc.css('a[href="/u/responder"][data-controller="hovercard"]').size).to be >= 1
+    expect(doc.css("a a")).to be_empty
+  end
+
   context "at or above k" do
     it "renders the per-stance footer (three stance glyphs) with the counts" do
       child = create(:hujah, parent: root, user: create(:user),

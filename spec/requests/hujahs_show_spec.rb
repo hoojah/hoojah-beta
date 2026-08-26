@@ -28,11 +28,36 @@ RSpec.describe "Hujah show", type: :request do
     expect(profile_links.size).to be >= 2
   end
 
+  # Slice B (hovercard): `_child_card` is no longer a single anchor. It is a stretched-link
+  # container <div> — an inset overlay anchor carries the whole-card click to the response's
+  # show page, and the responder's avatar + name are their OWN profile links (hovercard
+  # triggers) sitting above the overlay. The two anchors are siblings, never nested.
+  it "restructures the child card into a hoojah overlay link + a non-nested profile byline link" do
+    author = create(:user, username: "cardauthor")
+    parent = create(:hujah)
+    child = create(:hujah, user: author, parent: parent, body: "a threaded child response here")
+
+    get "/hoojah/#{parent.slug}"
+    expect(response).to have_http_status(:ok)
+
+    doc = Nokogiri::HTML(response.body)
+    # (a) the hoojah overlay link to the child's own page is present.
+    expect(doc.css(%(a[href="/hoojah/#{child.slug}"])).size).to be >= 1
+    # (b) a separate profile link with the hovercard trigger is present.
+    expect(doc.css('a[href="/u/cardauthor"][data-controller="hovercard"]').size).to be >= 1
+    # (c) NO anchor is nested inside another anchor anywhere on the page.
+    expect(doc.css("a a")).to be_empty
+    # The response-filter data attributes moved onto the container div verbatim.
+    item = doc.at_css('[data-response-filter-target="item"]')
+    expect(item).to be_present
+    expect(item.name).to eq("div")
+    expect(item["data-response-filter-vote"]).to be_present
+  end
+
   # A reply hujah's own show page is the canonical flag surface for replies: the thread's
-  # `_child_card` is a single anchor to this page and deliberately carries no menu (a
-  # nested menu inside an <a> is invalid HTML, and that partial is frozen). So the flag
-  # dialog must render here for a signed-in viewer on a child hujah, exactly as it does
-  # for a top-level one.
+  # `_child_card` deliberately carries no menu (a nested menu/form inside the card's links
+  # would be invalid HTML). So the flag dialog must render here for a signed-in viewer on a
+  # child hujah, exactly as it does for a top-level one.
   it "renders the flag dialog and trigger on a reply hujah's own show page for a signed-in member" do
     author = create(:user)
     parent = create(:hujah, user: author)

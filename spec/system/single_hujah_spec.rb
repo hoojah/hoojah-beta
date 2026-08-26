@@ -34,7 +34,8 @@ RSpec.describe "Single hoojah", type: :system, js: true do
     visit hujah_path(parent.slug)
 
     within('[data-controller="response-filter"] [role="group"]') { click_button "Agree" }
-    expect(find("a", text: "I agree strongly here")[:hidden]).to be_falsey
-    expect(find("a", text: "I disagree entirely here", visible: :all)[:hidden]).to be_truthy
+    # Slice B: the response item is a stretched-link container <div>, not a single <a>.
+    expect(find("[data-response-filter-target='item']", text: "I agree strongly here")[:hidden]).to be_falsey
+    expect(find("[data-response-filter-target='item']", text: "I disagree entirely here", visible: :all)[:hidden]).to be_truthy
   end
 end

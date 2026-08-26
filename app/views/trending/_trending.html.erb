@@ -23,11 +23,19 @@
     <ul class="space-y-2 list-none p-0 m-0">
       <% hujahs.each do |hujah| %>
         <li>
+          <%# Slice B (hovercard): the row is no longer a single outer <a>. Stretched-link
+              pattern — a `relative` container, an inset overlay anchor to the hoojah
+              (`absolute inset-0`, aria-label carries the body so `click_link "<body>"`
+              and screen readers still resolve it), and the `@handle` lifted above it as a
+              `ui/_user_link` (`relative z-10`) so it gets its own profile link + hovercard
+              without nesting an <a> in an <a>. The overlay keeps `hover:text-primary`. %>
           <%= render layout: "ui/card", locals: {as: "article", padded: false, class: "rounded-xl"} do %>
-            <%= link_to hujah_path(hujah.slug), class: "block p-3 text-sm text-grey no-underline hover:text-primary" do %>
+            <div class="relative block p-3 text-sm text-grey">
+              <%= link_to hujah_path(hujah.slug), class: "absolute inset-0 z-0 hover:text-primary",
+                    "aria-label": truncate(strip_tags(hujah.body.to_s), length: 90) do %><% end %>
               <%= truncate(strip_tags(hujah.body.to_s), length: 90) %>
-              <span class="block text-xs text-grey/70 mt-0.5">@<%= hujah.user.username %></span>
-            <% end %>
+              <%= render layout: "ui/user_link", locals: {user: hujah.user, class: "relative z-10 block text-xs text-grey/70 mt-0.5"} do %>@<%= hujah.user.username %><% end %>
+            </div>
           <% end %>
         </li>
       <% end %>

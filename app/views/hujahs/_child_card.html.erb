@@ -3,12 +3,23 @@
     the signature Hoojah motif — the responder's byline (name · @handle · stance · time),
     the argument body, and a stance-tally footer.
 
-    FROZEN (response filter): the whole card is the filter's item anchor —
-    `data-response-filter-target="item"` / `data-response-filter-vote="<stance>"` on the
-    <a>. `response_filter_controller` matches those by string against `_response_filter`
-    and `_challenge_dialog`; they stay spelled exactly. Stance names are interpolated into
-    `bg-<stance>` / `text-<stance>` (all in the @source inline safelist); the `-soft`
-    pairs come from a literal lookup (below) so no new interpolated prefix ships.
+    Response filter: the card is the filter's item — `data-response-filter-target="item"`
+    / `data-response-filter-vote="<stance>"`. `response_filter_controller` matches those by
+    string against `_response_filter` and `_challenge_dialog`; they stay spelled exactly and
+    now live on the container <div> (the controller selects by data-target, not by tag —
+    Slice B moved them off the old <a>). Stance names are interpolated into `bg-<stance>` /
+    `text-<stance>` (all in the @source inline safelist); the `-soft` pairs come from a
+    literal lookup (below) so no new interpolated prefix ships.
+
+    Slice B (hovercard): the card is NO LONGER a single outer <a>. To give the responder's
+    avatar + name their own profile link + hovercard trigger without nesting an <a> in an
+    <a>, this uses the stretched-link pattern — the container is a `relative` <div>, the
+    hoojah link is an inset overlay anchor (`absolute inset-0 z-0`, empty body, aria-label
+    carries the response snippet), and the avatar/name byline are `ui/_user_link`s lifted
+    above the overlay with `relative z-10`. The @handle · stance · time caption stays plain
+    (wrapping the time in a profile anchor would be wrong). A click anywhere else on the
+    card still opens the response's own page. Still no menu inside the card (a flag menu
+    would nest a form/anchor) — the flag surface remains the response's own show page.
 
     Locals: child (the response hoojah), hujah (the root claim), and the optional
     `live_debate_keys` set (from `_response_filter`) used to show the "In debate" badge.
@@ -33,16 +44,19 @@
      "primary" => "bg-primary-soft text-primary"
    }[stance] %>
 <% in_debate = local_assigns[:live_debate_keys]&.include?([child.user_id, child.vote]) %>
-<%= link_to hujah_path(child.slug),
-      class: "block no-underline mb-2.5",
-      data: { "response-filter-target": "item", "response-filter-vote": stance } do %>
+<div class="relative block mb-2.5"
+     data-response-filter-target="item" data-response-filter-vote="<%= stance %>">
+  <%= link_to hujah_path(child.slug), class: "absolute inset-0 z-0",
+        "aria-label": "Response: #{truncate(strip_tags(child.body.to_s), length: 90)}" do %><% end %>
   <div class="flex overflow-hidden rounded-2xl bg-card shadow">
     <div class="w-1.5 shrink-0 bg-<%= stance %>"></div>
     <div class="flex-1 min-w-0 p-3.5">
       <div class="flex items-center gap-2.5">
-        <%= render "ui/avatar", user: child.user, size: :sm %>
+        <%= render layout: "ui/user_link", locals: {user: child.user, class: "relative z-10 shrink-0"} do %>
+          <%= render "ui/avatar", user: child.user, size: :sm %>
+        <% end %>
         <div class="flex flex-col min-w-0 leading-tight">
-          <div class="text-sm font-bold text-ink truncate"><%= child.user.full_name %></div>
+          <%= render layout: "ui/user_link", locals: {user: child.user, class: "relative z-10 block text-sm font-bold text-ink truncate"} do %><%= child.user.full_name %><% end %>
           <div class="text-xs text-ink-2">
             @<%= child.user.username %>
             <% if child.vote %>
@@ -68,7 +82,7 @@
       </div>
     </div>
   </div>
-<% end %>
+</div>
 
 <% if in_debate %>
   <div data-response-filter-target="item" data-response-filter-vote="<%= stance %>"

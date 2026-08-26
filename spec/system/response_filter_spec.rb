@@ -19,8 +19,11 @@ RSpec.describe "Response filter", type: :system, js: true do
     # Scope to the filter group — the vote-bar buttons also expose aria-label "Agree".
     within('[data-controller="response-filter"] [role="group"]') { click_button "Agree" }
 
-    agree_item = find("a", text: "I agree strongly")
-    disagree_item = find("a", text: "I disagree entirely", visible: :all)
+    # Slice B: the child card is no longer a single <a> — it is a stretched-link
+    # container <div data-response-filter-target="item"> (the hoojah link is an inset
+    # overlay anchor). The filter still toggles `hidden` on that item element.
+    agree_item = find("[data-response-filter-target='item']", text: "I agree strongly")
+    disagree_item = find("[data-response-filter-target='item']", text: "I disagree entirely", visible: :all)
 
     expect(agree_item[:hidden]).to be_falsey
     expect(disagree_item[:hidden]).to be_truthy
