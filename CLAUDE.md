@@ -139,11 +139,20 @@ Shared primitives:
 `ui/_card` is a **layout partial**: `render layout: "ui/card", locals: {...} do … end`.
 `render partial: "ui/card" do … end` silently renders nil and raises a confusing error.
 
-House style, briefly: white **square-cornered** cards with `shadow` and `#f3f4f6` hairlines; pill
-buttons with a 2px coloured border and `active:scale-95`; an 8px stance-coloured left border on
-compact cards; stance trio agree `#fcaf45` / **neutral `#e1306c` (pink, never grey)** / disagree
-`#833ab4`; primary `#415de6`; Lucide icons via `lucide-rails`; system font stack, no webfonts, no
-dark mode, essentially no animation.
+House style, briefly: white **`rounded-2xl` cards** with `shadow` and `--hairline` borders
+(`#edeef3` light); pill buttons (`ds_button_classes`) with a 2px coloured border and
+`active:scale-95`; an 8px stance-coloured left border on compact cards; primary `#415de6`; Lucide
+icons via `lucide-rails`; system font stack, no webfonts, essentially no animation.
+
+Colour is **token-driven — `app/assets/tailwind/application.css` is the source of truth, not fixed
+hex.** The 2026 **Spectrum** rebrand superseded the old amber/pink/purple stance trio: the live
+tokens `--agree`/`--neutral`/`--disagree` default (light Spectrum) to agree `#0ea5a4` teal /
+neutral `#e8930c` orange / disagree `#8b5cf6` violet, and **re-tint under `[data-theme="dark"]` and
+the `[data-scheme="signal"|"ballot"]` schemes — the app now has dark mode** (`theme_controller.js`
+flips `data-theme`). Always write `bg-<stance>`/`text-<stance>` token utilities, never a concrete
+hex; treat any stance hex in `docs/design-system/` or this file's history as stale. Interpolated
+stance utilities still need an `@source inline(...)` safelist entry per prefix — including
+`ring-<stance>` (added for the vote-button voted marker); `border`/`bg`/`text` do not cover `ring`.
 
 ## Tailwind gotchas — these have each caused a real bug here
 
