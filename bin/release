@@ -1,0 +1,19 @@
+#!/bin/bash -e
+#
+# Release step — the Coolify "Pre-deployment Command".
+#
+# Runs pending migrations ONCE per deploy, in a container built from the NEW image,
+# BEFORE the new version starts receiving traffic. This closes the gap the deploy had:
+# a push to master auto-deploys the code (README §Deploy), but bin/docker-entrypoint
+# deliberately does NOT migrate — migrating on every container start races once there is
+# more than one replica, and db:prepare would run seeds. A pre-deploy command runs exactly
+# once per release, so it sidesteps both traps that kept migration out of the entrypoint.
+#
+# Fail-closed: `-e` makes a failed migration exit non-zero, which tells Coolify to ABORT
+# the release and leave the current (working) version serving. Never let code go live
+# ahead of its migration — that is exactly the "500 on every page" state this exists to
+# prevent (moderation_status enum shipped ahead of its column, 2026-08-26).
+#
+# db:migrate, NOT db:prepare: db:prepare runs db/seeds.rb, which aborts in production and
+# would leave the release half-applied. db:migrate is seed-free and safe to re-run.
+exec bundle exec rails db:migrate

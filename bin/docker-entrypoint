@@ -8,7 +8,9 @@
 # now refuses to run in production, so db:prepare would abort partway — after loading
 # the schema, before the container starts. Running migrations on every container start
 # is also a race once there is more than one replica. The database bootstrap is a
-# one-time operator step; README's deploy section has the exact commands.
+# one-time operator step; README's deploy section has the exact commands. ONGOING
+# migrations run once per release via bin/release, wired as Coolify's Pre-deployment
+# Command — not here — for the same replica-race reason.
 
 # Which port Thruster listens on. Precedence, most explicit first:
 #   HTTP_PORT  — the operator said so directly
