@@ -131,6 +131,14 @@ RSpec.describe "Profile", type: :request do
     expect(Notification.where(user: requester, category: "follow_accepted").count).to eq(1)
     expect(user.reload.followers_count).to eq(1)
     expect(user.followers_count).to eq(user.followers.count)
+    # Regression: the turbo_stream header re-render must show the FRESH count, not the
+    # pre-flip value. AcceptPendingFollowsJob bumps followers_count via atomic SQL
+    # (User.update_counters), which never touches the in-memory @user, so the action
+    # reloads before rendering. Without that reload this chip rendered "0".
+    chip = Nokogiri::HTML.fragment(response.body)
+      .at_css("##{ActionView::RecordIdentifier.dom_id(user, :follower_count)}")
+    expect(chip).to be_present
+    expect(chip.text).to include("1")
   end
 
   it "enqueues AcceptPendingFollowsJob when more than the inline threshold are pending" do

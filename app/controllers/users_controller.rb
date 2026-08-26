@@ -75,6 +75,11 @@ class UsersController < ApplicationController
         # notification writes.
         if @user.passive_follows.pending.count <= AcceptPendingFollowsJob::INLINE_THRESHOLD
           AcceptPendingFollowsJob.perform_now(@user)
+          # The job's accepts bumped followers_count via atomic SQL (User.update_counters),
+          # which never touches this in-memory instance — reload so the turbo_stream header
+          # re-render below shows the fresh count instead of the pre-flip value. Only the
+          # inline branch needs this; perform_later renders before the job runs anyway.
+          @user.reload
         else
           AcceptPendingFollowsJob.perform_later(@user)
         end
