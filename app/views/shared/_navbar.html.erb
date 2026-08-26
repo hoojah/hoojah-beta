@@ -25,12 +25,16 @@
     (Task 0.4) without switching to `ds_button_classes` itself — same anchor, same lack
     of `active:scale-95`, just a coloured box instead of a bare icon. %>
 <nav class="fixed top-0 inset-x-0 z-20 bg-nav backdrop-blur border-b border-hairline">
-  <div class="max-w-xl sm:max-w-none mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-    <%= link_to root_path, class: "flex items-center no-underline", aria: { label: "Hoojah" } do %>
-      <%= image_tag "logo.svg", alt: "Hoojah", class: "h-7 w-auto" %>
-    <% end %>
-
-    <div class="flex items-center gap-3">
+  <%# Three-zone bar (owner-approved). On <sm this is a flex row with `order-*`
+      so the logo reads left; at >=sm it becomes a 3-column grid whose CENTER
+      column holds the logo, `justify-self-*` pinning each zone (left / centre /
+      right) so the logo is TRULY centred regardless of the side widths.
+      LEFT  = theme pill (always) + user dropdown (signed-in only)
+      CENTER = logo
+      RIGHT = Trending (mobile/tablet only) + New Claim (signed-in) OR Login/Sign up (guest) %>
+  <div class="max-w-xl sm:max-w-none mx-auto px-4 sm:px-6 h-14 flex items-center justify-between sm:grid sm:grid-cols-3">
+    <%# LEFT zone %>
+    <div class="order-2 sm:order-none sm:justify-self-start flex items-center gap-3">
       <%# Theme + scheme control (Hoojah 2026). A compact pill, reachable on every
           page since the navbar is shared. Both controls fail safe with JS off:
           the server renders the light+spectrum defaults and the page is fully
@@ -48,14 +52,6 @@
           <%= lucide_icon("palette", class: "w-4 h-4") %>
         </button>
       </div>
-
-      <%# Hoojah 2026: a filled icon-button box (bg-card-2, ~38px), not a bare icon link —
-          see the note above about why every OTHER navbar entry stays a plain anchor;
-          trending is the one exception the 2026 mockup gives a button treatment. %>
-      <%= link_to trending_path, class: "lg:hidden flex items-center justify-center gap-1 h-[38px] px-2 bg-card-2 text-neutral rounded-xl no-underline", aria: {label: "Trending"} do %>
-        <%= lucide_icon("flame", class: "w-5 h-5") %>
-        <span class="text-sm">Trending</span>
-      <% end %>
 
       <% if user_signed_in? %>
         <%# `<details>` IS the menu mechanism here — the design system documents it as such
@@ -119,14 +115,33 @@
                   class: ds_menu_item_classes %>
           <% end %>
         </details>
+      <% end %>
+    </div>
+
+    <%# CENTER zone — logo. `order-1` puts it first on mobile (logo-left); at >=sm
+        the grid centres it in the middle column via `justify-self-center`. %>
+    <%= link_to root_path, class: "order-1 sm:order-none sm:justify-self-center flex items-center no-underline", aria: { label: "Hoojah" } do %>
+      <%= image_tag "logo.svg", alt: "Hoojah", class: "h-7 w-auto" %>
+    <% end %>
+
+    <%# RIGHT zone %>
+    <div class="order-3 sm:justify-self-end flex items-center gap-3">
+      <%# Hoojah 2026: a filled icon-button box (bg-card-2, ~38px), not a bare icon link —
+          see the note above about why every OTHER navbar entry stays a plain anchor;
+          trending is the one exception the 2026 mockup gives a button treatment. %>
+      <%= link_to trending_path, class: "lg:hidden flex items-center justify-center gap-1 h-[38px] px-2 bg-card-2 text-neutral rounded-xl no-underline", aria: {label: "Trending"} do %>
+        <%= lucide_icon("flame", class: "w-5 h-5") %>
+        <span class="text-sm">Trending</span>
+      <% end %>
+
+      <% if user_signed_in? %>
+        <%= link_to new_hujah_path, class: "flex items-center text-primary no-underline", aria: { label: "New Claim" } do %>
+          <%= lucide_icon("message-square-plus", class: "w-6 h-6") %>
+          <span class="hidden lg:inline ml-1 text-sm">New Claim</span>
+        <% end %>
       <% else %>
         <%= link_to "Login", new_user_session_path, class: "text-sm text-primary no-underline" %>
         <%= link_to "Sign up", new_user_registration_path, class: "text-sm text-grey no-underline" %>
-      <% end %>
-
-      <%= link_to new_hujah_path, class: "flex items-center text-primary no-underline", aria: { label: "New Claim" } do %>
-        <%= lucide_icon("message-square-plus", class: "w-6 h-6") %>
-        <span class="hidden lg:inline ml-1 text-sm">New Claim</span>
       <% end %>
     </div>
   </div>

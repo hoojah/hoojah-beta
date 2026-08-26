@@ -96,8 +96,10 @@ RSpec.describe "shared/_navbar", type: :view do
       expect(navbar).to have_no_css("details")
     end
 
-    it "still keeps the New Claim compose entry" do
-      expect(navbar).to have_css("a[href='#{new_hujah_path}']", text: "New Claim")
+    # 2026 three-zone navbar: New Claim is a member-only action, so it must NOT
+    # render for guests — the guest right zone carries only Login + Sign up.
+    it "does not render the New Claim compose entry" do
+      expect(navbar).to have_no_css("a[href='#{new_hujah_path}']")
     end
   end
 end
