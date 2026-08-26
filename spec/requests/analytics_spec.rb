@@ -31,6 +31,20 @@ RSpec.describe "Analytics", type: :request do
     expect(response.body).not_to match(/this week|% change|WoW|↑|↓/i)
   end
 
+  # Slice C (gap 8): the dashboard follower KPI reads `users.followers_count`, not the
+  # association. Surface-level drift pin — the rendered stat must equal the column AND
+  # the column must equal the always-correct live `followers.count`.
+  it "reads the follower KPI from the counter-cache column with no drift" do
+    user = create(:user)
+    3.times { |i| create(:follow, follower: create(:user), followed: user, status: :accepted) }
+    sign_in user
+    get "/dashboard"
+    expect(response).to have_http_status(:ok)
+    expect(user.reload.followers_count).to eq(3).and eq(user.followers.count)
+    expect(response.body).to include("Followers")
+    expect(response.body).to include("3") # the column-backed KPI value
+  end
+
   it "shows a stacked distribution bar for the user's top hoojah by total votes" do
     user = create(:user)
     create(:hujah, user: user, agree_count: 1, neutral_count: 1, disagree_count: 1, body: "the smaller claim")

@@ -15,10 +15,10 @@
     owns its own `<h1>` (`text-base font-bold text-ink`), and duplicating a second title
     directly under it would be a second heading for one screen.
 
-    FOLLOWERS KPI (Task 4.6): computed in the controller as
-    `current_user.followers.count`, NOT inside `UserAnalytics` — see that model's header
-    comment and `AnalyticsController#show`. `UserAnalytics` reads only `hujahs`; the
-    follower count is `users`+`follows` and stays entirely outside it, which is also why
+    FOLLOWERS KPI (Task 4.6): read in the controller off the denormalized
+    `users.followers_count` counter-cache column, NOT inside `UserAnalytics` — see that
+    model's header comment and `AnalyticsController#show`. `UserAnalytics` reads only
+    `hujahs`; the follower count lives on `users` and stays entirely outside it, which is also why
     it is a separate "stat" partial call passed `@followers_count` rather than a value
     pulled off `@analytics`.
 

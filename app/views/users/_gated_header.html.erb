@@ -36,7 +36,7 @@
     <span class="mx-2">·</span>
     <%= link_to user_following_path(user.username), class: "flex items-center gap-1 text-white" do %>
       <%= lucide_icon("user-plus", class: "w-4 h-4") %>
-      <span><%= user.following.size %></span>
+      <span><%= user.following_count %></span>
     <% end %>
   </div>
 </div>

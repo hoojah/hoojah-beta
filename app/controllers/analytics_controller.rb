@@ -11,10 +11,11 @@ class AnalyticsController < ApplicationController
 
     # Followers KPI (Slice 2026 Phase 4.6). Deliberately NOT on UserAnalytics: its
     # header comment forbids that object from ever touching `users`, so a follower
-    # count is computed here instead, off `User#followers` (accepted-only,
-    # `app/models/user.rb`). This is a single extra COUNT query, not a join folded
-    # into any UserAnalytics aggregate, so the vote-privacy provenance test (which
-    # only inspects UserAnalytics' own queries) is untouched by this line.
-    @followers_count = current_user.followers.count
+    # count is read here instead, off the denormalized `users.followers_count`
+    # counter-cache column (maintained by Follow callbacks + explicit adjustments,
+    # accepted-only — `app/models/user.rb`/`app/models/follow.rb`). No extra query
+    # or join is folded into any UserAnalytics aggregate, so the vote-privacy
+    # provenance test (which only inspects UserAnalytics' own queries) is untouched.
+    @followers_count = current_user.followers_count
   end
 end

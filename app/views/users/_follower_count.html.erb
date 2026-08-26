@@ -1,7 +1,8 @@
 <%# Follower-count chip for `user`. Self-wraps in dom_id(user, :follower_count) so a
-    follow/unfollow Turbo Stream refreshes just the number. Count is computed
-    (`.followers.size`) — no denormalized column this slice. %>
+    follow/unfollow Turbo Stream refreshes just the number. Reads the denormalized
+    `followers_count` counter-cache column (maintained by Follow callbacks +
+    explicit adjustments across every mutation path), not the association. %>
 <span id="<%= dom_id(user, :follower_count) %>" class="flex items-center gap-1">
   <%= lucide_icon("users", class: "w-4 h-4") %>
-  <span><%= user.followers.size %></span>
+  <span><%= user.followers_count %></span>
 </span>

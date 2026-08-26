@@ -12,6 +12,26 @@ RSpec.describe "Profile", type: :request do
     expect(response.body).to include("@rudz").and include("hello world")
   end
 
+  # Slice C (gap 8): the profile header follower/following chips read the
+  # denormalized `followers_count`/`following_count` counter-cache columns, not the
+  # associations. This proves the read-flip end to end: a real follow fires the
+  # Follow-model callback that writes the column, and the header renders the new value.
+  it "renders the incremented follower/following counts from the counter-cache columns" do
+    fan = create(:user, username: "counterfan")
+    fan.active_follows.create!(followed: user, status: :accepted) # +1 to user's followers, +1 to fan's following
+
+    get "/u/rudz"
+    header = Nokogiri::HTML(response.body).at_css("##{ActionView::RecordIdentifier.dom_id(user, :follower_count)}")
+    expect(header).to be_present
+    expect(header.text).to include("1")
+    expect(user.reload.followers_count).to eq(1).and eq(user.followers.count)
+
+    get "/u/counterfan"
+    expect(fan.reload.following_count).to eq(1).and eq(fan.following.count)
+    # Following chip is rendered inline (no dom_id wrapper) — assert the raw column read landed.
+    expect(response.body).to include(">1</span>")
+  end
+
   # ── Per-post visibility (2026): profile hoojah list is scoped per viewer ─────────
   it "hides a public user's followers_only and private_only claims from a stranger" do
     create(:hujah, user: user, visibility: :visible_public, body: "PUBLIC profile claim body")

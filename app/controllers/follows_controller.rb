@@ -40,6 +40,10 @@ class FollowsController < ApplicationController
     authorize @follow, :remove_follower? if @follow
     skip_authorization if @follow.nil?
     @follow&.destroy # accepted → Follow's after_destroy decrements both counters
+    # The chip reads current_user.followers_count (denormalized column). The
+    # decrement above went through User.update_counters — atomic SQL that never
+    # syncs the in-memory record — so reload before the stream renders the count.
+    current_user.reload
     respond_to do |f|
       f.turbo_stream
       f.html { redirect_to user_followers_path(current_user.username), status: :see_other }
@@ -51,6 +55,11 @@ class FollowsController < ApplicationController
   def set_target = @target = User.find_by!(username: params[:username])
 
   def render_button
+    # The follower-count chip reads @target.followers_count (denormalized column,
+    # gap 8 read-flip). Follow's create/destroy callbacks maintain it via
+    # User.update_counters — atomic SQL that leaves the in-memory @target stale — so
+    # reload it here before the Turbo Stream re-renders the chip.
+    @target.reload
     respond_to do |f|
       f.turbo_stream # create/destroy.turbo_stream.erb both render the same two replaces
       f.html { redirect_to profile_path(@target.username), status: :see_other }
