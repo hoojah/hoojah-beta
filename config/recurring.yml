@@ -16,3 +16,6 @@ production:
   conclude_stale_debates:
     class: ConcludeStaleDebatesJob
     schedule: every day at 3am
+  expire_stale_follow_requests:
+    class: ExpireStaleFollowRequestsJob
+    schedule: every day at 4am
