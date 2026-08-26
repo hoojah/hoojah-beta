@@ -49,11 +49,7 @@ Rails.application.configure do
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
   # Garage (self-hosted S3) wins when GARAGE_ACCESS_KEY_ID is set; otherwise Cloudinary.
-  if ENV["GARAGE_ACCESS_KEY_ID"].present?
-    config.active_storage.service = :garage
-  else
-    config.active_storage.service = :cloudinary
-  end
+  config.active_storage.service = ENV["GARAGE_ACCESS_KEY_ID"].present? ? :garage : :cloudinary
 
   # Mount Action Cable outside main process or domain.
   # config.action_cable.mount_path = nil

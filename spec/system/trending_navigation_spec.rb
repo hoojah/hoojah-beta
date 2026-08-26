@@ -30,4 +30,22 @@ RSpec.describe "Trending navigation", type: :system, js: true do
     expect(page).not_to have_text("Content missing")
     expect(page).to have_content("a hot trending take about durian")
   end
+
+  it "navigates full-page from a /trending rich-page link to the hujah show page" do
+    # The standalone /trending page renders `_trending_rich` inside the same
+    # `turbo_frame_tag "trending"` (also now `target: "_top"`). Covers the second
+    # edited frame declaration (trending/index.html.erb).
+    hot = create(:hujah, body: "a hot trending take about durian", agree_count: 25)
+
+    login_as_system(create(:user))
+
+    visit "/trending"
+
+    expect(page).to have_content("a hot trending take about durian")
+    click_link "a hot trending take about durian"
+
+    expect(page).to have_current_path(hujah_path(hot.slug))
+    expect(page).not_to have_text("Content missing")
+    expect(page).to have_content("a hot trending take about durian")
+  end
 end

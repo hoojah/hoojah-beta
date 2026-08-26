@@ -16,10 +16,12 @@
   - a percent legend directly under it, `flex justify-between`, one `text-<stance>
     text-xs font-bold` label per stance — the same numbers, now read as a caption
     for the bar instead of trailing each dead row.
-  - three PILL vote buttons below that (icon + label, not a bare 44px circle):
-    `rounded-xl border-[1.5px] border-<stance> text-<stance> bg-card`, equal-width
-    (`flex-1`) with the stance glyph and its name. `active:scale-95` is the only press
-    feedback, same call as before — see the latency note this replaces.
+  - three uniform PILL vote buttons below that (icon + label, not a bare 44px circle):
+    `rounded-full h-10 border-[1.5px] border-<stance> text-<stance> bg-card`, equal-width
+    (`flex-1`) with the stance glyph and its name. All three stay OUTLINED; the viewer's
+    own voted stance is not a solid fill but a subtle marker — a light `bg-<stance>-soft`
+    tint + `ring-2 ring-<stance>` + a leading `check` glyph. `active:scale-95` is the only
+    press feedback, same call as before — see the latency note this replaces.
 
   VOTE-FEEDBACK LATENCY DECISION (Task 4.4 Step 5, still true): CSS-only, no
   vote_controller.js. Each stance button is a Turbo-driven button_to form; Turbo
@@ -39,9 +41,11 @@
   same-family override the same way the old circular button's note explained — see
   that reasoning in git history for the fuller version.
 
-  Stance names are interpolated into `border-`/`bg-`/`text-`, which the Tailwind
-  scanner cannot see; all three prefixes over the stance trio are covered by the
-  `@source inline(...)` safelist in app/assets/tailwind/application.css.
+  Stance names are interpolated into `border-`/`bg-`/`text-`/`ring-`, which the Tailwind
+  scanner cannot see; all four prefixes over the stance trio are covered by the
+  `@source inline(...)` safelist in app/assets/tailwind/application.css. `ring-<stance>`
+  required its own safelist line (added with the voted-marker change) — the border/bg/text
+  entries do not cover it.
 %>
 <%
   agree = hujah.agree_count.to_i
