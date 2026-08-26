@@ -28,6 +28,16 @@ class UsersController < ApplicationController
     end
   end
 
+  # Hovercard body (Slice B). layout:false partial fetched by hovercard_controller.js on
+  # hover. Same privacy gate as #show — `visible_to?` decides Standard vs the gated minimal
+  # whitelist — so the two surfaces cannot drift. skip_authorization (else verify_authorized
+  # 500s); no authenticate_user!, so guests may view a public card.
+  def card
+    skip_authorization
+    @gated = !@user.visible_to?(current_user)
+    render "users/card", layout: false
+  end
+
   # Follower / following lists. Public by default; Slice 7b (Gate 7) gates the lists of
   # a private account behind visible_to? (a stranger must not enumerate them).
   # skip_authorization (else verify_authorized 500s).

@@ -58,6 +58,10 @@ Rails.application.routes.draw do
   # Profile (Task 3.2). Public view at /u/:username; owner-only edit/update.
   # `:username` (not id/slug) mirrors the legacy SPA `/api/v1/:username` shape.
   get "/u/:username", to: "users#show", as: :profile
+  # Hovercard body (Slice B). Read-only → main route (NOT Api::V1) so CSRF strategy is
+  # unchanged; #card calls skip_authorization like users#show. layout:false partial fetched
+  # by hovercard_controller.js on hover. :username, not id (no friendly_id on User).
+  get "/u/:username/card", to: "users#card", as: :user_card
   get "/u/:username/edit", to: "users#edit", as: :edit_profile
   patch "/u/:username", to: "users#update"
   # Follow / unfollow (Slice 3, Task 2.1). Main routes (NOT Api::V1) so CSRF stays

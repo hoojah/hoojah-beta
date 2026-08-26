@@ -1,0 +1,8 @@
+<%# Slice B hovercard body. layout:false; fetched by hovercard_controller.js on hover and
+    injected into the shared floating panel. Standard fields for a visible user; the gated
+    minimal whitelist for a private stranger (same gate as users#show). %>
+<% if @gated %>
+  <%= render "users/hovercard_gated", user: @user %>
+<% else %>
+  <%= render "users/hovercard", user: @user %>
+<% end %>
