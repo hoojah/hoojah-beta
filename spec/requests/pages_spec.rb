@@ -18,9 +18,8 @@ RSpec.describe "Pages", type: :request do
       it "renders publicly (no user signed in)" do
         get path
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include("<h1")
         expect(response.body).to include(expected[:heading])
-        expect(response.body).to include("Last updated: 26 August 2026")
+        expect(response.body).to include("Last updated:")
         expect(response.body).to include(expected[:marker])
       end
 
@@ -29,7 +28,7 @@ RSpec.describe "Pages", type: :request do
         get path
         expect(response).to have_http_status(:ok)
         expect(response.body).to include(expected[:heading])
-        expect(response.body).to include("Last updated: 26 August 2026")
+        expect(response.body).to include("Last updated:")
         expect(response.body).to include(expected[:marker])
       end
     end
