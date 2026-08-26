@@ -1,0 +1,61 @@
+<%= render layout: "pages/legal_chrome", locals: {title: "Frequently Asked Questions", updated: "26 August 2026"} do %>
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">What is Hoojah?</h2>
+    <p class="text-grey">Hoojah is a Malaysian social debate platform. Instead of an endless feed of opinions shouted past each other, Hoojah is built around structured disagreement: you post a claim, others take a stance on it, and the best arguments can be settled in a proper one-on-one debate.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">What is a hoojah?</h2>
+    <p class="text-grey">A hoojah (from the Malay <em>hujah</em>, meaning argument) is a claim you post for others to weigh in on — a statement you're prepared to defend. Once posted, other users can vote on it, respond to it with their own stance, or challenge an argument beneath it to a debate.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">How does voting work?</h2>
+    <p class="text-grey">Every hoojah can be voted on in one of three ways: agree, neutral, or disagree. Neutral is a real stance, not an abstention — choosing it says "I've considered this and I'm genuinely undecided or see merit on both sides", and it is counted and displayed alongside agrees and disagrees in the tallies.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">Can the author see how I voted?</h2>
+    <p class="text-grey">No. Votes on Hoojah are a secret ballot. The author of a hoojah — and everyone else — sees only the aggregate tallies: how many people agreed, stayed neutral, and disagreed. Nobody can see which way you, individually, voted, and the system is deliberately built so that vote choices are never attributed to a person.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">What are responses?</h2>
+    <p class="text-grey">Responses are replies to a hoojah, and each one carries its own stance tag — agree, neutral, or disagree — so readers can see at a glance where a reply is coming from. Responses can themselves be responded to, forming a threaded tree of argument under the original claim.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">What is a debate?</h2>
+    <p class="text-grey">Any argument on Hoojah can be escalated into a formal one-on-one debate: a challenger invites an opponent, and if the challenge is accepted, the two take alternating turns through structured rounds — opening, counter, response, and closing. No one else can post inside the debate; everyone else watches.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">Who decides who wins a debate?</h2>
+    <p class="text-grey">Spectators do. People watching a debate cast a verdict for the debater they found more convincing, and the verdict tally decides the outcome when the debate concludes. Debaters can also agree to extend a debate with additional rounds. A debate that sits idle for more than 7 days is automatically concluded, so a walkover can't hold an opponent hostage forever.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">How do follows work?</h2>
+    <p class="text-grey">Following on Hoojah is accepted-only. When you follow someone with a public account, the follow takes effect once accepted; when you request to follow a private account, the request stays pending until that person approves it. Private accounts share their activity only with accepted followers.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">What does blocking someone do?</h2>
+    <p class="text-grey">Blocking is bidirectional: when you block someone, they can no longer see or interact with your content, and you no longer see theirs. It works the same in both directions regardless of who initiated the block.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">What are badges?</h2>
+    <p class="text-grey">Badges are small awards you earn automatically for activity on the platform — posting, participating, and engaging over time. They appear on your profile.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">How does the trending list work?</h2>
+    <p class="text-grey">Trending surfaces hoojahs that are attracting attention right now. It ranks claims by recent activity with a time decay, so a fresh claim gathering votes and responses outranks an old one coasting on past popularity. The list refreshes periodically rather than instantly.</p>
+  </section>
+
+  <section>
+    <h2 class="text-base font-semibold text-ink mb-1">How do I manage my account?</h2>
+    <p class="text-grey">You sign up and sign in with an email address and password. From your account settings you can update your details, switch your account between public and private, and manage who follows you. If you need help with anything else, email us at <%= mail_to "hello@rudzainy.com", class: "text-primary" %>.</p>
+  </section>
+<% end %>
