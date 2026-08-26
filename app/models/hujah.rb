@@ -25,6 +25,27 @@ class Hujah < ApplicationRecord
   # and via direct URL, not in feeds.
   scope :not_removed, -> { where(moderation_status: :active) }
 
+  # Secret ballot (finding 2a/A7): hide the per-stance breakdown until the electorate
+  # is large enough that the published split can't be used to de-anonymize an individual
+  # voter. Below this many total votes, surfaces show the total + the viewer's own stance
+  # only. Reuses UserAnalytics::K (already 5) as the SINGLE threshold source so the
+  # analytics suppression and this cannot drift apart — do not mint a second literal.
+  VOTE_BREAKDOWN_MIN = UserAnalytics::K
+
+  # Total votes cast across all three stances (the electorate size). The single
+  # replacement for the `agree_count + neutral_count + disagree_count` sum that was
+  # duplicated across views/model.
+  def total_votes
+    agree_count.to_i + neutral_count.to_i + disagree_count.to_i
+  end
+
+  # Whether the per-stance breakdown may be shown. Uniform for everyone — including the
+  # author: the secret-ballot threat treats the author as an observer too (the id-less
+  # new_vote notification already refuses the author that de-anonymizing power).
+  def breakdown_visible?
+    total_votes >= VOTE_BREAKDOWN_MIN
+  end
+
   validates :body, presence: true
   # 2026: a top-level claim must be a substantial statement (>= 8 chars); replies
   # (parent_id present) stay unconstrained so a terse "Agreed." still posts.

@@ -10,6 +10,43 @@ RSpec.describe Hujah, type: :model do
     end
   end
 
+  describe "secret-ballot k-anonymity (#total_votes / #breakdown_visible?)" do
+    it "reuses UserAnalytics::K (== 5) as the single threshold source" do
+      expect(UserAnalytics::K).to eq(5)
+      expect(Hujah::VOTE_BREAKDOWN_MIN).to eq(UserAnalytics::K)
+    end
+
+    it "#total_votes sums the three denormalized stance counters" do
+      h = build(:hujah, agree_count: 2, neutral_count: 1, disagree_count: 4)
+      expect(h.total_votes).to eq(7)
+    end
+
+    it "#total_votes treats nil counters as zero" do
+      h = build(:hujah, agree_count: nil, neutral_count: nil, disagree_count: nil)
+      expect(h.total_votes).to eq(0)
+    end
+
+    it "#breakdown_visible? is false at 0 total votes" do
+      h = build(:hujah, agree_count: 0, neutral_count: 0, disagree_count: 0)
+      expect(h.breakdown_visible?).to be false
+    end
+
+    it "#breakdown_visible? is false at 4 total votes (below k)" do
+      h = build(:hujah, agree_count: 2, neutral_count: 1, disagree_count: 1)
+      expect(h.breakdown_visible?).to be false
+    end
+
+    it "#breakdown_visible? is true at exactly 5 total votes (the k boundary)" do
+      h = build(:hujah, agree_count: 3, neutral_count: 1, disagree_count: 1)
+      expect(h.breakdown_visible?).to be true
+    end
+
+    it "#breakdown_visible? is true above k" do
+      h = build(:hujah, agree_count: 50, neutral_count: 20, disagree_count: 30)
+      expect(h.breakdown_visible?).to be true
+    end
+  end
+
   describe "body length + #voted_by?" do
     it "requires >= 8 chars for a top-level claim" do
       h = build(:hujah, parent: nil, body: "short")
