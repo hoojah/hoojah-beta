@@ -27,15 +27,14 @@ All above are production/tooling only; test+dev suite stays green (24/0/2).
 
 ## ⚠️ OPEN — the whole of it
 
-**Two items open.** The secret-ballot item **2a** and all four Slice-11 low follow-ups
-(`vote?-block`, `notif-param-500`, `A7 counts`, `username-uniq-index`) were **closed 2026-08-26** —
-see "Closed in the secret-ballot + hardening pass" below. What remains open is the deploy-gated
-master-key item and one newly-surfaced follow-up (`verdict-k`). Read this table and stop.
+**One item open.** `2a`, the four Slice-11 low follow-ups (`vote?-block`, `notif-param-500`,
+`A7 counts`, `username-uniq-index`), and `verdict-k` are all **closed** (2026-08-26) — see the two
+"Closed" passes below. The **only** remaining open item is the deploy-gated master-key item. Read
+this table and stop.
 
 | ID | Severity | Issue | Where it lands | State |
 |----|----------|-------|----------------|-------|
 | L4 | Low | `config.require_master_key` commented out in `production.rb:19` | Deploy track, **not a slice** | Open by design. Gated on the deploy providing `RAILS_MASTER_KEY`, not on any code change here. Enabling it before the key exists turns a boot into a crash. |
-| **verdict-k** | Low | Debate spectator-verdict percentages (`app/views/debates/_verdict.html.erb`, `Debate#verdict_tally`) render with **no k floor** — the same secret-ballot class as 2a, but a **different electorate** (verdict votes, not hoojah stance votes). At 2 verdict voters, knowing one unmasks the other. | Needs its own owner k-decision | Surfaced by the Fable leak-audit during the 2026-08-26 secret-ballot pass. Deliberately scoped OUT of that pass (2a is specifically hoojah stance votes). Fix = apply the same total-<k suppression to `verdict_tally` once the owner sets k for verdicts. |
 
 **Accepted residual risk (not a scheduled item).** The 2a k-anonymity rule is a pure count
 threshold. Because replying requires a prior vote and a child hoojah publicly carries its author's
@@ -46,6 +45,18 @@ closing the boundary case for the lone silent voter needs a reply-aware threshol
 2026-08-26.
 
 ---
+
+## ✅ Closed — verdict-k + unified k=3 (2026-08-26) — branch `security/verdict-k`
+
+Owner decision 2026-08-26: **lower the secret-ballot threshold k from 5 to 3 everywhere**, and extend
+the gate to debate spectator verdicts (hiding the winner too, since the winner is derived from the
+counts). Explore → spec → subagent TDD → Fable leak-review (confirmed the verdict gate is tight and no
+literal-5 threshold survives).
+
+| ID | Issue | Closed by | What changed |
+|----|-------|-----------|--------------|
+| **k=3** | The 2a/A7 threshold was 5; owner lowered it to 3 for all secret-ballot surfaces. | `bd423a9` | `UserAnalytics::K` `5 → 3` — the single source `Hujah::VOTE_BREAKDOWN_MIN`, the analytics `suppressed?`, and the new verdict gate all reference it, so hoojah vote breakdowns, the analytics distribution, and verdicts now reveal at **3+**. User-facing copy ("fewer than K votes", "sealed until K") interpolates the constant. All boundary specs moved 5→3 (below-k at total 2, ≥k at total 3). |
+| **verdict-k** | Debate spectator-verdict winner + percentages rendered with no k floor — same secret-ballot class as 2a, different electorate. At 1–2 voters the winner itself leaks a vote. | `9ee69bc` | `Debate#verdict_visible?` (`total_verdicts >= UserAnalytics::K`). Below k the concluded winner-hero (`_verdict.html.erb`) suppresses the winner, crown, "Winner" pill, percentages, result bar and dimming — showing only the always-safe "Decided by N spectators" total, a "sealed until K" note, and the viewer's OWN verdict (`Debate#verdict_by`). At ≥k the hero is unchanged. The winner/pct computation was moved *inside* the ≥k branch so nothing derived from the split reaches the DOM below k; the turbo re-render inherits the gate. No debate/verdict serializer exists, so there is no API leg. |
 
 ## ✅ Closed in the secret-ballot + hardening pass (2026-08-26) — branch `security/secret-ballot-and-hardening`
 
