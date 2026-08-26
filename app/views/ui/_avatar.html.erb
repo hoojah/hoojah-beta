@@ -13,8 +13,13 @@
      back to initials on the gradient tile when there isn't one — same as before this
      local existed. `:tile` is the gradient-initials TREATMENT itself
      (docs/design-system/components/core/Avatar.jsx): it renders initials on
-     `.avatar-tile` even for a user who has a photo, for surfaces (navbar, feed cards)
-     that want the tile look on purpose, not merely as a fallback.
+     `.avatar-tile` for surfaces (navbar, feed cards) that want the tile look on
+     purpose, not merely as a fallback. The one exception is a genuinely UPLOADED
+     avatar: when `user.avatar.attached?`, `:tile` shows that photo, because a real
+     photo the user chose should win over the branded tile. Note this keys on the
+     ActiveStorage attachment ONLY, never on the legacy `photo` string — `photo` is a
+     seeded random value present on every user, so keying on it would show a stranger's
+     stock image on the tile. A `:tile` user with only the legacy `photo` still tiles.
 
      Deliberately NOT a Rails strict-locals signature: one of the locals is `class`, which
      cannot be a Ruby parameter name, so the whole signature is unavailable to this partial.
@@ -40,8 +45,8 @@
        different ways depending on whether they uploaded a photo is a bug; the handle
        is not always adjacent either (see shared/_navbar).
 %><% tile = local_assigns[:variant] == :tile %>
-<% avatar_url = tile ? nil : ds_avatar_url(user) %>
-<% tile ||= avatar_url.blank? %>
+<% avatar_url = (tile && !user.avatar.attached?) ? nil : ds_avatar_url(user) %>
+<% tile = avatar_url.blank? %>
 <% box = "#{ds_avatar_classes(size: local_assigns[:size], variant: (tile ? :tile : :photo))} shrink-0 #{local_assigns[:class]}".squish %>
 <% if tile %>
   <span role="img" aria-label="<%= user.full_name %>"
