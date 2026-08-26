@@ -76,10 +76,15 @@
   <div class="flex gap-2 mt-3">
     <% rows.each do |stance, choice, _count| %>
       <% voted = current_user_vote == stance %>
+      <%# button_to wraps each button in a <form>, so THAT form is the flex child — it
+          needs `flex-1` to claim an equal third of the row; the button then fills it with
+          `w-full`. (Putting flex-1 on the button alone left the forms content-sized and the
+          buttons clustered left, not spanning the card like the mockup.) %>
       <%= button_to hujah_votes_path(hujah.slug),
             params: { vote: choice },
+            form: { class: "flex-1" },
             aria: { label: stance.capitalize, pressed: voted.to_s },
-            class: "flex-1 h-10 rounded-full border-[1.5px] border-#{stance} text-#{stance} " \
+            class: "w-full h-10 rounded-full border-[1.5px] border-#{stance} text-#{stance} " \
                    "#{voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card"} " \
                    "flex items-center justify-center gap-1.5 text-xs font-bold transition active:scale-95" do %>
         <%= lucide_icon("check", class: "w-3.5 h-3.5") if voted %>
