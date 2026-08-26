@@ -11,7 +11,11 @@
     given a Hash and a block, `RenderingHelper#render` renders `options[:layout]` and
     ignores `options[:partial]`. See `ui/_card`'s header for the full explanation.
 
-    Locals: `width:` a Tailwind width utility (REQUIRED); `class:` extra utilities.
+    Locals: `width:` a Tailwind width utility (REQUIRED); `align:` the horizontal anchor
+    (`right-0` default, so the panel hangs off the trigger's right edge; pass `left-0` for a
+    LEFT-anchored trigger like the navbar avatar so the panel opens rightward, not off the
+    viewport); `class:` extra utilities. Never pass BOTH edges — `right-0`+`left-0` stretches
+    the panel full-width.
 
     It is the PANEL ONLY — not the `<details>`, not the `<summary>`. Deliberately: the
     three triggers have nothing in common (an avatar plus an unread dot; a share glyph;
@@ -41,5 +45,5 @@
     Deliberately NOT a Rails strict-locals signature: one of the locals is `class`, which
     cannot be a Ruby parameter name (same constraint as `ui/_card` and `ui/_avatar`).
 %><%= content_tag :div,
-      class: "absolute right-0 mt-1 bg-card shadow rounded p-2 z-10 " \
+      class: "absolute #{local_assigns.fetch(:align, "right-0")} mt-1 bg-card shadow rounded p-2 z-10 " \
              "#{local_assigns.fetch(:width)} #{local_assigns[:class]}".squish do %><%= yield %><% end %>

@@ -65,6 +65,16 @@ RSpec.describe "shared/_navbar", type: :view do
       expect(navbar).to have_css("[data-controller='theme'].order-2")
     end
 
+    it "contains the bar to the body width and opens the avatar menu rightward" do
+      # Inner bar matches the feed <main> (max-w-5xl mx-auto px-4) so nav items align
+      # with the page body, not the viewport edges.
+      expect(navbar).to have_css("nav div.max-w-5xl.mx-auto")
+      # The left-anchored avatar's panel opens rightward (left-0), not off-screen left.
+      # visible: :all — the panel lives inside a CLOSED <details> in a view spec.
+      expect(navbar).to have_css("details div.left-0.w-56", visible: :all)
+      expect(navbar).to have_no_css("details div.right-0", visible: :all)
+    end
+
     it "renders the menu summary avatar as the 2026 gradient tile, even though this user has a photo" do
       expect(navbar).to have_css("details summary span.avatar-tile.rounded-xl", text: "MZ")
       expect(navbar).to have_no_css("details summary img")

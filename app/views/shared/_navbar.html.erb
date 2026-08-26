@@ -25,14 +25,16 @@
     (Task 0.4) without switching to `ds_button_classes` itself — same anchor, same lack
     of `active:scale-95`, just a coloured box instead of a bare icon. %>
 <nav class="fixed top-0 inset-x-0 z-20 bg-nav backdrop-blur border-b border-hairline">
-  <%# Three-zone bar (owner-approved). On <sm this is a flex row with `order-*`
-      so the logo reads left; at >=sm it becomes a 3-column grid whose CENTER
-      column holds the logo, `justify-self-*` pinning each zone (left / centre /
-      right) so the logo is TRULY centred regardless of the side widths.
+  <%# Three-zone bar (owner-approved). The inner bar matches the page body's
+      container exactly (`max-w-5xl mx-auto px-4`, same as feed index's <main>), so the
+      left/right zones align with the body content edges instead of the viewport edges.
+      On <sm this is a flex row with `order-*` so the logo reads left; at >=sm it becomes
+      a 3-column grid whose CENTER column holds the logo, `justify-self-*` pinning each
+      zone (left / centre / right) so the logo is TRULY centred regardless of side widths.
       LEFT  = user dropdown (signed-in only, order-1) + theme pill (always, order-2)
       CENTER = logo
       RIGHT = Trending (mobile/tablet only) + New Claim (signed-in) OR Login/Sign up (guest) %>
-  <div class="max-w-xl sm:max-w-none mx-auto px-4 sm:px-6 h-14 flex items-center justify-between sm:grid sm:grid-cols-3">
+  <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between sm:grid sm:grid-cols-3">
     <%# LEFT zone %>
     <div class="order-2 sm:order-none sm:justify-self-start flex items-center gap-3">
       <%# Theme + scheme control (Hoojah 2026). A compact pill, reachable on every
@@ -82,7 +84,9 @@
                     class="ml-1 inline-block w-2 h-2 rounded-full bg-neutral"></span>
             <% end %>
           </summary>
-          <%= render layout: "ui/menu", locals: {width: "w-56"} do %>
+          <%# align: "left-0" — the avatar is the LEFT-most nav item now, so its panel
+              opens rightward (left edge under the trigger), not off the viewport left. %>
+          <%= render layout: "ui/menu", locals: {width: "w-56", align: "left-0"} do %>
             <h6 class="text-xs text-grey px-3 pb-1">@<%= current_user.username %></h6>
             <%= link_to "Your profile", profile_path(current_user.username), class: ds_menu_item_classes %>
             <%= link_to "Dashboard", dashboard_path, class: ds_menu_item_classes %>
