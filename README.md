@@ -185,6 +185,32 @@ comment at the top of `config/database.yml`). Their tables come from `db/cache_m
 because `db:prepare` skips a schema dump once `schema_migrations` exists in the target
 database — which, sharing one database, it always does.
 
+### Ongoing migrations run as a pre-deploy command
+
+The bootstrap above covers only the *first* deploy. Every deploy after it may carry new
+migrations, and `bin/docker-entrypoint` intentionally does not run them (per-start
+migration races once there is more than one replica; `db:prepare` runs seeds). Wire
+migrations into Coolify's **Pre-deployment Command** instead:
+
+```bash
+bin/release
+```
+
+`bin/release` runs `bundle exec rails db:migrate` once per release, inside a container from
+the newly built image, before the new version takes traffic. It is fail-closed: a
+migration that errors exits non-zero, so Coolify aborts the release and the current
+version keeps serving — code never goes live ahead of its schema.
+
+This matters because native auto-deploy ships **every** push to `master` regardless of CI
+(see the tradeoff note above): a push that adds a migration will 500 on every page that
+touches the changed model until the migration runs. That is precisely what happened on
+2026-08-26 — the `moderation_status` enum reached production a release ahead of its column.
+The pre-deploy command removes the manual step so it cannot be forgotten.
+
+Set it once in the app's Coolify settings (Pre-deployment Command). It lives in the
+dashboard, not the repo, so **merging this change does not apply it** — configure it there,
+then it runs on every subsequent release.
+
 ### The background worker is a second service
 
 `config/recurring.yml` schedules `ConcludeStaleDebatesJob` daily at 3am, so **without a
