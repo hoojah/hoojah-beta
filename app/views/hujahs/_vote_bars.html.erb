@@ -75,9 +75,10 @@
       <%= button_to hujah_votes_path(hujah.slug),
             params: { vote: choice },
             aria: { label: stance.capitalize, pressed: voted.to_s },
-            class: "flex-1 h-11 rounded-xl border-[1.5px] border-#{stance} " \
-                   "#{voted ? "bg-#{stance} text-white" : "bg-card text-#{stance}"} " \
+            class: "flex-1 h-10 rounded-full border-[1.5px] border-#{stance} text-#{stance} " \
+                   "#{voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card"} " \
                    "flex items-center justify-center gap-1.5 text-xs font-bold transition active:scale-95" do %>
+        <%= lucide_icon("check", class: "w-3.5 h-3.5") if voted %>
         <%= stance_icon(stance, class: "w-4 h-4") %>
         <%= stance.capitalize %>
       <% end %>

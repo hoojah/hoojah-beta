@@ -728,3 +728,19 @@ RSpec.describe "Stance soft-tint utilities reach the compiled bundle" do
     end
   end
 end
+
+# The vote widget (`hujahs/_vote_bars.html.erb`) marks the viewer's own stance with a
+# stance-coloured ring: `ring-#{stance}` interpolated over the trio. Like every other
+# interpolated stance prefix it is invisible to Tailwind's source scanner, so it needs
+# its own `@source inline("ring-{agree,neutral,disagree}")` line or the voted button
+# gets no ring at all. No literal `ring-agree` is spelled out anywhere else in the app,
+# so this block is the only thing proving that safelist entry ships.
+RSpec.describe "Stance ring utilities reach the compiled bundle" do
+  before(:all) { TailwindBuild.once! }
+
+  it "emits the interpolated voted-marker ring utilities" do
+    %w[ring-agree ring-neutral ring-disagree].each do |u|
+      expect(TailwindBuild.emitted?(u)).to be(true), "expected #{u} in the bundle"
+    end
+  end
+end
