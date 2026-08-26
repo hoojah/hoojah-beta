@@ -554,13 +554,13 @@ RSpec.describe DesignSystemHelper, type: :helper do
       ActiveStorage::Current.url_options = old
     end
 
-    it "returns the attached avatar url when attached" do
+    it "returns the stable Active Storage PROXY path when an avatar is attached" do
       user = create(:user)
       user.avatar.attach(io: StringIO.new("img"), filename: "a.png", content_type: "image/png")
-      # freeze_time so the two DiskService#url calls generate byte-identical signed URLs
-      freeze_time do
-        expect(helper.ds_avatar_url(user)).to eq(user.avatar.url)
-      end
+      # NOT blob.url: that is a presigned S3/Garage URL expiring in 5 min, which goes
+      # stale in cached HTML. The proxy path is stable and non-expiring.
+      expect(helper.ds_avatar_url(user)).to eq(helper.rails_storage_proxy_path(user.avatar))
+      expect(helper.ds_avatar_url(user)).to start_with("/rails/active_storage/blobs/proxy/")
     end
 
     it "falls back to the photo string when no avatar is attached" do

@@ -260,8 +260,15 @@ module DesignSystemHelper
 
   # Resolve a user's avatar image URL: prefer an uploaded ActiveStorage avatar,
   # fall back to the legacy Cloudinary `photo` string, else nil (caller renders the tile).
+  #
+  # Attached avatars are served through the Active Storage PROXY, never `blob.url`.
+  # On the S3/Garage service `blob.url` is a PRESIGNED URL that expires in 5 minutes
+  # (`X-Amz-Expires=300`); baked into cached HTML it goes stale and the <img> 400s with
+  # "Date is too old". The proxy path (`/rails/active_storage/blobs/proxy/...`) is stable
+  # and non-expiring, works against a private bucket with no anonymous-read policy, and
+  # Thruster's X-Sendfile serves the bytes without tying up a Puma thread.
   def ds_avatar_url(user)
-    return user.avatar.url if user.avatar.attached?
+    return rails_storage_proxy_path(user.avatar) if user.avatar.attached?
     user.photo.presence
   end
 

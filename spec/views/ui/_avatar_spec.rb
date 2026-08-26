@@ -36,9 +36,15 @@ RSpec.describe "ui/_avatar", type: :view do
   end
 
   it "renders the uploaded photo on a :tile surface when an avatar is attached" do
-    user.avatar.attach(io: StringIO.new("png-bytes"), filename: "a.png", content_type: "image/png")
+    # `create` (persisted), not the shared `build`: `ds_avatar_url` now returns a
+    # `rails_storage_proxy_path`, which needs a persisted blob to produce a signed_id.
+    # Real callers always pass persisted users; only this spec's build-by-default bit.
+    saved = create(:user, full_name: "Maya Zaharudin", username: "maya")
+    saved.avatar.attach(io: StringIO.new("png-bytes"), filename: "a.png", content_type: "image/png")
 
-    expect(avatar(variant: :tile)).to have_css("img")
+    result = avatar(user: saved, variant: :tile)
+    expect(result).to have_css("img")
+    expect(result).to have_css("img[src^='/rails/active_storage/blobs/proxy/']")
   end
 
   it "tiles a :tile user who has only the legacy photo string, never the seeded image" do
