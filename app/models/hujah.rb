@@ -46,6 +46,19 @@ class Hujah < ApplicationRecord
     total_votes >= VOTE_BREAKDOWN_MIN
   end
 
+  # The ballot counts as serialized to clients: total is always present; the per-stance
+  # breakdown is nil until breakdown_visible? (secret-ballot k-anonymity). Single source
+  # for every serializer so the gate can't drift between them.
+  def ballot_counts
+    visible = breakdown_visible?
+    {
+      total_count: total_votes,
+      agree_count: visible ? agree_count : nil,
+      neutral_count: visible ? neutral_count : nil,
+      disagree_count: visible ? disagree_count : nil
+    }
+  end
+
   validates :body, presence: true
   # 2026: a top-level claim must be a substantial statement (>= 8 chars); replies
   # (parent_id present) stay unconstrained so a terse "Agreed." still posts.

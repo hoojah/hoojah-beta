@@ -8,21 +8,10 @@ class HujahSerializer
   # HTML suppression. total_count (the electorate size) is always present, and is what a
   # client shows in place of the split. current_user_vote (the viewer's own datum) is
   # unaffected below.
-  attribute :total_count do |h|
-    h.total_votes
-  end
-
-  attribute :agree_count do |h|
-    h.breakdown_visible? ? h.agree_count : nil
-  end
-
-  attribute :neutral_count do |h|
-    h.breakdown_visible? ? h.neutral_count : nil
-  end
-
-  attribute :disagree_count do |h|
-    h.breakdown_visible? ? h.disagree_count : nil
-  end
+  attribute(:total_count) { |h| h.ballot_counts[:total_count] }
+  attribute(:agree_count) { |h| h.ballot_counts[:agree_count] }
+  attribute(:neutral_count) { |h| h.ballot_counts[:neutral_count] }
+  attribute(:disagree_count) { |h| h.ballot_counts[:disagree_count] }
 
   # Slice 11 (A1): children_count reflects only the replies this viewer may see —
   # returning the raw count alongside a filtered `children` array would itself leak
@@ -80,12 +69,9 @@ class HujahSerializer
         attributes: {
           body: child.body,
           vote: child.vote,
-          # Secret ballot (2a/A7): a child's per-stance split leaks identically — nil it
-          # below k, always expose total_count.
-          total_count: child.total_votes,
-          agree_count: child.breakdown_visible? ? child.agree_count : nil,
-          neutral_count: child.breakdown_visible? ? child.neutral_count : nil,
-          disagree_count: child.breakdown_visible? ? child.disagree_count : nil,
+          # Secret ballot (2a/A7): a child's per-stance split leaks identically — the
+          # nil-below-k gate is single-sourced in Hujah#ballot_counts.
+          **child.ballot_counts,
           slug: child.slug,
           user: {
             attributes: {

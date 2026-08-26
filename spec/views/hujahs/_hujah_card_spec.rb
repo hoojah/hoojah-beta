@@ -88,14 +88,30 @@ RSpec.describe "hujahs/_hujah_card", type: :view do
 
     before { allow(view).to receive_messages(user_signed_in?: false, current_user: nil) }
 
-    it "suppresses the percentage legend but keeps the three vote buttons" do
+    it "suppresses the percentage legend for every stance but keeps the three vote buttons" do
+      widget = "##{ActionView::RecordIdentifier.dom_id(hujah, :vote_bars)}"
       c = card
-      expect(c).to have_no_css("##{ActionView::RecordIdentifier.dom_id(hujah, :vote_bars)} .text-agree", text: "%")
-      expect(c).to have_css("##{ActionView::RecordIdentifier.dom_id(hujah, :vote_bars)} form", count: 3)
+      # The per-stance numbers only ever render inside the percent legend (`N% stance`);
+      # below k none of the three may appear — this is the raw per-stance leak vector.
+      expect(c).to have_no_css("#{widget} .text-agree", text: "%")
+      expect(c).to have_no_css("#{widget} .text-neutral", text: "%")
+      expect(c).to have_no_css("#{widget} .text-disagree", text: "%")
+      expect(c).to have_css("#{widget} form", count: 3)
     end
 
-    it "still shows the aggregate footer total (not a per-stance breakdown)" do
-      expect(card).to have_content("4")
+    it "shows only the total-vote label inside the widget, no per-stance breakdown" do
+      widget = card.find("##{ActionView::RecordIdentifier.dom_id(hujah, :vote_bars)}")
+      expect(widget).to have_text("4 votes")
+      # the segmented percentage bar (the only place a per-stance figure surfaces) is gone
+      expect(widget).to have_no_css("[style*='width']")
+    end
+
+    # Scope the total to the footer aggregate node (the first count span behind the
+    # bar-chart-3 glyph) rather than a bare "4" anywhere on the card — the loose match
+    # would pass on any stray "4" and can't distinguish the total from a leaked count.
+    it "shows the aggregate footer total behind the bar-chart-3 glyph, not a per-stance count" do
+      footer_link = card.find("a.text-ink-2.no-underline")
+      expect(footer_link.find("span.ml-1", match: :first)).to have_text("4", exact: true)
     end
   end
 

@@ -45,6 +45,22 @@ RSpec.describe Hujah, type: :model do
       h = build(:hujah, agree_count: 50, neutral_count: 20, disagree_count: 30)
       expect(h.breakdown_visible?).to be true
     end
+
+    describe "#ballot_counts (single-source serializer gate)" do
+      it "nils the three per-stance counts and keeps total_count below k" do
+        h = build(:hujah, agree_count: 2, neutral_count: 1, disagree_count: 1) # total 4
+        expect(h.ballot_counts).to eq(
+          total_count: 4, agree_count: nil, neutral_count: nil, disagree_count: nil
+        )
+      end
+
+      it "exposes the real per-stance counts and total at or above k" do
+        h = build(:hujah, agree_count: 3, neutral_count: 1, disagree_count: 1) # total 5
+        expect(h.ballot_counts).to eq(
+          total_count: 5, agree_count: 3, neutral_count: 1, disagree_count: 1
+        )
+      end
+    end
   end
 
   describe "body length + #voted_by?" do
