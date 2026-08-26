@@ -24,9 +24,13 @@ class UserSerializer
         attributes: {
           body: child_hujah.body,
           vote: child_hujah.vote,
-          agree_count: child_hujah.agree_count,
-          neutral_count: child_hujah.neutral_count,
-          disagree_count: child_hujah.disagree_count,
+          # Secret ballot (2a/A7): this is the same per-stance split gated in
+          # HujahSerializer, reachable via GET /api/v1/:username — gate it identically
+          # (nil below k=5, always expose total_count).
+          total_count: child_hujah.total_votes,
+          agree_count: child_hujah.breakdown_visible? ? child_hujah.agree_count : nil,
+          neutral_count: child_hujah.breakdown_visible? ? child_hujah.neutral_count : nil,
+          disagree_count: child_hujah.breakdown_visible? ? child_hujah.disagree_count : nil,
           slug: child_hujah.slug,
           user: {
             attributes: {
