@@ -13,27 +13,37 @@ class FollowRequestsController < ApplicationController
   # Accept a pending follow request. Only the followed user may act
   # (FollowRequestPolicy). Flipping status → accepted fires the Follow model's
   # after_update_commit (follow_accepted to the requester + new_follower + badge).
+  #
+  # Turbo: capture the dismissed notification ids BEFORE rendering so the stream
+  # (_actioned.turbo_stream.erb) can remove their cards. HTML fallback (no-JS)
+  # keeps the redirect_back. One stream body serves both the inbox and the
+  # notifications page — turbo_stream.remove of an absent target is a no-op.
   def update
     authorize @follow, :update?, policy_class: FollowRequestPolicy
     @follow.update!(status: :accepted)
-    dismiss_request_notification
-    redirect_back fallback_location: notifications_path, status: :see_other
+    @dismissed_notification_ids = @follow.dismiss_request_notification!.map(&:id)
+    respond_to do |f|
+      f.turbo_stream
+      f.html { redirect_back fallback_location: notifications_path, status: :see_other }
+    end
   end
 
-  # Decline: drop the pending follow outright (no notification blast).
+  # Decline: drop the pending follow outright (no notification blast). Dismiss the
+  # request notification FIRST (its query keys on the follower/followed id pair, not
+  # the follow's own id, so it works after destroy too — but capturing the ids up
+  # front is clearest), then destroy. `@follow` survives in memory after destroy,
+  # so `dom_id(@follow, :request)` still resolves in the stream.
   def destroy
     authorize @follow, :destroy?, policy_class: FollowRequestPolicy
+    @dismissed_notification_ids = @follow.dismiss_request_notification!.map(&:id)
     @follow.destroy
-    dismiss_request_notification
-    redirect_back fallback_location: notifications_path, status: :see_other
+    respond_to do |f|
+      f.turbo_stream
+      f.html { redirect_back fallback_location: notifications_path, status: :see_other }
+    end
   end
 
   private
 
   def set_follow = @follow = Follow.find(params[:id])
-
-  # The follow_request notification has been actioned — remove it so its card
-  # disappears. The behaviour lives on the model (Follow#dismiss_request_notification!)
-  # so the accept/decline/expiry/cancel paths share one implementation.
-  def dismiss_request_notification = @follow.dismiss_request_notification!
 end

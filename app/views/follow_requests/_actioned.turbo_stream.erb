@@ -1,0 +1,25 @@
+<%# Shared stream body for accept (update) and decline (destroy): both have the
+    identical DOM consequence — the request row/cards disappear. One body serves
+    BOTH surfaces because turbo_stream.remove of an absent target is a silent
+    no-op, so the same response works from the inbox and from the notifications
+    page.
+
+    Row id: dom_id(@follow, :request) → follow_<id>_request (the inbox row).
+    Card id: notification_<id> (the notification card wraps in dom_id(notification)
+    — see _notification_card.html.erb's ui/card layout). %>
+<%= turbo_stream.remove dom_id(@follow, :request) %>
+<% @dismissed_notification_ids.each do |id| %>
+  <%= turbo_stream.remove "notification_#{id}" %>
+<% end %>
+<%# Refresh the dropdown count chip (id from shared/_navbar; absent when the menu
+    isn't in the DOM → no-op). When none remain, remove the chip and swap the inbox
+    list for its empty state (the list update is a no-op on the notifications page). %>
+<% remaining = current_user.passive_follows.pending.count %>
+<% if remaining.zero? %>
+  <%= turbo_stream.remove "nav-follow-requests-count" %>
+  <%= turbo_stream.update "follow_requests_list" do %>
+    <%= render "ui/empty_state", message: "No pending follow requests", icon: "user-plus" %>
+  <% end %>
+<% else %>
+  <%= turbo_stream.update "nav-follow-requests-count", "(#{remaining})" %>
+<% end %>

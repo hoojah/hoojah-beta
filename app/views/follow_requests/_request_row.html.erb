@@ -12,8 +12,9 @@
     Accept/decline are the exact notification-card idiom
     (_notification_card.html.erb) — bare `ds_button_classes(variant: :link)` controls,
     not solid pills. They post to /follow_requests/:id (FollowRequestPolicy gates them
-    to this user). This task keeps the existing `redirect_back` responses; Task 6
-    upgrades both surfaces to turbo_stream. %>
+    to this user). The responses are turbo_stream: accept/decline remove this row in
+    place (_actioned.turbo_stream.erb removes `dom_id(follow, :request)`) with an HTML
+    fallback that `redirect_back`s for no-JS clients. %>
 <div id="<%= dom_id(follow, :request) %>" class="flex items-center gap-3 p-3 bg-white border-b border-gray-100">
   <%= link_to profile_path(follow.follower.username),
         class: "flex-1 flex items-center gap-3 no-underline min-w-0" do %>

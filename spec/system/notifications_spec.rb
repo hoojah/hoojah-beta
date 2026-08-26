@@ -36,6 +36,28 @@ RSpec.describe "Notifications", type: :system, js: true do
     expect(Notification.exists?(notification.id)).to be(false)
   end
 
+  it "accepts a follow request from its notification card, removing it in place" do
+    # A private user with an incoming request: creating the pending follow fires the
+    # follow_request notification whose card carries Accept/Decline (Task 6 makes
+    # them respond with turbo_stream, so the card vanishes without a reload).
+    me_private = create(:user, private: true)
+    requester = create(:user, username: "asker")
+    requester.active_follows.create!(followed: me_private, status: :pending)
+    notification = Notification.find_by(user: me_private, subject_user: requester, category: :follow_request)
+
+    login_as_system(me_private)
+    visit notifications_path
+
+    card = "##{ActionView::RecordIdentifier.dom_id(notification)}"
+    expect(page).to have_selector(card)
+    expect(page).to have_content("@asker requested to follow you")
+
+    within(card) { click_button "Accept" }
+
+    expect(page).not_to have_selector(card)
+    expect(me_private.reload.followers).to include(requester)
+  end
+
   it "shows the empty state when there are no notifications" do
     login_as_system(me)
     visit notifications_path

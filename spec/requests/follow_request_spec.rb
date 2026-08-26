@@ -44,6 +44,43 @@ RSpec.describe "Follow requests", type: :request do
       expect(follow.reload).to be_accepted
       expect(owner.followers).to include(requester)
     end
+
+    it "a plain HTML form post still redirects (303) for no-JS clients" do
+      follow = requester.active_follows.create!(followed: owner, status: :pending)
+      sign_in owner
+      patch follow_request_path(follow)
+      expect(response).to have_http_status(:see_other)
+      expect(follow.reload).to be_accepted
+    end
+
+    it "responds with a turbo_stream that removes the row and the request card" do
+      follow = requester.active_follows.create!(followed: owner, status: :pending)
+      req_notification = Notification.find_by(user: owner, subject_user: requester, category: :follow_request)
+      sign_in owner
+      patch follow_request_path(follow), headers: ts
+
+      expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+      expect(response.body).to include("action=\"remove\"")
+      expect(response.body).to include("target=\"#{ActionView::RecordIdentifier.dom_id(follow, :request)}\"")
+      expect(response.body).to include("target=\"notification_#{req_notification.id}\"")
+      # The owner's last pending request is gone → the nav count chip is removed and
+      # the inbox list swaps to its empty state.
+      expect(response.body).to include("target=\"nav-follow-requests-count\"")
+      expect(response.body).to include("No pending follow requests")
+    end
+
+    it "updates (not removes) the nav count when other requests remain" do
+      follow = requester.active_follows.create!(followed: owner, status: :pending)
+      other = create(:user, username: "second_req")
+      other.active_follows.create!(followed: owner, status: :pending)
+      sign_in owner
+      patch follow_request_path(follow), headers: ts
+
+      expect(response.body).to include("action=\"update\"")
+      expect(response.body).to include("target=\"nav-follow-requests-count\"")
+      expect(response.body).to include("(1)")
+      expect(response.body).not_to include("No pending follow requests")
+    end
   end
 
   describe "the followed user declines (DELETE)" do
@@ -51,6 +88,28 @@ RSpec.describe "Follow requests", type: :request do
       follow = requester.active_follows.create!(followed: owner, status: :pending)
       sign_in owner
       delete follow_request_path(follow)
+      expect(Follow.exists?(follow.id)).to be(false)
+    end
+
+    it "a plain HTML form post still redirects (303) for no-JS clients" do
+      follow = requester.active_follows.create!(followed: owner, status: :pending)
+      sign_in owner
+      delete follow_request_path(follow)
+      expect(response).to have_http_status(:see_other)
+      expect(Follow.exists?(follow.id)).to be(false)
+    end
+
+    it "responds with a turbo_stream that removes the row and the request card" do
+      follow = requester.active_follows.create!(followed: owner, status: :pending)
+      req_notification = Notification.find_by(user: owner, subject_user: requester, category: :follow_request)
+      sign_in owner
+      delete follow_request_path(follow), headers: ts
+
+      expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+      expect(response.body).to include("target=\"#{ActionView::RecordIdentifier.dom_id(follow, :request)}\"")
+      expect(response.body).to include("target=\"notification_#{req_notification.id}\"")
+      expect(response.body).to include("target=\"nav-follow-requests-count\"")
+      expect(response.body).to include("No pending follow requests")
       expect(Follow.exists?(follow.id)).to be(false)
     end
   end
