@@ -6,10 +6,12 @@
    by_reason = pending.group_by(&:subject) %>
 <%= render layout: "ui/card", locals: {id: dom_id(hujah, :moderation_item), padded: true, class: "mb-3"} do %>
   <div class="flex items-center gap-2">
-    <%= render "ui/avatar", user: hujah.user, size: :row %>
+    <%= render layout: "ui/user_link", locals: {user: hujah.user, class: "shrink-0"} do %>
+      <%= render "ui/avatar", user: hujah.user, size: :row %>
+    <% end %>
     <div class="min-w-0">
-      <div class="font-bold text-ink truncate"><%= hujah.user.full_name %></div>
-      <div class="text-sm text-grey truncate">@<%= hujah.user.username %></div>
+      <div class="font-bold text-ink truncate"><%= render layout: "ui/user_link", locals: {user: hujah.user, class: "text-ink"} do %><%= hujah.user.full_name %><% end %></div>
+      <div class="text-sm text-grey truncate"><%= render layout: "ui/user_link", locals: {user: hujah.user, class: "text-grey"} do %>@<%= hujah.user.username %><% end %></div>
     </div>
   </div>
 

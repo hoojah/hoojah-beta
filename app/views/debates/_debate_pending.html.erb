@@ -22,19 +22,23 @@
   <%= render "debates/debate_status", debate: debate %>
 
   <div class="flex items-center gap-3 mt-2">
-    <%= render "ui/avatar", user: debate.challenger, size: :lg, variant: :tile %>
+    <%= render layout: "ui/user_link", locals: {user: debate.challenger, class: "shrink-0"} do %>
+      <%= render "ui/avatar", user: debate.challenger, size: :lg, variant: :tile %>
+    <% end %>
     <span class="w-11 h-11 rounded-xl bg-disagree shadow flex items-center justify-center shrink-0">
       <%= lucide_icon("swords", class: "w-5 h-5 text-white") %>
     </span>
-    <%= render "ui/avatar", user: debate.opponent, size: :lg, variant: :tile %>
+    <%= render layout: "ui/user_link", locals: {user: debate.opponent, class: "shrink-0"} do %>
+      <%= render "ui/avatar", user: debate.opponent, size: :lg, variant: :tile %>
+    <% end %>
   </div>
 
   <p class="mt-3 text-lg font-bold text-ink">
-    <span class="text-agree">@<%= debate.challenger.username %></span>
+    <%= render layout: "ui/user_link", locals: {user: debate.challenger, class: "text-agree"} do %>@<%= debate.challenger.username %><% end %>
     <% if viewer == debate.opponent %>
       challenged you to a debate
     <% else %>
-      challenged <span class="text-disagree">@<%= debate.opponent.username %></span> to a debate
+      challenged <%= render layout: "ui/user_link", locals: {user: debate.opponent, class: "text-disagree"} do %>@<%= debate.opponent.username %><% end %> to a debate
     <% end %>
   </p>
 

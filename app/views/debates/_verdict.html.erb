@@ -83,7 +83,7 @@
                         style: "fill:#ffd76a;stroke:#ffd76a") %>
                 <% end %>
               </div>
-              <span class="text-sm font-extrabold">@<%= participant.username %></span>
+              <%= render layout: "ui/user_link", locals: {user: participant, class: "text-white text-sm font-extrabold"} do %>@<%= participant.username %><% end %>
               <span class="text-[10px] font-bold uppercase tracking-wide bg-white/20 px-2.5 py-0.5 rounded-full">
                 <%= is_winner ? "Winner" : (side == :challenger ? "Challenger" : "Opponent") %>
               </span>
@@ -136,7 +136,7 @@
       <% side_color = (turn.user_id == debate.challenger_id) ? "agree" : "disagree" %>
       <%= render layout: "ui/card", locals: {padded: true} do %>
         <div class="text-[10.5px] font-bold uppercase tracking-wide text-<%= side_color %> mb-1">
-          Closing &middot; @<%= turn.user.username %>
+          Closing &middot; <%= render layout: "ui/user_link", locals: {user: turn.user, class: "text-#{side_color}"} do %>@<%= turn.user.username %><% end %>
         </div>
         <div class="hujah-body text-sm text-ink break-words"><%= format_body(turn.body) %></div>
       <% end %>

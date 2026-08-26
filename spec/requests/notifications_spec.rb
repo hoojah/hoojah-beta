@@ -25,9 +25,11 @@ RSpec.describe "Notifications", type: :request do
     # All four fire on every real debate, and each used to render as a bare row with
     # no icon and no "what happened" line at all.
     #
-    # Task 4.2 wraps the actor handle in <strong>, so "@rival challenged you to a
-    # debate" is no longer one contiguous text run — assert the handle and the rest
-    # of the sentence as separate substrings instead of stitching HTML across the tag.
+    # Task 4.2 wraps the actor handle in <strong>, and Slice B links that handle to the
+    # actor's profile via ui/_user_link, so "@rival challenged you to a debate" is no
+    # longer one contiguous text run — a hovercard <a> now sits between the </strong> and
+    # the sentence. Assert the bolded handle and the rest of the sentence as separate
+    # substrings instead of stitching HTML across the tag.
     it "renders copy for every debate category rather than a blank row" do
       rival = create(:user, username: "rival")
       debate = create(:debate, challenger: me, opponent: rival)
@@ -37,11 +39,39 @@ RSpec.describe "Notifications", type: :request do
       end
       sign_in me
       get "/notifications"
-      expect(response.body).to include("<strong>@rival</strong> challenged you to a debate")
-      expect(response.body).to include("<strong>@rival</strong> declined your debate challenge")
+      expect(response.body).to include("<strong>@rival</strong>")
+      expect(response.body).to include("challenged you to a debate")
+      expect(response.body).to include("declined your debate challenge")
       # "It's" is HTML-escaped in the rendered page — assert past the apostrophe.
-      expect(response.body).to include("your turn in your debate with <strong>@rival</strong>")
-      expect(response.body).to include("Your debate with <strong>@rival</strong> has concluded")
+      expect(response.body).to include("your turn in your debate with")
+      expect(response.body).to include("has concluded")
+    end
+
+    # Slice B (navbar-hovercard-follows): the notification actor handle is now a real
+    # <a> to the actor's profile carrying the hovercard controller — keyboard-focusable,
+    # middle-clickable, JS-off navigable. Assert the anchor, its href, and the trigger.
+    it "links the actor handle to the profile with a hovercard trigger" do
+      rival = create(:user, username: "rival")
+      debate = create(:debate, challenger: me, opponent: rival)
+      create(:notification, user: me, category: :debate_challenge, debate:,
+        hujah: debate.hujah, subject_user: rival)
+      sign_in me
+      get "/notifications"
+      expect(response.parsed_body.css('a[href="/u/rival"][data-controller="hovercard"] strong'))
+        .to be_present
+    end
+
+    # Secret ballot / nil-actor categories: new_vote carries no subject_user by
+    # construction, so its card must render WITHOUT raising and WITHOUT any profile link
+    # for a (non-existent) actor. The generic icon-tile + "new vote" copy names no one.
+    it "renders a nil-actor new_vote notification with no actor profile link" do
+      hujah = create(:hujah, user: me)
+      create(:notification, user: me, category: :new_vote, hujah:, subject_user: nil)
+      sign_in me
+      get "/notifications"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("You have a new vote on your hoojah")
+      expect(response.parsed_body.css('a[data-controller="hovercard"]')).to be_empty
     end
 
     # Nothing creates these two — they are enum values inherited from the retired

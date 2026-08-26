@@ -83,7 +83,9 @@
                class: "rounded-2xl overflow-hidden mb-1"} do %>
   <div class="flex items-start gap-3 px-3.5 py-3">
     <% if actor_tile %>
-      <%= render "ui/avatar", user: notification.subject_user, variant: :tile, size: :nav %>
+      <%= render layout: "ui/user_link", locals: {user: notification.subject_user, class: "shrink-0"} do %>
+        <%= render "ui/avatar", user: notification.subject_user, variant: :tile, size: :nav %>
+      <% end %>
     <% else %>
       <span class="w-9 h-9 rounded-xl bg-<%= tone %>-soft text-<%= tone %> flex items-center justify-center shrink-0">
         <%= lucide_icon(icon, class: "w-[18px] h-[18px]") %>
@@ -96,27 +98,27 @@
         <% when "announcement" %>
           Announcement
         <% when "new_hoojah_response" %>
-          <strong>@<%= notification.subject_user&.username %></strong> posted a new argument on your hoojah
+          <%= render "notifications/actor_handle", user: notification.subject_user %> posted a new argument on your hoojah
         <% when "new_vote" %>
           You have a new vote on your hoojah
         <% when "mention" %>
-          <strong>@<%= notification.subject_user&.username %></strong> mentioned you in a hoojah
+          <%= render "notifications/actor_handle", user: notification.subject_user %> mentioned you in a hoojah
         <% when "new_follower" %>
-          <strong>@<%= notification.subject_user&.username %></strong> started following you
+          <%= render "notifications/actor_handle", user: notification.subject_user %> started following you
         <% when "follow_request" %>
-          <strong>@<%= notification.subject_user&.username %></strong> requested to follow you
+          <%= render "notifications/actor_handle", user: notification.subject_user %> requested to follow you
         <% when "follow_accepted" %>
-          <strong>@<%= notification.subject_user&.username %></strong> accepted your follow request
+          <%= render "notifications/actor_handle", user: notification.subject_user %> accepted your follow request
         <% when "badge_earned" %>
           You earned the <strong><%= Badge::REGISTRY.dig(notification.body, :name) || "achievement" %></strong> badge
         <% when "debate_challenge" %>
-          <strong>@<%= notification.subject_user&.username %></strong> challenged you to a debate
+          <%= render "notifications/actor_handle", user: notification.subject_user %> challenged you to a debate
         <% when "debate_declined" %>
-          <strong>@<%= notification.subject_user&.username %></strong> declined your debate challenge
+          <%= render "notifications/actor_handle", user: notification.subject_user %> declined your debate challenge
         <% when "debate_your_turn" %>
-          It's your turn in your debate with <strong>@<%= notification.subject_user&.username %></strong>
+          It's your turn in your debate with <%= render "notifications/actor_handle", user: notification.subject_user %>
         <% when "debate_concluded" %>
-          Your debate with <strong>@<%= notification.subject_user&.username %></strong> has concluded
+          Your debate with <%= render "notifications/actor_handle", user: notification.subject_user %> has concluded
         <% when "admin" %>
           You have a message from the Hoojah team
         <% when "flag" %>
@@ -157,8 +159,7 @@
           <%= format_body(notification.hujah.body) %>
         <% end %>
       <% elsif notification.new_follower? && notification.subject_user %>
-        <%= link_to "View profile", profile_path(notification.subject_user.username),
-              class: "text-left text-primary no-underline" %>
+        <%= render layout: "ui/user_link", locals: {user: notification.subject_user, class: "text-left text-primary"} do %>View profile<% end %>
       <% elsif notification.follow_request? && (req_follow = Follow.find_by(follower_id: notification.subject_user_id, followed_id: notification.user_id)) %>
         <%# Accept/decline the pending request in place (Slice 7b). Both button_to's
             hit /follow_requests/:id; FollowRequestPolicy restricts them to this user. %>
@@ -169,8 +170,7 @@
                 class: ds_button_classes(variant: :link, tone: "grey") %>
         </div>
       <% elsif notification.follow_accepted? && notification.subject_user %>
-        <%= link_to "View profile", profile_path(notification.subject_user.username),
-              class: "text-left text-primary no-underline" %>
+        <%= render layout: "ui/user_link", locals: {user: notification.subject_user, class: "text-left text-primary"} do %>View profile<% end %>
       <% else %>
         <%# badge_earned has no hujah/subject_user, and neither do admin, flag, or any
             notification whose hoojah is gated from the recipient by the branch above.

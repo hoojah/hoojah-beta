@@ -1,0 +1,10 @@
+<%# The bolded actor @handle in a notification's copy, linked to the actor's profile with a
+    hovercard trigger (ui/_user_link). Local: user (notification.subject_user). Passing
+    `text-ink` keeps the handle in body-ink rather than the base-layer link colour a bare
+    <a> would inherit; the <strong> supplies the weight, matching the pre-link markup.
+
+    Guarded for a nil actor: the nil-subject_user categories (new_vote, moderation_removed,
+    moderation_warning, announcement, badge_earned, admin, flag) never reach this partial —
+    their copy names no one — but if one ever did, this renders the same bare `@` the old
+    `subject_user&.username` produced instead of raising inside ui/_user_link. %>
+<% if user.present? %><%= render layout: "ui/user_link", locals: {user: user, class: "text-ink"} do %><strong>@<%= user.username %></strong><% end %><% else %><strong>@</strong><% end %>

@@ -33,8 +33,10 @@
   <% end %>
   <div class="flex items-center justify-center gap-3.5">
     <div class="flex flex-col items-center gap-1 flex-1 min-w-0">
-      <%= render "ui/avatar", user: debate.challenger, size: :md, variant: :tile %>
-      <span class="text-xs font-bold text-ink truncate">@<%= debate.challenger.username %></span>
+      <%= render layout: "ui/user_link", locals: {user: debate.challenger, class: "shrink-0"} do %>
+        <%= render "ui/avatar", user: debate.challenger, size: :md, variant: :tile %>
+      <% end %>
+      <%= render layout: "ui/user_link", locals: {user: debate.challenger, class: "block max-w-full text-xs font-bold text-ink truncate"} do %>@<%= debate.challenger.username %><% end %>
       <span class="text-[10px] font-bold uppercase tracking-wide text-agree">Challenger</span>
     </div>
     <div class="flex flex-col items-center gap-0.5 shrink-0">
@@ -47,8 +49,10 @@
       <% end %>
     </div>
     <div class="flex flex-col items-center gap-1 flex-1 min-w-0">
-      <%= render "ui/avatar", user: debate.opponent, size: :md, variant: :tile %>
-      <span class="text-xs font-bold text-ink truncate">@<%= debate.opponent.username %></span>
+      <%= render layout: "ui/user_link", locals: {user: debate.opponent, class: "shrink-0"} do %>
+        <%= render "ui/avatar", user: debate.opponent, size: :md, variant: :tile %>
+      <% end %>
+      <%= render layout: "ui/user_link", locals: {user: debate.opponent, class: "block max-w-full text-xs font-bold text-ink truncate"} do %>@<%= debate.opponent.username %><% end %>
       <span class="text-[10px] font-bold uppercase tracking-wide text-disagree">Opponent</span>
     </div>
   </div>

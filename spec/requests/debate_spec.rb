@@ -252,6 +252,23 @@ RSpec.describe "Debates", type: :request do
       expect(response.body).to include(decline_debate_path(d.slug))
     end
 
+    # Slice B (navbar-hovercard-follows): the pending screen's participant handles are now
+    # real profile links carrying the hovercard controller. Assert the challenger handle is
+    # an <a href="/u/<username>"> with the hovercard trigger, stance colour preserved.
+    it "links the participant handles to their profiles with a hovercard trigger" do
+      d = challenge!
+      sign_in opponent
+      get "/debates/#{d.slug}"
+
+      # Two links point at the challenger — the avatar wrapper and the stance-coloured
+      # handle. Assert the handle one specifically (its @username text + text-agree class).
+      links = response.parsed_body.css(%(a[href="/u/#{challenger.username}"][data-controller="hovercard"]))
+      expect(links).to be_present
+      handle = links.find { |a| a["class"].to_s.include?("text-agree") }
+      expect(handle).to be_present
+      expect(handle.text).to include("@#{challenger.username}")
+    end
+
     it "does not show Accept/Decline to a non-opponent participant (the challenger, existing rule)" do
       d = challenge!
       sign_in challenger
