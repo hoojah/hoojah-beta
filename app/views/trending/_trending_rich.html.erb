@@ -19,7 +19,7 @@
   <% if hujahs.any? %>
     <ol class="list-none p-0 m-0 flex flex-col gap-3">
       <% hujahs.each_with_index do |hujah, index| %>
-        <% total_votes = hujah.agree_count.to_i + hujah.neutral_count.to_i + hujah.disagree_count.to_i %>
+        <% total_votes = hujah.total_votes %>
         <li>
           <% if index.zero? %>
             <%= link_to hujah_path(hujah.slug), class: "no-underline block" do %>

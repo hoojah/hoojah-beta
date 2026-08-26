@@ -9,7 +9,10 @@ RSpec.describe "Voting", type: :system, js: true do
     within "##{ActionView::RecordIdentifier.dom_id(hujah, :vote_hero)}" do
       find('[data-stance="agree"]').click
     end
-    expect(page).to have_content("100%")
+    # Secret ballot (2a/A7): a single vote is sub-k, so the hero renders the total-only
+    # label ("1 vote") rather than a per-stance percentage. Its appearance (replacing the
+    # initial "No votes yet") proves the widget re-rendered in place without a reload.
+    expect(page).to have_content("1 vote")
     expect(hujah.reload.agree_count).to eq(1)
   end
 end
