@@ -1,0 +1,16 @@
+<%# Shared chrome for the public informational pages (FAQ / Privacy / Terms).
+    Same navbar + centred <main> as trending, wrapping a single design-system card.
+    Called as a LAYOUT partial (render layout: "pages/legal_chrome", locals: {title:,
+    updated:} do ... end) so the page body is captured and yielded inside the card.
+    `title:` becomes the h1; `updated:` fills the small "Last updated:" line. %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <%= render layout: "ui/card", locals: {as: "article", padded: true} do %>
+    <h1 class="text-2xl font-extrabold text-ink tracking-tight"><%= title %></h1>
+    <p class="mt-1 text-sm text-grey">Last updated: <%= updated %></p>
+    <div class="mt-4 space-y-4">
+      <%= yield %>
+    </div>
+  <% end %>
+</main>
