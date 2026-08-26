@@ -1,0 +1,18 @@
+<%# Twitter-style footer card for the feed's desktop sidebar, sitting directly below the
+    trending frame. Grey links that read as part of the same sidebar (matching the
+    trending rows' text-grey / hover:text-primary), a hairline via ui/_divider, then a
+    small grey copyright line. `mt-6` is a margin (not padding) so it coexists with the
+    card's `padded:` — see ui/_card's header on why padding must not be doubled. %>
+<%= render layout: "ui/card", locals: {padded: true, class: "mt-6"} do %>
+  <nav class="text-sm text-grey" aria-label="Legal">
+    <%= link_to "FAQ", faq_path, class: "text-grey hover:text-primary no-underline" %>
+    <span class="text-grey" aria-hidden="true">&middot;</span>
+    <%= link_to "Privacy", privacy_path, class: "text-grey hover:text-primary no-underline" %>
+    <span class="text-grey" aria-hidden="true">&middot;</span>
+    <%= link_to "Terms", terms_path, class: "text-grey hover:text-primary no-underline" %>
+  </nav>
+
+  <%= render "ui/divider", class: "my-3" %>
+
+  <p class="text-xs text-grey">© 2026 Hoojah</p>
+<% end %>
