@@ -2,11 +2,12 @@
     the standalone /trending page. Locals: hujahs.
 
     DESIGN SYSTEM (Slice 9, Task 4.4) —
-    docs/design-system/components/social/TrendingList.prompt.md: "all grey text, no
-    cards, no numbers, no rank badges. Bodies truncate at ~90 characters. Empty copy is
-    exactly 'Nothing trending yet.'" All four were already true, so the list itself is
-    untouched — resist adding a rank number or a card per row; their absence is the
-    component. The empty line moves onto `ui/_empty_state` for the same wording in the
+    docs/design-system/components/social/TrendingList.prompt.md: "no numbers, no rank
+    badges. Bodies truncate at ~90 characters. Empty copy is exactly 'Nothing trending
+    yet.'" Those still hold — resist adding a rank number. The sidebar row now sits on a
+    compact `ui/_card` surface with an accent (`text-neutral`) heading, so each row is a
+    discrete card whose whole surface is the link; body text stays grey and hovers to
+    primary. The empty line moves onto `ui/_empty_state` for the same wording in the
     same place, `icon: nil` because this one is a bare sentence and `lucide_icon(nil)`
     raises, `tone: :muted` because grey is what the prompt asks for and faint is the
     partial's default. The padding is zeroed through all three longhands rather than a
@@ -14,21 +15,23 @@
     by bundle order, where `.p-0` comes FIRST and therefore loses (see the partial's
     own header). `px-* pt-* pb-*` are emitted after the shorthand and do win. %>
 <section aria-label="Trending hoojahs">
-  <h2 class="text-sm font-semibold text-grey uppercase tracking-wide mb-2 flex items-center gap-1">
+  <h2 class="text-sm font-semibold text-neutral uppercase tracking-wide mb-2 flex items-center gap-1">
     <%= lucide_icon("flame", class: "w-4 h-4") %> Trending
   </h2>
 
   <% if hujahs.any? %>
-    <ol class="list-none p-0 m-0 flex flex-col gap-2">
+    <ul class="space-y-2 list-none p-0 m-0">
       <% hujahs.each do |hujah| %>
         <li>
-          <%= link_to hujah_path(hujah.slug), class: "block text-sm text-grey no-underline hover:text-primary" do %>
-            <%= truncate(strip_tags(hujah.body.to_s), length: 90) %>
-            <span class="block text-xs text-grey/70 mt-0.5">@<%= hujah.user.username %></span>
+          <%= render layout: "ui/card", locals: {as: "article", padded: false, class: "rounded-xl"} do %>
+            <%= link_to hujah_path(hujah.slug), class: "block p-3 text-sm text-grey no-underline hover:text-primary" do %>
+              <%= truncate(strip_tags(hujah.body.to_s), length: 90) %>
+              <span class="block text-xs text-grey/70 mt-0.5">@<%= hujah.user.username %></span>
+            <% end %>
           <% end %>
         </li>
       <% end %>
-    </ol>
+    </ul>
   <% else %>
     <%= render "ui/empty_state", message: "Nothing trending yet.", icon: nil,
           tone: :muted, class: "px-0 pt-0 pb-0" %>
