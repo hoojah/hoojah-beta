@@ -1,6 +1,14 @@
 class FollowRequestsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_follow
+  before_action :set_follow, except: [:index]
+
+  # Own-resource inbox (like BlocksController#index): scoped to current_user by
+  # construction, so skip_authorization rather than a policy that restates it.
+  def index
+    skip_authorization
+    @follows = current_user.passive_follows.pending
+      .includes(follower: {avatar_attachment: :blob}).order(created_at: :desc)
+  end
 
   # Accept a pending follow request. Only the followed user may act
   # (FollowRequestPolicy). Flipping status → accepted fires the Follow model's

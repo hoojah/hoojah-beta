@@ -1,0 +1,18 @@
+<%# Own-resource inbox of pending follow requests (2026 follow gaps). Modelled on
+    users/followers.html.erb: navbar, max-w-xl main, one white surface with
+    hairlines through it (the `shadow` lives on the list wrapper, never per-row).
+    `follow_requests_list` is a stable Turbo target — Task 6 swaps it for the empty
+    state after the last request is actioned. %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-xl mx-auto px-4 py-6">
+  <h1 class="text-lg font-medium mb-3">Follow requests</h1>
+
+  <div id="follow_requests_list" class="flex flex-col shadow">
+    <% if @follows.any? %>
+      <%= render partial: "request_row", collection: @follows, as: :follow %>
+    <% else %>
+      <%= render "ui/empty_state", message: "No pending follow requests", icon: "user-plus" %>
+    <% end %>
+  </div>
+</main>

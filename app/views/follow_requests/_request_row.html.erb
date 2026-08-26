@@ -1,0 +1,33 @@
+<%# One pending follow-request row in the inbox (2026 follow gaps). Local: `follow`
+    (a pending passive Follow). Structure mirrors users/_user_row's identity block —
+    40px `ui/_avatar`, medium name, faint `@handle` — but the action buttons are
+    SIBLINGS of the profile link, never nested inside the `<a>` (a button inside an
+    anchor is invalid HTML). The identity link takes `flex-1`.
+
+    `border-b border-gray-100` is the design system's #f3f4f6 hairline: unlike the
+    `<a>`-rooted _user_row (whose bare `border-b` picks up the base layer's `--fg-link`
+    on links), this row is a `<div>`, but the colour is still stated explicitly so the
+    separator never inherits `currentColor`.
+
+    Accept/decline are the exact notification-card idiom
+    (_notification_card.html.erb) — bare `ds_button_classes(variant: :link)` controls,
+    not solid pills. They post to /follow_requests/:id (FollowRequestPolicy gates them
+    to this user). This task keeps the existing `redirect_back` responses; Task 6
+    upgrades both surfaces to turbo_stream. %>
+<div id="<%= dom_id(follow, :request) %>" class="flex items-center gap-3 p-3 bg-white border-b border-gray-100">
+  <%= link_to profile_path(follow.follower.username),
+        class: "flex-1 flex items-center gap-3 no-underline min-w-0" do %>
+    <%= render "ui/avatar", user: follow.follower, size: :row %>
+    <div class="flex flex-col min-w-0">
+      <span class="font-medium truncate"><%= follow.follower.full_name %></span>
+      <span class="text-sm text-light-grey truncate">@<%= follow.follower.username %></span>
+    </div>
+  <% end %>
+
+  <div class="flex items-center gap-3 shrink-0">
+    <%= button_to "Accept", follow_request_path(follow), method: :patch,
+          class: ds_button_classes(variant: :link) %>
+    <%= button_to "Decline", follow_request_path(follow), method: :delete,
+          class: ds_button_classes(variant: :link, tone: "grey") %>
+  </div>
+</div>

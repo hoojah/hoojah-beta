@@ -72,6 +72,13 @@ Rails.application.routes.draw do
   # only the followed user may act (FollowRequestPolicy). Managed from the
   # follow_request notification card; the standalone inbox page is deferred. `:id`
   # is the Follow id; both verbs share the path so only PATCH is named.
+  # Pending follow-requests inbox (2026 follow gaps). Own-resource surface: no
+  # username in the URL — always the signed-in user's own pending passive follows
+  # (like /notifications, /blocks). MAIN route (CSRF on) — its rows carry the
+  # accept/decline button_to's. Static "/follow_requests" cannot be shadowed by
+  # the "/follow_requests/:id" routes below (segment count differs), so order is
+  # irrelevant — kept together for legibility.
+  get "/follow_requests", to: "follow_requests#index", as: :follow_requests
   patch "/follow_requests/:id", to: "follow_requests#update", as: :follow_request
   delete "/follow_requests/:id", to: "follow_requests#destroy"
   # Block / unblock (Slice 7). Main routes (NOT Api::V1) so CSRF stays on. Bidirectional

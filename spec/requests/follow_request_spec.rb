@@ -55,6 +55,41 @@ RSpec.describe "Follow requests", type: :request do
     end
   end
 
+  describe "the inbox (GET /follow_requests)" do
+    it "redirects a signed-out visitor to login" do
+      get follow_requests_path
+      expect(response).to redirect_to(new_user_session_path)
+    end
+
+    it "shows only the owner's own pending requests, with accept/decline forms" do
+      pending = requester.active_follows.create!(followed: owner, status: :pending)
+      # Another user's pending request (aimed at a different private target).
+      other_target = create(:user, private: true, username: "other")
+      other_requester = create(:user, username: "other_req")
+      other_requester.active_follows.create!(followed: other_target, status: :pending)
+      # An accepted follower of the owner is NOT a pending request.
+      accepted = create(:user, username: "accepted_follower")
+      accepted.active_follows.create!(followed: owner, status: :accepted)
+
+      sign_in owner
+      get follow_requests_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("@req")
+      expect(response.body).not_to include("@other_req")
+      expect(response.body).not_to include("@accepted_follower")
+      # Rows carry accept (PATCH) and decline (DELETE) forms at follow_request_path.
+      expect(response.body).to include(follow_request_path(pending))
+    end
+
+    it "renders the empty state when there are no pending requests" do
+      sign_in owner
+      get follow_requests_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("No pending follow requests")
+    end
+  end
+
   describe "authorization" do
     it "a third party can neither accept nor decline (403)" do
       follow = requester.active_follows.create!(followed: owner, status: :pending)
