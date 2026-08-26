@@ -33,4 +33,20 @@ RSpec.describe "Pages", type: :request do
       end
     end
   end
+
+  # The feed's desktop sidebar carries a small footer card BELOW the trending frame,
+  # linking to the same public pages above. It renders on the root feed; assert the
+  # links resolve to /faq, /privacy, /terms and the copyright line is present. The
+  # copyright glyph is emitted as the literal © character, so it round-trips unescaped.
+  describe "the feed sidebar footer card" do
+    it "renders FAQ / Privacy / Terms links and a copyright line" do
+      login_as(create(:user))
+      get "/"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('href="/faq"')
+      expect(response.body).to include('href="/privacy"')
+      expect(response.body).to include('href="/terms"')
+      expect(response.body).to include("© 2026 Hoojah")
+    end
+  end
 end
