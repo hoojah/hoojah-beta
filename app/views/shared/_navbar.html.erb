@@ -25,7 +25,7 @@
     (Task 0.4) without switching to `ds_button_classes` itself — same anchor, same lack
     of `active:scale-95`, just a coloured box instead of a bare icon. %>
 <nav class="fixed top-0 inset-x-0 z-20 bg-nav backdrop-blur border-b border-hairline">
-  <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+  <div class="max-w-xl sm:max-w-none mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
     <%= link_to root_path, class: "flex items-center no-underline", aria: { label: "Hoojah" } do %>
       <%= image_tag "logo.svg", alt: "Hoojah", class: "h-7 w-auto" %>
     <% end %>
@@ -52,9 +52,9 @@
       <%# Hoojah 2026: a filled icon-button box (bg-card-2, ~38px), not a bare icon link —
           see the note above about why every OTHER navbar entry stays a plain anchor;
           trending is the one exception the 2026 mockup gives a button treatment. %>
-      <%= link_to trending_path, class: "flex items-center justify-center gap-1 h-[38px] px-2 bg-card-2 text-neutral rounded-xl no-underline", aria: {label: "Trending"} do %>
+      <%= link_to trending_path, class: "lg:hidden flex items-center justify-center gap-1 h-[38px] px-2 bg-card-2 text-neutral rounded-xl no-underline", aria: {label: "Trending"} do %>
         <%= lucide_icon("flame", class: "w-5 h-5") %>
-        <span class="hidden lg:inline text-sm">Trending</span>
+        <span class="text-sm">Trending</span>
       <% end %>
 
       <% if user_signed_in? %>
