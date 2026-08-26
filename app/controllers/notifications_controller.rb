@@ -16,7 +16,7 @@ class NotificationsController < ApplicationController
   def index
     skip_authorization
     @filter = FILTER_CATEGORIES.key?(params[:filter]) ? params[:filter] : "all"
-    scope = policy_scope(Notification).includes(:hujah, :subject_user)
+    scope = policy_scope(Notification).includes(:hujah, subject_user: {avatar_attachment: :blob})
     scope = scope.where(category: FILTER_CATEGORIES[@filter]) if FILTER_CATEGORIES.key?(@filter)
     @notifications = scope.order(created_at: :desc)
   end
@@ -30,7 +30,7 @@ class NotificationsController < ApplicationController
     skip_authorization
     policy_scope(Notification).unread.update_all(read: true)
     @notifications = policy_scope(Notification)
-      .includes(:hujah, :subject_user)
+      .includes(:hujah, subject_user: {avatar_attachment: :blob})
       .order(created_at: :desc)
     respond_to do |format|
       format.turbo_stream # read_all.turbo_stream.erb — replaces the list in place

@@ -8,7 +8,7 @@ class SearchController < ApplicationController
     @query = params[:q].to_s.strip
     if @query.present?
       @hujahs = Hujah.search(@query, viewer: current_user)
-      @users = User.search(@query, viewer: current_user)
+      @users = User.search(@query, viewer: current_user).includes(avatar_attachment: :blob)
       @hashtags = Hashtag.search(@query)
     end
     # Browse state (blank query): trending tags, independent of @query.
