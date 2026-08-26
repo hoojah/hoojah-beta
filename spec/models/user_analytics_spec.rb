@@ -11,7 +11,7 @@ RSpec.describe UserAnalytics do
     expect(a.total_arguments_received).to eq(1)
   end
 
-  it "suppresses a per-hoojah split below k=5" do
+  it "suppresses a per-hoojah split below k=3" do
     low = create(:hujah, user: user, agree_count: 1, neutral_count: 0, disagree_count: 0)
     hi = create(:hujah, user: user, agree_count: 3, neutral_count: 1, disagree_count: 1)
     d = a.distributions.index_by(&:id)

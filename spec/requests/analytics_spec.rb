@@ -13,7 +13,8 @@ RSpec.describe "Analytics", type: :request do
     sign_in user
     get "/dashboard"
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("5").and include("fewer than 5 votes")
+    # ≥k positive control (big claim split shown, 3/5 = 60% agree) + below-k suppression.
+    expect(response.body).to include("60%").and include("fewer than 3 votes")
   end
 
   it "shows a KPI pair for total votes received and followers, with no fabricated delta" do
@@ -42,13 +43,13 @@ RSpec.describe "Analytics", type: :request do
     expect(response.body).to include("60%") # agree pct of the top hoojah (6/10)
   end
 
-  it "suppresses the top-hoojah bar when even the top hoojah is under k=5" do
+  it "suppresses the top-hoojah bar when even the top hoojah is under k=3" do
     user = create(:user)
     create(:hujah, user: user, agree_count: 1, neutral_count: 0, disagree_count: 0, body: "only a quiet claim")
     sign_in user
     get "/dashboard"
     expect(response.body).to include("Top hoojah")
-    expect(response.body).to include("fewer than 5 votes")
+    expect(response.body).to include("fewer than 3 votes")
   end
 
   it "does not build any time-series chart" do

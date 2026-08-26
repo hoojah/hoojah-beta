@@ -28,7 +28,7 @@ class Hujah < ApplicationRecord
   # Secret ballot (finding 2a/A7): hide the per-stance breakdown until the electorate
   # is large enough that the published split can't be used to de-anonymize an individual
   # voter. Below this many total votes, surfaces show the total + the viewer's own stance
-  # only. Reuses UserAnalytics::K (already 5) as the SINGLE threshold source so the
+  # only. Reuses UserAnalytics::K (currently 3) as the SINGLE threshold source so the
   # analytics suppression and this cannot drift apart — do not mint a second literal.
   VOTE_BREAKDOWN_MIN = UserAnalytics::K
 

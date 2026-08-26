@@ -2,10 +2,10 @@
 #
 # Every aggregate reads the DENORMALIZED agree/neutral/disagree counters on
 # `hujahs` — the query object never touches `votes` or `users`, so it can never
-# re-open the vote-privacy leak Part A closed. k=5 suppression lives here (a
-# per-hoojah split below K renders "fewer than 5 votes" instead of the numbers).
+# re-open the vote-privacy leak Part A closed. k=3 suppression lives here (a
+# per-hoojah split below K renders "fewer than 3 votes" instead of the numbers).
 class UserAnalytics
-  K = 5
+  K = 3
 
   # One read-only value object per top-level hoojah. No AR, no callbacks.
   Distribution = Struct.new(:id, :slug, :body, :agree, :neutral, :disagree) do

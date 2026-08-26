@@ -37,7 +37,7 @@ RSpec.describe "hujahs/_vote_bars", type: :view do
       expect(w).to have_css(".flex.rounded-full.overflow-hidden > div.bg-disagree[style='width: 36%']")
     end
 
-    # Secret ballot (2a/A7): an all-zero hoojah is below k=5, so the bar is now
+    # Secret ballot (2a/A7): an all-zero hoojah is below k=3, so the bar is now
     # suppressed entirely (see the suppression group below) rather than rendering three
     # 0% segments. This still exercises the "no crash on all-zero" guard — the render
     # must not raise — it just asserts the new suppressed shape.
@@ -67,12 +67,12 @@ RSpec.describe "hujahs/_vote_bars", type: :view do
     end
   end
 
-  # Secret ballot (2a/A7): below k=5 total votes the per-stance split is a
+  # Secret ballot (2a/A7): below k=3 total votes the per-stance split is a
   # de-anonymization vector, so the segmented bar + percent legend are suppressed and
   # only the total vote count is shown. The three vote buttons stay — you can still vote,
   # you just don't see the split.
   describe "secret-ballot suppression below k" do
-    let(:sub_k) { create(:hujah, agree_count: 2, neutral_count: 1, disagree_count: 1) } # total 4
+    let(:sub_k) { create(:hujah, agree_count: 1, neutral_count: 1, disagree_count: 0) } # total 2
 
     it "hides the segmented bar and the percent legend below k" do
       w = widget(hujah: sub_k)
@@ -89,7 +89,7 @@ RSpec.describe "hujahs/_vote_bars", type: :view do
     end
 
     it "shows the compact total vote count below k" do
-      expect(widget(hujah: sub_k)).to have_text("4 votes")
+      expect(widget(hujah: sub_k)).to have_text("2 votes")
     end
 
     it "shows 'No votes yet' when there are zero votes" do
@@ -112,11 +112,11 @@ RSpec.describe "hujahs/_vote_bars", type: :view do
     end
 
     it "shows the full split at exactly k (positive control)" do
-      at_k = create(:hujah, agree_count: 3, neutral_count: 1, disagree_count: 1) # total 5
+      at_k = create(:hujah, agree_count: 2, neutral_count: 1, disagree_count: 0) # total 3
       w = widget(hujah: at_k)
 
       expect(w).to have_css(".flex.rounded-full.overflow-hidden", count: 1)
-      expect(w).to have_css(".flex.justify-between > .text-agree", text: "60%")
+      expect(w).to have_css(".flex.justify-between > .text-agree", text: "67%")
     end
   end
 

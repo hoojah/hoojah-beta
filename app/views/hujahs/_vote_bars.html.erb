@@ -52,7 +52,7 @@
   pct = rows.to_h { |stance, _choice, count| [stance, total.zero? ? 0 : (count * 100.0 / total).round] }
 %>
 <div id="<%= dom_id(hujah, :vote_bars) %>" class="px-4 py-3">
-  <%# Secret ballot (2a/A7): below k=5 total votes the segmented bar + percent legend
+  <%# Secret ballot (2a/A7): below k=3 total votes the segmented bar + percent legend
       are a de-anonymization vector, so they are replaced by the total-only label. The
       vote buttons + own-stance highlight below still render. %>
   <% if hujah.breakdown_visible? %>

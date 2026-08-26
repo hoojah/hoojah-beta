@@ -1,7 +1,7 @@
 require "rails_helper"
 
 # Secret ballot (2a/A7): the threaded response card shows a per-stance tally footer
-# (agree/neutral/disagree counts) for the response hoojah. Below k=5 total votes that
+# (agree/neutral/disagree counts) for the response hoojah. Below k=3 total votes that
 # split is suppressed to a total-only label.
 RSpec.describe "hujahs/_child_card", type: :view do
   let(:root) { create(:hujah, visibility: :visible_public) }
@@ -31,7 +31,7 @@ RSpec.describe "hujahs/_child_card", type: :view do
   context "below k" do
     let(:child) do
       create(:hujah, parent: root, user: create(:user),
-        agree_count: 2, neutral_count: 0, disagree_count: 1) # total 3
+        agree_count: 1, neutral_count: 0, disagree_count: 1) # total 2
     end
 
     it "does not render the per-stance count row (no stance glyphs)" do
@@ -39,7 +39,7 @@ RSpec.describe "hujahs/_child_card", type: :view do
     end
 
     it "shows the total-only label" do
-      expect(card(child)).to have_content("3 votes")
+      expect(card(child)).to have_content("2 votes")
     end
 
     it "shows 'No votes yet' at zero" do

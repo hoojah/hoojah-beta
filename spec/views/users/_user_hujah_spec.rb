@@ -1,7 +1,7 @@
 require "rails_helper"
 
 # Secret ballot (2a/A7): the compact profile hoojah card shows an inline per-stance
-# tally (agree · neutral · disagree). Below k=5 total votes that split is suppressed to
+# tally (agree · neutral · disagree). Below k=3 total votes that split is suppressed to
 # a total-only label.
 RSpec.describe "users/_user_hujah", type: :view do
   let(:author) { create(:user, full_name: "Prof Debat", username: "debat") }
@@ -24,14 +24,14 @@ RSpec.describe "users/_user_hujah", type: :view do
   end
 
   context "below k" do
-    let(:hujah) { create(:hujah, user: author, agree_count: 2, neutral_count: 1, disagree_count: 0) } # total 3
+    let(:hujah) { create(:hujah, user: author, agree_count: 1, neutral_count: 1, disagree_count: 0) } # total 2
 
     it "does not render the per-stance count row (no stance glyphs)" do
       expect(card(hujah)).to have_no_css("svg")
     end
 
     it "shows the total-only label" do
-      expect(card(hujah)).to have_content("3 votes")
+      expect(card(hujah)).to have_content("2 votes")
     end
 
     it "shows 'No votes yet' at zero" do

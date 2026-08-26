@@ -11,8 +11,8 @@ RSpec.describe Hujah, type: :model do
   end
 
   describe "secret-ballot k-anonymity (#total_votes / #breakdown_visible?)" do
-    it "reuses UserAnalytics::K (== 5) as the single threshold source" do
-      expect(UserAnalytics::K).to eq(5)
+    it "reuses UserAnalytics::K (== 3) as the single threshold source" do
+      expect(UserAnalytics::K).to eq(3)
       expect(Hujah::VOTE_BREAKDOWN_MIN).to eq(UserAnalytics::K)
     end
 
@@ -31,13 +31,13 @@ RSpec.describe Hujah, type: :model do
       expect(h.breakdown_visible?).to be false
     end
 
-    it "#breakdown_visible? is false at 4 total votes (below k)" do
-      h = build(:hujah, agree_count: 2, neutral_count: 1, disagree_count: 1)
+    it "#breakdown_visible? is false at 2 total votes (below k)" do
+      h = build(:hujah, agree_count: 1, neutral_count: 1, disagree_count: 0)
       expect(h.breakdown_visible?).to be false
     end
 
-    it "#breakdown_visible? is true at exactly 5 total votes (the k boundary)" do
-      h = build(:hujah, agree_count: 3, neutral_count: 1, disagree_count: 1)
+    it "#breakdown_visible? is true at exactly 3 total votes (the k boundary)" do
+      h = build(:hujah, agree_count: 1, neutral_count: 1, disagree_count: 1)
       expect(h.breakdown_visible?).to be true
     end
 
@@ -48,16 +48,16 @@ RSpec.describe Hujah, type: :model do
 
     describe "#ballot_counts (single-source serializer gate)" do
       it "nils the three per-stance counts and keeps total_count below k" do
-        h = build(:hujah, agree_count: 2, neutral_count: 1, disagree_count: 1) # total 4
+        h = build(:hujah, agree_count: 1, neutral_count: 1, disagree_count: 0) # total 2
         expect(h.ballot_counts).to eq(
-          total_count: 4, agree_count: nil, neutral_count: nil, disagree_count: nil
+          total_count: 2, agree_count: nil, neutral_count: nil, disagree_count: nil
         )
       end
 
       it "exposes the real per-stance counts and total at or above k" do
-        h = build(:hujah, agree_count: 3, neutral_count: 1, disagree_count: 1) # total 5
+        h = build(:hujah, agree_count: 1, neutral_count: 1, disagree_count: 1) # total 3
         expect(h.ballot_counts).to eq(
-          total_count: 5, agree_count: 3, neutral_count: 1, disagree_count: 1
+          total_count: 3, agree_count: 1, neutral_count: 1, disagree_count: 1
         )
       end
     end

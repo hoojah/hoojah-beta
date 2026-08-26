@@ -1,7 +1,7 @@
 require "rails_helper"
 
 # Secret ballot (2a/A7): the tall single-hoojah vote hero renders per-stance
-# pct/count rows + a segmented bar. Below k=5 total votes both are a
+# pct/count rows + a segmented bar. Below k=3 total votes both are a
 # de-anonymization vector and are suppressed down to a total-only label; the vote
 # buttons, the viewer's own-stance highlight, and the (non-breakdown)
 # conviction_count aggregate all stay.
@@ -30,7 +30,7 @@ RSpec.describe "hujahs/_vote_hero", type: :view do
   end
 
   context "below k (suppressed)" do
-    let(:hujah) { create(:hujah, agree_count: 2, neutral_count: 1, disagree_count: 1) } # total 4
+    let(:hujah) { create(:hujah, agree_count: 1, neutral_count: 1, disagree_count: 0) } # total 2
 
     it "renders no per-stance percentages" do
       expect(widget).to have_no_text("%")
@@ -41,7 +41,7 @@ RSpec.describe "hujahs/_vote_hero", type: :view do
     end
 
     it "shows the compact total-vote label" do
-      expect(widget).to have_text("4 votes")
+      expect(widget).to have_text("2 votes")
     end
 
     it "shows 'No votes yet' at zero votes" do

@@ -6,9 +6,10 @@
   was considered and rejected in Slice 5 and again in Slice 9 Task 4.7: the seam is four
   lines of markup, and the shared version would have to carry a "with buttons / without
   buttons" flag through the one widget in the product that must never sprout a control
-  it wasn't asked for. Below k=5 total votes the split is suppressed ("fewer than 5
-  votes") instead of rendering the numbers — a privacy floor from Slice 5 (UserAnalytics::K),
-  not styling. Do not soften the copy and do not make the branch conditional on anything.
+  it wasn't asked for. Below k (UserAnalytics::K) total votes the split is suppressed
+  ("fewer than N votes", N interpolated from the constant) instead of rendering the numbers
+  — a privacy floor from Slice 5 (UserAnalytics::K, now 3), not styling. Do not soften the
+  copy and do not make the branch conditional on anything.
 
   DESIGN SYSTEM (Slice 9, Task 4.7) —
   docs/design-system/components/analytics/DistributionBar.prompt.md ("read-only bars, no
@@ -54,12 +55,12 @@
   for a single `rounded-full` track split into three stance-coloured segments (width-%,
   `gap-0.5` between them) plus a stance-coloured legend line below. This is a distinct
   widget, not a restyle of the three-row form — the per-hoojah list keeps the row form
-  byte-for-byte, per the file-level note above about not softening the k=5 branch or
+  byte-for-byte, per the file-level note above about not softening the k branch or
   touching the pinned track/label markup. `heading:` is optional small print rendered
   above the claim body (the mockup's "Top hoojah" label) — nil renders nothing, same
   `local_assigns.fetch` idiom `shared/_screen_header` uses for its optional `back:`.
-  Suppression still applies to the stacked form: a top hoojah under k=5 shows the same
-  "fewer than 5 votes" line and no segments, exactly as the row form does — the privacy
+  Suppression still applies to the stacked form: a top hoojah under k shows the same
+  "fewer than N votes" line and no segments, exactly as the row form does — the privacy
   floor is a property of `dist`, not of which markup renders it.
 %>
 <%
@@ -75,7 +76,7 @@
   <% end %>
   <p class="text-sm text-black mb-2 line-clamp-2"><%= strip_tags(dist.body) %></p>
   <% if dist.suppressed? %>
-    <p class="text-xs text-light-grey">fewer than 5 votes</p>
+    <p class="text-xs text-light-grey">fewer than <%= UserAnalytics::K %> votes</p>
   <% elsif stacked %>
     <div class="flex h-3 rounded-full overflow-hidden gap-0.5">
       <% rows.each do |stance, _count, pct| %>

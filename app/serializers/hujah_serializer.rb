@@ -4,7 +4,7 @@ class HujahSerializer
   attributes :body, :vote, :slug
 
   # Secret ballot (2a/A7): the per-stance breakdown is a de-anonymization vector below
-  # k=5 total votes, so agree/neutral/disagree serialize as null there — mirroring the
+  # k=3 total votes, so agree/neutral/disagree serialize as null there — mirroring the
   # HTML suppression. total_count (the electorate size) is always present, and is what a
   # client shows in place of the split. current_user_vote (the viewer's own datum) is
   # unaffected below.

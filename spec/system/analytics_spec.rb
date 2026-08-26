@@ -18,15 +18,15 @@ RSpec.describe "Analytics dashboard", type: :system, js: true do
     visit dashboard_path
 
     expect(page).to have_content("Your dashboard")
-    # Totals: 5 votes received, 0 arguments received.
+    # Totals: 6 votes received (5 + 1), 0 arguments received.
     expect(page).to have_content("Total votes received")
-    expect(page).to have_content("5")
+    expect(page).to have_content("6")
     expect(page).to have_content("Followers")
     # The well-voted hoojah shows its split; agree is 3/5 = 60%.
     expect(page).to have_content("A well-voted hoojah")
     expect(page).to have_content("60%")
-    # The quiet hoojah (1 vote) is suppressed.
+    # The quiet hoojah (1 vote) is suppressed below k=3.
     expect(page).to have_content("A quiet hoojah")
-    expect(page).to have_content("fewer than 5 votes")
+    expect(page).to have_content("fewer than 3 votes")
   end
 end
