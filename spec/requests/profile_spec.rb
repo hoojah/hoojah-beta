@@ -92,15 +92,64 @@ RSpec.describe "Profile", type: :request do
     expect(user.reload).to be_private
   end
 
-  it "auto-accepts pending follow requests when flipping private -> public" do
+  # Slice C (gap 5): flipping private -> public accepts pending requests through the
+  # Follow model's callbacks (via AcceptPendingFollowsJob), not a silent update_all.
+  # The old "no notification blast" pin is superseded by this owner-approved design:
+  # requesters SHOULD learn they may now follow, and the counters/badges SHOULD fire.
+  it "accepts pending requests inline (with all side effects) on a small private -> public flip" do
     user.update!(private: true)
     requester = create(:user, username: "req")
     pending = requester.active_follows.create!(followed: user, status: :pending)
     sign_in user
+
     patch "/u/rudz", params: {user: {private: "0"}},
       headers: {"Accept" => "text/vnd.turbo-stream.html"}
+
     expect(user.reload).not_to be_private
     expect(pending.reload).to be_accepted
+    # Side effects visible in the response cycle (inline, ≤ INLINE_THRESHOLD):
+    expect(Notification.where(user: requester, category: "follow_accepted").count).to eq(1)
+    expect(user.reload.followers_count).to eq(1)
+    expect(user.followers_count).to eq(user.followers.count)
+  end
+
+  it "enqueues AcceptPendingFollowsJob when more than the inline threshold are pending" do
+    user.update!(private: true)
+    (AcceptPendingFollowsJob::INLINE_THRESHOLD + 1).times do |i|
+      create(:user, username: "bulkreq#{i}").active_follows.create!(followed: user, status: :pending)
+    end
+    sign_in user
+
+    expect {
+      patch "/u/rudz", params: {user: {private: "0"}},
+        headers: {"Accept" => "text/vnd.turbo-stream.html"}
+    }.to have_enqueued_job(AcceptPendingFollowsJob).with(user)
+  end
+
+  it "enqueues nothing when flipping public -> private" do
+    sign_in user
+    expect {
+      patch "/u/rudz", params: {user: {private: "1"}},
+        headers: {"Accept" => "text/vnd.turbo-stream.html"}
+    }.not_to have_enqueued_job(AcceptPendingFollowsJob)
+    expect(user.reload).to be_private
+  end
+
+  it "enqueues nothing when the update itself fails validation" do
+    user.update!(private: true)
+    other = create(:user, username: "taken")
+    pending = other.active_follows.create!(followed: user, status: :pending)
+    sign_in user
+
+    # Duplicate username is a validation error — the flip never applies, so no accept
+    # runs (inline or queued) and the pending request is untouched.
+    expect {
+      patch "/u/rudz", params: {user: {private: "0", username: "taken"}},
+        headers: {"Accept" => "text/vnd.turbo-stream.html"}
+    }.not_to have_enqueued_job(AcceptPendingFollowsJob)
+    expect(user.reload).to be_private
+    expect(pending.reload).to be_pending
+    expect(Notification.where(user: other, category: "follow_accepted")).to be_empty
   end
 
   it "forbids editing someone else" do

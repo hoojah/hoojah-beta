@@ -49,12 +49,26 @@ class UsersController < ApplicationController
 
   def update
     authorize @user
-    # Slice 7b (Phase 3.2): when a user flips private→public, auto-accept every pending
-    # follow request in one bulk update (no notification blast). Captured BEFORE the
-    # update so the transition is detectable.
+    # Slice 7b (Phase 3.2) / Slice C (gap 5): when a user flips private→public, accept
+    # every pending follow request. Captured BEFORE the update so the transition is
+    # detectable. The original bulk `update_all` was a silent write
+    # that skipped ALL side effects — it left requesters unaware they may now follow (no
+    # follow_accepted), the target unnotified/unbadged (no new_follower / first_follower),
+    # the stale request cards undismissed, and (since gap 8) the accepted-only counter
+    # caches unmoved. Routing each row through Follow#update! fires all of those from the
+    # one place they live. AcceptPendingFollowsJob does the per-row work.
     was_private = @user.private?
     if @user.update(user_params)
-      @user.passive_follows.pending.update_all(status: :accepted) if was_private && !@user.private?
+      if was_private && !@user.private?
+        # Small sets accept inline (the flip's effects are immediately visible in the
+        # response cycle); large sets go to the job so the request doesn't stall on N
+        # notification writes.
+        if @user.passive_follows.pending.count <= AcceptPendingFollowsJob::INLINE_THRESHOLD
+          AcceptPendingFollowsJob.perform_now(@user)
+        else
+          AcceptPendingFollowsJob.perform_later(@user)
+        end
+      end
       respond_to do |format|
         format.turbo_stream # update.turbo_stream.erb — refresh header + close_dialog
         format.html { redirect_to profile_path(@user.username), status: :see_other }
