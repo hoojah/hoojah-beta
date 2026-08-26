@@ -32,6 +32,26 @@ RSpec.describe "Api::V1::Notifications", type: :request do
     expect(response).to have_http_status(:unauthorized)
   end
 
+  # A PATCH/PUT with no `notification` key must be a client error (400), not a
+  # NoMethodError-on-nil 500. `notification_params` uses `require` (same pattern as
+  # FlagsController) and the controller rescues ParameterMissing → :bad_request.
+  describe "update param robustness" do
+    it "returns 400 (not 500) when the notification param key is missing" do
+      mine = create(:notification, user: me)
+      sign_in me
+      put "/api/v1/#{me.username}/notifications/#{mine.id}", params: {}, as: :json
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it "marks the notification read on the happy path" do
+      mine = create(:notification, user: me, read: false)
+      sign_in me
+      put "/api/v1/#{me.username}/notifications/#{mine.id}", params: {notification: {read: true}}, as: :json
+      expect(response).to have_http_status(:ok)
+      expect(mine.reload.read).to be(true)
+    end
+  end
+
   describe "referenced hoojah visibility + robustness" do
     # Slice 11 Task 9: the serializer used `Hujah.find`, so a notification whose
     # referenced hoojah was later deleted raised RecordNotFound → 500 on index.

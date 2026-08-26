@@ -1,6 +1,15 @@
 class Api::V1::NotificationsController < Api::V1::BaseController
   before_action :authenticate_user!
 
+  # `notification_params` uses `require`, so a PATCH with no `notification` key raises
+  # ParameterMissing. Production maps that to 400 via `rescue_responses`, but the app
+  # runs `show_exceptions=:none` in test so the raise propagates — rescue here to
+  # return the 400 the request spec asserts (same in-controller-rescue pattern as
+  # Api::V1::FlagsController).
+  rescue_from ActionController::ParameterMissing do |e|
+    render json: {error: e.message}, status: :bad_request
+  end
+
   def index
     skip_authorization
     notifications = policy_scope(Notification).order(created_at: :asc)
@@ -33,7 +42,9 @@ class Api::V1::NotificationsController < Api::V1::BaseController
   private
 
   def notification_params
-    params[:notification].permit(:read)
+    # `require` so a PATCH with no `notification` key returns 400 (ParameterMissing →
+    # :bad_request) instead of a NoMethodError-on-nil 500. Mirrors FlagsController.
+    params.require(:notification).permit(:read)
   end
 
   def notification

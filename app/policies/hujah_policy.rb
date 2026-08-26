@@ -24,7 +24,12 @@ class HujahPolicy < ApplicationPolicy
   # Per-post visibility (2026): a viewer who can't see a claim must not be able to
   # vote on it either — voting bumps the denormalized counters and would let a stranger
   # probe existence of / interact with a non-public claim by guessing its slug.
-  def vote? = user.present? && record.visible_to?(user)
+  # Block gate (2026): mirror create?'s check — a blocker/blocked-by must not vote on
+  # the author. hidden_user_ids is bidirectional (blocked OR blocked-by).
+  def vote?
+    user.present? && record.visible_to?(user) &&
+      !user.hidden_user_ids.include?(record.user_id)
+  end
 
   def destroy? = user.present? && record.user_id == user.id
 end

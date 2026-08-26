@@ -49,4 +49,26 @@ RSpec.describe HujahPolicy do
       expect(HujahPolicy.new(owner, claim).vote?).to be(true)
     end
   end
+
+  # ── Block gate on vote? (2026): mirror create?'s block check ─────────────────────
+  # A public hoojah is readable via visible_to?, but a blocker/blocked-by must not be
+  # able to vote on its author — voting bumps the denormalized counters and is an
+  # interaction the block is meant to prevent (create? already gated this).
+  describe "block gate on vote?" do
+    it "forbids a voter who has blocked the author" do
+      voter = create(:user)
+      create(:block, blocker: voter, blocked: owner)
+      expect(HujahPolicy.new(voter, hujah).vote?).to be(false)
+    end
+
+    it "forbids a voter who is blocked BY the author (bidirectional)" do
+      voter = create(:user)
+      create(:block, blocker: owner, blocked: voter)
+      expect(HujahPolicy.new(voter, hujah).vote?).to be(false)
+    end
+
+    it "still permits an unrelated signed-in user to vote" do
+      expect(HujahPolicy.new(other, hujah).vote?).to be(true)
+    end
+  end
 end

@@ -14,6 +14,12 @@ RSpec.describe User, type: :model do
     expect(dup).not_to be_valid
   end
 
+  it "rejects a duplicate username at the database level (unique index)" do
+    User.create!(full_name: "A", username: "dbdup", email: "a1@x.com", password: "hoojah88")
+    dup = User.new(full_name: "B", username: "dbdup", email: "b1@x.com", password: "hoojah88")
+    expect { dup.save!(validate: false) }.to raise_error(ActiveRecord::RecordNotUnique)
+  end
+
   it "assigns a random photo after create" do
     user = User.create!(full_name: "A", username: "ph", email: "ph@x.com", password: "hoojah88")
     expect(user.photo).to be_present
