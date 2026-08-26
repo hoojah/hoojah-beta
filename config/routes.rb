@@ -136,9 +136,9 @@ Rails.application.routes.draw do
   # Public informational pages (2026). Static, no auth — anyone (signed out included)
   # can read the FAQ and the legal pages. MAIN routes (not Api::V1); they never write,
   # so CSRF posture is irrelevant. Addressed by plain path, not a record slug.
-  get "/faq",     to: "pages#faq",     as: :faq
+  get "/faq", to: "pages#faq", as: :faq
   get "/privacy", to: "pages#privacy", as: :privacy
-  get "/terms",   to: "pages#terms",   as: :terms
+  get "/terms", to: "pages#terms", as: :terms
   get "/notifications", to: "notifications#index", as: :notifications
   # Scope-only mark-all-read (Task 4.1) — no id/ids param, so there is nothing here
   # for a forged param to select; it can only ever touch the signed-in user's own
