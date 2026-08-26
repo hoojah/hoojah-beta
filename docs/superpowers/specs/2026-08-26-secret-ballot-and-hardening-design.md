@@ -34,7 +34,9 @@ Add to `Hujah` (`app/models/hujah.rb`):
 # Secret ballot: hide the per-stance breakdown until the electorate is large enough
 # that the published split can't be used to de-anonymize an individual voter.
 # Below this many total votes, surfaces show the total + the viewer's own stance only.
-VOTE_BREAKDOWN_MIN = 5
+# Reuses UserAnalytics::K (already 5) as the single threshold source so the analytics
+# suppression and this cannot drift apart.
+VOTE_BREAKDOWN_MIN = UserAnalytics::K
 
 # Total votes cast across all three stances (the electorate size). Replaces the
 # `agree_count + neutral_count + disagree_count` sum duplicated across views/model.
@@ -48,6 +50,10 @@ def breakdown_visible?
   total_votes >= VOTE_BREAKDOWN_MIN
 end
 ```
+
+> **Existing precedent.** `UserAnalytics::K = 5` + `#suppressed?` already implement this exact
+> k-suppression for the analytics distribution. Reuse `UserAnalytics::K` here rather than minting a
+> second `5` (Fable leak-audit finding 3). Confirm `UserAnalytics::K == 5` at implementation.
 
 **No author exception.** The author is as able to de-anonymize as anyone, and the existing
 secret-ballot precedent (the id-less `new_vote` notification) already refuses the author that power.
@@ -86,14 +92,21 @@ changes (Slice 11 note: no legacy native client in production). Change:
 So a sub-k hoojah serializes as `{total_count: 3, agree_count: null, neutral_count: null,
 disagree_count: null, current_user_vote: "agree", ...}`.
 
-## Analytics distribution (A7 — aggregate leg)
+### UserSerializer#hujahs — the second API leak (Fable finding 1)
 
-`app/views/analytics/_distribution_bar.html.erb` + `analytics/show.html.erb` show the author's
-**aggregate** received-vote distribution across all their hoojahs (`UserAnalytics`). Gate the
-distribution breakdown on the **aggregate** total: if `total_votes_received < 5`, hide the
-per-stance distribution and show the total only. (Aggregating many hoojahs normally clears k
-easily; this only bites a brand-new author with almost no votes — exactly the de-anonymizable case.)
-`UserAnalytics#total_votes_received` already exists.
+`app/serializers/user_serializer.rb` (the `hujahs` attribute, ~lines 27-29) serializes
+`agree_count`/`neutral_count`/`disagree_count` for **every visible hoojah of a user**, served by
+`GET /api/v1/users/:username`. This is the exact data being gated, reachable by profile lookup —
+so it must be gated identically: per child hoojah, nil the three counts when
+`!hujah.breakdown_visible?` and add `total_count: hujah.total_votes`. (Mirror whatever helper
+`HujahSerializer` uses so the two stay consistent.)
+
+## Analytics distribution (A7 — aggregate leg) — ALREADY IMPLEMENTED
+
+The author's aggregate received-vote distribution (`app/views/analytics/_distribution_bar.html.erb`,
+`UserAnalytics`) **already suppresses** its per-stance split below k via `UserAnalytics::K = 5` and
+`#suppressed?` (Fable finding 9). **No new work here — verify only** with a spec that the analytics
+distribution hides the breakdown below k and shows it at ≥ k (add if not already covered).
 
 ## Hardening fixes (independent, no design ambiguity)
 
@@ -146,3 +159,21 @@ easily; this only bites a brand-new author with almost no votes — exactly the 
 - No change to `cast_vote`, the vote model, or the vote→reply gate.
 - The `conviction_count` aggregate is not a per-stance breakdown and stays visible.
 - Trending's internal score still uses real counts server-side (never rendered) — unaffected.
+
+### Explicitly OUT OF SCOPE (recorded as a new finding, not built here)
+
+- **Debate spectator-verdict percentages** (`app/views/debates/_verdict.html.erb`,
+  `Debate#verdict_tally`) render with no k floor and are the *same class* of secret-ballot leak, but a
+  **different electorate** (verdict votes, not hoojah stance votes) with no owner k-decision. Finding
+  2a is specifically hoojah vote counts. This will be **logged as a new tracked finding** in
+  `SECURITY-FINDINGS.md` (`verdict-k`), not fixed in this pass — it needs its own owner decision.
+
+### Accepted residual risk (documented, not fixed)
+
+- **Stance-tagged public replies shrink the effective anonymity set** (Fable finding 5). Replying
+  requires a prior vote and a child hoojah publicly carries its author's stance, so voters who also
+  replied have *voluntarily* disclosed their stance. At total = k with k−1 stance-tagged repliers, the
+  newly-revealed split pins the last voter. Effective k = `total_votes − publicly-stance-tagged
+  voters`. Repliers self-disclosed; the residual exposure of the one silent voter at exactly the
+  boundary is an **accepted** limitation of a count-threshold rule — closing it fully needs a
+  reply-aware threshold, deferred. Recorded in `SECURITY-FINDINGS.md`.
