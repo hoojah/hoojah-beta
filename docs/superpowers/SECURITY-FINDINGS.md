@@ -27,26 +27,41 @@ All above are production/tooling only; test+dev suite stays green (24/0/2).
 
 ## ⚠️ OPEN — the whole of it
 
-**Two items. Nothing else on this page is open.** Slice 11 (2026-08-25) closed the three
-`Api::V1` items — read the "Closed in Slice 11" section below for the closure evidence. What
-remains open is the product/privacy secret-ballot item (Slice 13) and the deploy-gated
-master-key item. Read this table and stop.
+**Two items open.** The secret-ballot item **2a** and all four Slice-11 low follow-ups
+(`vote?-block`, `notif-param-500`, `A7 counts`, `username-uniq-index`) were **closed 2026-08-26** —
+see "Closed in the secret-ballot + hardening pass" below. What remains open is the deploy-gated
+master-key item and one newly-surfaced follow-up (`verdict-k`). Read this table and stop.
 
 | ID | Severity | Issue | Where it lands | State |
 |----|----------|-------|----------------|-------|
-| **2a** | Product/privacy | Public vote counts vs the secret ballot — a small enough electorate lets an observer infer individual votes from the published breakdown. | **Slice 13** | Open, **decided 2026-08-19: option C.** Below k=5, show the total and the viewer's own stance but no breakdown; at ≥5 show the full split. Applies to the HTML surfaces **and** `HujahSerializer`. |
 | L4 | Low | `config.require_master_key` commented out in `production.rb:19` | Deploy track, **not a slice** | Open by design. Gated on the deploy providing `RAILS_MASTER_KEY`, not on any code change here. Enabling it before the key exists turns a boot into a crash. |
+| **verdict-k** | Low | Debate spectator-verdict percentages (`app/views/debates/_verdict.html.erb`, `Debate#verdict_tally`) render with **no k floor** — the same secret-ballot class as 2a, but a **different electorate** (verdict votes, not hoojah stance votes). At 2 verdict voters, knowing one unmasks the other. | Needs its own owner k-decision | Surfaced by the Fable leak-audit during the 2026-08-26 secret-ballot pass. Deliberately scoped OUT of that pass (2a is specifically hoojah stance votes). Fix = apply the same total-<k suppression to `verdict_tally` once the owner sets k for verdicts. |
 
-### New tracked follow-ups surfaced during Slice 11 (Low — not scheduled)
-
-| ID | Severity | Issue | Notes |
-|----|----------|-------|-------|
-| **vote?-block** | Low | `HujahPolicy#vote?` (`user.present? && record.visible_to?(user)`) lacks the `hidden_user_ids` block check that `#create?` has — a blocker can still vote on a blocked author's *public* hujah. | Shared by BOTH the HTML and API vote paths (one policy), so it is not a read-parity gap; a small policy hardening for a later slice. |
-| **notif-param-500** | Low | `Api::V1::NotificationsController#notification_params` is `params[:notification].permit(:read)` with no `require` — a PATCH with no `notification` key → 500. | Same latent shape A2 fixed for flags, but it fires **after** `authorize` (not the "500-before-authorize" security class). Fold into a future API pass. |
-| **A7 counts** | Low | `UserSerializer#vote_count` and the remaining `*_count` columns (`hujah_count` on other surfaces, tab badges, hashtag counts) stay unfiltered. `children_count`/`hujah_count` in the serializers ARE now visibility-gated (Slice 11) because they sit inside gated serializers; the rest are the same class as 2a. | Track with 2a. |
-| **username-uniq-index** | Low | `users.username` has no unique DB index; `User.generate_username` (Google OAuth signups) is check-then-act (`exists?` → `create`), so two simultaneous Google sign-ups whose emails share a local-part can both mint the same `@username` (URL identity `/u/:username`). The app-level `uniqueness:` validation races identically. | Pre-existing gap made more reachable by auto-generated usernames (cloudinary-google-auth branch, 2026-08-26). Fix = migration `add_index :users, :username, unique: true, algorithm: :concurrently` — **deploy-gated: confirm no existing duplicate usernames in prod first** (a concurrent unique-index build aborts on dupes). The `from_omniauth` `rescue ActiveRecord::RecordNotUnique` retry already added covers the `[provider, uid]` index; this closes the username leg. |
+**Accepted residual risk (not a scheduled item).** The 2a k-anonymity rule is a pure count
+threshold. Because replying requires a prior vote and a child hoojah publicly carries its author's
+stance, voters who *also replied* have voluntarily disclosed their stance — so the effective
+anonymity set is `total_votes − publicly-stance-tagged voters`, not `total_votes`. At exactly total=k
+with k−1 stance-tagged repliers, the revealed split pins the one silent voter. Repliers self-disclosed;
+closing the boundary case for the lone silent voter needs a reply-aware threshold, deferred. Accepted
+2026-08-26.
 
 ---
+
+## ✅ Closed in the secret-ballot + hardening pass (2026-08-26) — branch `security/secret-ballot-and-hardening`
+
+Built off `master` after the cloudinary-google-auth merge. Compressed brainstorm (owner decisions
+recorded here) → spec → **pre-implementation Fable leak-audit** (caught the `UserSerializer#hujahs`
+API leak the first draft missed, and confirmed analytics was already gated) → subagent-driven TDD
+(per-track implementer + Fable spec/quality/leak review + batched fixes). Isolated-DB full suite
+green; standardrb + brakeman 0 + bundler-audit 0.
+
+| ID | Issue | Closed by | What changed |
+|----|-------|-----------|--------------|
+| **2a** | Public per-stance vote breakdown de-anonymizes voters at a small electorate. | `c9526ac` `075cc75` `8850aa2` `8bb4cab` `2fa392b` | Single model rule `Hujah#breakdown_visible?` (`total_votes >= VOTE_BREAKDOWN_MIN`, where `VOTE_BREAKDOWN_MIN = UserAnalytics::K = 5` — one threshold, no drift). Below k every surface shows the **total + the viewer's own stance** only, never a per-stance count/percentage/bar; at ≥k the full split as before. Gated: `_vote_bars`, `_vote_hero`, `_child_card`, `_user_hujah` (HTML) and `HujahSerializer` (+ nested `children`) (API). Serializer gate single-sourced via `Hujah#ballot_counts`. **No author exception** (the author is an observer too — consistent with the id-less `new_vote` notification). Each surface has a below-k absence spec + ≥k positive control. |
+| **A7 counts** | `UserSerializer#hujahs` per-stance counts + the analytics distribution — same class as 2a. | `8850aa2` `2fa392b` (+ pre-existing `UserAnalytics::K`) | `UserSerializer#hujahs` now gated identically (nil below k, always-present `total_count`) — this was the leak the Fable audit caught (reachable via `GET /api/v1/users/:username`). The analytics aggregate distribution was **already** suppressed below k via `UserAnalytics::K`/`#suppressed?`; pinned by spec. |
+| **vote?-block** | `HujahPolicy#vote?` lacked the `hidden_user_ids` block check `#create?` has. | `e359ed7` | `#vote?` now `user.present? && record.visible_to?(user) && !user.hidden_user_ids.include?(record.user_id)`. Bidirectional (blocker + blocked-by). Spec: blocker forbidden, blocked-by forbidden, unrelated allowed. |
+| **notif-param-500** | `Api::V1::NotificationsController#notification_params` missing `require`. | `e359ed7` | `params.require(:notification).permit(:read)` + a scoped `rescue_from ActionController::ParameterMissing → :bad_request` mirroring `Api::V1::FlagsController`. Missing key → **400**, happy path (200 + `read` flipped) unchanged. (Found: pre-fix it was actually a silent 200 via param-wrapping, not a 500.) |
+| **username-uniq-index** | No unique DB index on `users.username`; `User.generate_username` (OAuth) is check-then-act. | `e359ed7` | Migration `add_index :users, :username, unique: true, algorithm: :concurrently` (`disable_ddl_transaction!`). DB now rejects a duplicate (spec via `save!(validate: false)`). **Deploy note:** confirm `SELECT username, COUNT(*) FROM users GROUP BY 1 HAVING COUNT(*) > 1` is empty before the deploy runs this migration — a concurrent unique build aborts (and leaves an INVALID index) if duplicates exist. Dev/test have none. Username lookup stays **case-sensitive** (matches the existing model validation; a `lower(username)` index was considered and deliberately deferred — it would require case-insensitive lookups too). |
 
 ## ✅ Closed in Slice 11 (2026-08-25) — the `Api::V1` hardening pass
 
