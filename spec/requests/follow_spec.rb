@@ -1,5 +1,8 @@
 require "rails_helper"
 
+# Lets the compound `.and(not_change { ... })` assertions below read as prose.
+RSpec::Matchers.define_negated_matcher :not_change, :change
+
 RSpec.describe "Follows", type: :request do
   let(:me) { create(:user) }
   # let! (eager): the POST targets /u/target/follow before any test body references
@@ -26,6 +29,42 @@ RSpec.describe "Follows", type: :request do
     me.active_follows.create!(followed: target)
     delete "/u/target/follow", headers: {"Accept" => "text/vnd.turbo-stream.html"}
     expect(me.reload.following).not_to include(target)
+  end
+
+  describe "DELETE /u/:username/follow (unfollow / cancel request)" do
+    let(:turbo) { {"Accept" => "text/vnd.turbo-stream.html"} }
+
+    it "cancelling a PENDING request dismisses the target's follow_request card and leaves counters untouched" do
+      private_target = create(:user, username: "shy", private: true)
+      sign_in me
+      # A request to a private target fires a follow_request notification (after_create_commit).
+      me.active_follows.create!(followed: private_target, status: :pending)
+      expect(Notification.where(user_id: private_target.id, subject_user_id: me.id,
+        category: :follow_request)).to exist
+
+      expect {
+        delete "/u/shy/follow", headers: turbo
+      }.to change {
+        Notification.where(user_id: private_target.id, subject_user_id: me.id,
+          category: :follow_request).count
+      }.from(1).to(0)
+        .and(not_change { private_target.reload.followers_count })
+        .and(not_change { me.reload.following_count })
+      expect(me.active_follows.where(followed: private_target)).not_to exist
+    end
+
+    it "unfollowing an ACCEPTED row dismisses no notifications and drops both counters by one" do
+      accepted_target = create(:user, username: "pal")
+      sign_in me
+      me.active_follows.create!(followed: accepted_target, status: :accepted)
+
+      expect {
+        delete "/u/pal/follow", headers: turbo
+      }.to change { me.reload.following_count }.by(-1)
+        .and change { accepted_target.reload.followers_count }.by(-1)
+        .and(not_change { Notification.count })
+      expect(me.following).not_to include(accepted_target)
+    end
   end
 
   describe "DELETE /u/:username/follower (remove a follower)" do

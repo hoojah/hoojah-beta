@@ -28,6 +28,57 @@ RSpec.describe "Follow", type: :system, js: true do
   end
 end
 
+# Cuprite coverage for the unfollow confirmation (Slice C, gap 7). Severing an
+# ACCEPTED follow is guarded by a turbo_confirm; cancelling a PENDING request is
+# not (low-stakes, reversible). Both use the same DELETE unfollow route, so this
+# proves the guard lives on the button, not the route.
+RSpec.describe "Unfollow confirmation", type: :system, js: true do
+  it "guards the accepted 'Following' button with a confirm — dismiss keeps it, accept drops it" do
+    me = create(:user)
+    target = create(:user, username: "target")
+    me.active_follows.create!(followed: target, status: :accepted)
+
+    login_as_system(me)
+    visit "/u/target"
+    expect(page).to have_button("Following")
+    within "##{ActionView::RecordIdentifier.dom_id(target, :follower_count)}" do
+      expect(page).to have_content("1")
+    end
+
+    # Dismissing the confirm leaves the relationship untouched.
+    dismiss_confirm { click_button "Following" }
+    expect(page).to have_button("Following")
+    within "##{ActionView::RecordIdentifier.dom_id(target, :follower_count)}" do
+      expect(page).to have_content("1")
+    end
+    expect(target.reload.followers).to include(me)
+
+    # Accepting it severs the follow: button flips to Follow, count drops to 0.
+    accept_confirm { click_button "Following" }
+    expect(page).to have_button("Follow")
+    within "##{ActionView::RecordIdentifier.dom_id(target, :follower_count)}" do
+      expect(page).to have_content("0")
+    end
+    expect(target.reload.followers).not_to include(me)
+  end
+
+  it "cancels a pending 'Requested' immediately with NO confirm dialog" do
+    me = create(:user)
+    owner = create(:user, username: "owner", private: true)
+    me.active_follows.create!(followed: owner, status: :pending)
+
+    login_as_system(me)
+    visit "/u/owner"
+    expect(page).to have_button("Requested")
+
+    # No accept_confirm wrapper: Cuprite raises on an unexpected modal, so a clean
+    # flip to "Follow" here proves the cancel path opens no confirm dialog.
+    click_button "Requested"
+    expect(page).to have_button("Follow")
+    expect(me.active_follows.where(followed: owner)).not_to exist
+  end
+end
+
 # Cuprite coverage for the owner-only "Remove follower" control (Slice C, gap 2)
 # on the followers list. The Remove pill renders only on the owner's own followers
 # page; clicking it fires a turbo_confirm then drops the row via Turbo Stream.

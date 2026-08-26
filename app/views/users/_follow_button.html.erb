@@ -57,9 +57,12 @@
 
     FROZEN: every `button_to` path and HTTP verb, on BOTH surfaces. `unfollow_user_path`
     with DELETE is reused by BOTH "Following" (drop an accepted follow) and "Requested"
-    (cancel a pending one) — that is deliberate, not a copy-paste. `dom_id(user,
-    :follow_button)` is the replace target for all four of follows/blocks create+destroy
-    turbo streams. %>
+    (cancel a pending one) — that is deliberate, not a copy-paste. The two diverge only
+    in one place: "Following" carries a `turbo_confirm` (severing an accepted follow is
+    high-stakes and not one-click reversible), "Requested" does NOT (cancelling your own
+    request is low-stakes and reversible). Same route, same verb, different guard.
+    `dom_id(user, :follow_button)` is the replace target for all four of follows/blocks
+    create+destroy turbo streams. %>
 <% surface = local_assigns.fetch(:surface, :card) %>
 <% filled_classes, outline_classes = case surface
    when :gradient
@@ -90,13 +93,18 @@
       <div class="flex items-center gap-2">
         <% if current_user.following.include?(user) %>
           <%= button_to unfollow_user_path(user.username), method: :delete,
+                form: {data: {turbo_confirm: "Unfollow @#{user.username}?"}},
                 class: filled_classes do %>
             <%= lucide_icon("user-check", class: "w-4 h-4") %>
             <span>Following</span>
           <% end %>
         <% elsif current_user.active_follows.pending.exists?(followed_id: user.id) %>
           <%# Private target with a pending request (Slice 7b). The button cancels the
-              request — reuses the unfollow route (DELETE removes the pending follow). %>
+              request — reuses the unfollow route (DELETE removes the pending follow).
+              No turbo_confirm here (unlike the accepted "Following" branch above):
+              cancelling a request you sent is low-stakes and reversible — one click
+              re-requests it — so a confirm would be friction without a severed
+              relationship to guard against. %>
           <%= button_to unfollow_user_path(user.username), method: :delete,
                 class: filled_classes do %>
             <%= lucide_icon("clock", class: "w-4 h-4") %>

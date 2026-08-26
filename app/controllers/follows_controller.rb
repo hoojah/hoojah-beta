@@ -22,6 +22,11 @@ class FollowsController < ApplicationController
     @follow = current_user.active_follows.find_by(followed: @target)
     authorize @follow, :destroy? if @follow
     skip_authorization if @follow.nil?
+    # A cancelled REQUEST must clear the target's follow_request card (the same
+    # dismissal accept/decline perform) - else it offers dead buttons forever. An
+    # unfollow of an ACCEPTED row has no such card, so this is pending-only. Read
+    # the status BEFORE destroy, while the row still exists.
+    @follow.dismiss_request_notification! if @follow&.pending?
     @follow&.destroy
     render_button
   end
