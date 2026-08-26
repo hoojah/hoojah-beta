@@ -141,10 +141,11 @@ RSpec.describe DebateVerdict, type: :model do
 
     it "reuses the shared UserAnalytics::K threshold" do
       d = debate(status: :concluded)
-      expect(Debate.instance_method(:verdict_visible?)).to be_present
-      UserAnalytics::K.times { d.cast_verdict(by: create(:user), choice: "challenger") }
+      (UserAnalytics::K - 1).times { d.cast_verdict(by: create(:user), choice: "challenger") }
+      expect(d.verdict_visible?).to be(false) # one short of K
+      d.cast_verdict(by: create(:user), choice: "challenger")
       expect(d.total_verdicts).to eq(UserAnalytics::K)
-      expect(d.verdict_visible?).to be(true)
+      expect(d.verdict_visible?).to be(true) # exactly K
     end
   end
 

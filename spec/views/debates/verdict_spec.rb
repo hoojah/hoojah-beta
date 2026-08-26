@@ -113,6 +113,24 @@ RSpec.describe "debates/_verdict", type: :view do
       expect(p).to have_no_css("svg.verdict-crown")
     end
 
+    it "renders a Draw hero (no crown) on a challenger/opponent tie at or above k" do
+      d = debate
+      create(:debate_verdict, debate: d, choice: :challenger)
+      create(:debate_verdict, debate: d, choice: :challenger)
+      create(:debate_verdict, debate: d, choice: :opponent)
+      create(:debate_verdict, debate: d, choice: :opponent)
+      as(challenger)
+      p = panel(d)
+
+      # 2–2 is a tie for the max, so verdict_winner is :draw — but total 4 ≥ k, so the
+      # split IS shown (50/50), just with no crown and no "Winner".
+      expect(p).to have_css("[data-testid='verdict-hero']", text: /draw/i)
+      expect(p).to have_no_content(/winner/i)
+      expect(p).to have_no_css("svg.verdict-crown")
+      expect(p).to have_content("50%")
+      expect(p).to have_content("Decided by 4 spectators over 3 rounds")
+    end
+
     it "renders a suppressed hero (no crown, sealed note) when there are no verdicts yet" do
       d = debate
       as(challenger) # a participant views their own concluded debate
