@@ -35,3 +35,11 @@ local:
 #   service: Mirror
 #   primary: local
 #   mirrors: [ amazon, google, microsoft ]
+garage:
+  service: S3
+  endpoint: <%= ENV.fetch("GARAGE_ENDPOINT", "https://s3-grg.novas.my") %>
+  access_key_id: <%= ENV["GARAGE_ACCESS_KEY_ID"] %>
+  secret_access_key: <%= ENV["GARAGE_SECRET_ACCESS_KEY"] %>
+  bucket: <%= ENV["GARAGE_BUCKET"] %>
+  region: <%= ENV.fetch("GARAGE_REGION", "garage") %>
+  force_path_style: true

@@ -48,7 +48,12 @@ Rails.application.configure do
   # config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect' # for NGINX
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = :cloudinary
+  # Garage (self-hosted S3) wins when GARAGE_ACCESS_KEY_ID is set; otherwise Cloudinary.
+  if ENV["GARAGE_ACCESS_KEY_ID"].present?
+    config.active_storage.service = :garage
+  else
+    config.active_storage.service = :cloudinary
+  end
 
   # Mount Action Cable outside main process or domain.
   # config.action_cable.mount_path = nil
