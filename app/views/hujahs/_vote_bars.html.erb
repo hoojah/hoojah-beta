@@ -16,9 +16,11 @@
   - a percent legend directly under it, `flex justify-between`, one `text-<stance>
     text-xs font-bold` label per stance — the same numbers, now read as a caption
     for the bar instead of trailing each dead row.
-  - three uniform PILL vote buttons below that (icon + label, not a bare 44px circle):
-    `rounded-full h-10 border-[1.5px] border-<stance> text-<stance> bg-card`, equal-width
-    (`flex-1`) with the stance glyph and its name. All three stay OUTLINED; the viewer's
+  - three uniform ROUNDED-RECTANGLE vote buttons below that (icon + label, not a bare
+    44px circle): `rounded-xl h-10 border-[1.5px] border-<stance> text-<stance> bg-card`.
+    Each button is `w-full` inside a `flex-1` `button_to` FORM, so the trio spans the full
+    card width (the form is the flex child — the button alone taking `flex-1` left the
+    forms content-sized). With the stance glyph and its name. All three stay OUTLINED; the viewer's
     own voted stance is not a solid fill but a subtle marker — a light `bg-<stance>-soft`
     tint + `ring-2 ring-<stance>` + a leading `check` glyph. `active:scale-95` is the only
     press feedback, same call as before — see the latency note this replaces.
@@ -84,7 +86,7 @@
             params: { vote: choice },
             form: { class: "flex-1" },
             aria: { label: stance.capitalize, pressed: voted.to_s },
-            class: "w-full h-10 rounded-full border-[1.5px] border-#{stance} text-#{stance} " \
+            class: "w-full h-10 rounded-xl border-[1.5px] border-#{stance} text-#{stance} " \
                    "#{voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card"} " \
                    "flex items-center justify-center gap-1.5 text-xs font-bold transition active:scale-95" do %>
         <%= lucide_icon("check", class: "w-3.5 h-3.5") if voted %>

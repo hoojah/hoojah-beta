@@ -57,6 +57,14 @@ RSpec.describe "shared/_navbar", type: :view do
       expect(navbar).to have_css("[data-action='theme#cycleScheme']")
     end
 
+    it "places the avatar menu to the LEFT of the theme/scheme toggles" do
+      # The left zone is a flex row; CSS `order` renders the user dropdown (order-1)
+      # before the theme pill (order-2), so the avatar reads to the left of the
+      # light/dark + scheme toggles whenever it is shown (signed in).
+      expect(navbar).to have_css("details.order-1")
+      expect(navbar).to have_css("[data-controller='theme'].order-2")
+    end
+
     it "renders the menu summary avatar as the 2026 gradient tile, even though this user has a photo" do
       expect(navbar).to have_css("details summary span.avatar-tile.rounded-xl", text: "MZ")
       expect(navbar).to have_no_css("details summary img")

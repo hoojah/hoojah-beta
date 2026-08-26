@@ -29,7 +29,7 @@
       so the logo reads left; at >=sm it becomes a 3-column grid whose CENTER
       column holds the logo, `justify-self-*` pinning each zone (left / centre /
       right) so the logo is TRULY centred regardless of the side widths.
-      LEFT  = theme pill (always) + user dropdown (signed-in only)
+      LEFT  = user dropdown (signed-in only, order-1) + theme pill (always, order-2)
       CENTER = logo
       RIGHT = Trending (mobile/tablet only) + New Claim (signed-in) OR Login/Sign up (guest) %>
   <div class="max-w-xl sm:max-w-none mx-auto px-4 sm:px-6 h-14 flex items-center justify-between sm:grid sm:grid-cols-3">
@@ -42,7 +42,7 @@
           to localStorage (the no-FOUC head script re-applies before paint).
           Uses the theme-aware `bg-card` / `border-hairline` / `text-ink`
           utilities so the pill itself retints with the active theme. %>
-      <div class="flex items-center rounded-full border border-hairline bg-card" data-controller="theme">
+      <div class="order-2 flex items-center rounded-full border border-hairline bg-card" data-controller="theme">
         <button type="button" data-action="theme#toggleTheme" data-theme-target="toggle"
                 class="flex items-center justify-center w-8 h-8 text-ink" aria-label="Toggle dark mode">
           <%= lucide_icon("sun-moon", class: "w-4 h-4") %>
@@ -57,7 +57,7 @@
         <%# `<details>` IS the menu mechanism here — the design system documents it as such
             (components/navigation/DropdownMenu.prompt.md). No Stimulus controller, and it
             closes on an outside click for free. Do not "upgrade" it to JS. %>
-        <details class="relative">
+        <details class="order-1 relative">
           <summary class="list-none cursor-pointer flex items-center">
             <%# 36px, the design system's `nav` avatar box. Via the partial rather than
                 `image_tag current_user.photo`, which raises on a user whose photo is
