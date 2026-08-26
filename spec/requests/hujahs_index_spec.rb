@@ -37,6 +37,27 @@ RSpec.describe "Hujahs index", type: :request do
     expect(response.body).to include("MY OWN private note here")
   end
 
+  # Slice B (hovercard byline): the feed card byline used to link avatar + name to dead
+  # `"#"` placeholders. They must now be real anchors to the author's profile that also
+  # carry the hovercard Stimulus triggers, and no `"#"` placeholder may remain in the card.
+  it "links the feed byline avatar and name to the author's profile with hovercard triggers" do
+    author = create(:user, username: "aisyah")
+    create(:hujah, user: author, parent_id: nil, body: "a claim in the feed")
+
+    get "/"
+    expect(response).to have_http_status(:ok)
+
+    card = Nokogiri::HTML(response.body).at_css('[data-testid="hujah-card"]')
+    expect(card).to be_present
+
+    profile_links = card.css('a[href="/u/aisyah"][data-controller="hovercard"]')
+    # Both the avatar and the name are converted, so at least two such anchors exist.
+    expect(profile_links.size).to be >= 2
+
+    # The dead `"#"` placeholder links are gone.
+    expect(card.css('a[href="#"]')).to be_empty
+  end
+
   it "shows the Login control to logged-out visitors" do
     get "/"
     expect(response.body).to include("Login")

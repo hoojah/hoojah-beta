@@ -12,6 +12,22 @@ RSpec.describe "Hujah show", type: :request do
     expect(response.body).to include('data-controller="response-filter"')
   end
 
+  # Slice B (hovercard byline): the show-page author byline (avatar + full name) must be
+  # real anchors to the author's profile carrying the hovercard triggers. The `@username`
+  # + time caption below stays plain (wrapping it would put the timestamp in the anchor).
+  it "links the show-page byline avatar and name to the author's profile with hovercard triggers" do
+    author = create(:user, username: "aisyah")
+    hujah = create(:hujah, user: author, body: "a claim on its own page")
+
+    get "/hoojah/#{hujah.slug}"
+    expect(response).to have_http_status(:ok)
+
+    doc = Nokogiri::HTML(response.body)
+    profile_links = doc.css('a[href="/u/aisyah"][data-controller="hovercard"]')
+    # Avatar + name are both converted → at least two hovercard-carrying profile anchors.
+    expect(profile_links.size).to be >= 2
+  end
+
   # A reply hujah's own show page is the canonical flag surface for replies: the thread's
   # `_child_card` is a single anchor to this page and deliberately carries no menu (a
   # nested menu inside an <a> is invalid HTML, and that partial is frozen). So the flag

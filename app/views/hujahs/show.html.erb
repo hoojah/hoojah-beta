@@ -74,9 +74,11 @@
       here — flagged in HANDOVER. %>
   <section class="mb-1">
     <div class="flex items-center gap-3">
-      <%= render "ui/avatar", user: @hujah.user, size: :md %>
+      <%= render layout: "ui/user_link", locals: {user: @hujah.user, class: "shrink-0"} do %>
+        <%= render "ui/avatar", user: @hujah.user, size: :md %>
+      <% end %>
       <div class="flex-1 min-w-0 leading-tight">
-        <div class="font-bold text-ink truncate"><%= @hujah.user.full_name %></div>
+        <%= render layout: "ui/user_link", locals: {user: @hujah.user, class: "block font-bold text-ink truncate"} do %><%= @hujah.user.full_name %><% end %>
         <div class="text-xs text-ink-2">
           @<%= @hujah.user.username %>
           <span class="mx-1">·</span>
