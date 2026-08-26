@@ -6,9 +6,17 @@ class BlocksController < ApplicationController
     authorize Block.new(blocker: current_user, blocked: @target), :create?
     Block.transaction do
       current_user.blocks_made.find_or_create_by(blocked: @target)
-      # Remove any follow in either direction — Follow has no destroy callbacks, so
-      # delete_all (one statement) is safe and skips the notification side effects.
-      Follow.where(follower: [current_user, @target], followed: [current_user, @target]).delete_all
+      # Remove any follow in either direction. delete_all (one statement) skips
+      # Follow's callbacks — wanted for the notification side effects, but NOT for the
+      # accepted-only counter caches, so apply those decrements explicitly in the same
+      # transaction, accepted rows only (at most 2: A→B and B→A). Pending rows move
+      # nothing.
+      follows = Follow.where(follower: [current_user, @target], followed: [current_user, @target])
+      follows.accepted.pluck(:follower_id, :followed_id).each do |follower_id, followed_id|
+        User.update_counters(followed_id, followers_count: -1)
+        User.update_counters(follower_id, following_count: -1)
+      end
+      follows.delete_all
     end
     render_button
   rescue ActiveRecord::RecordNotUnique

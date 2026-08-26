@@ -25,9 +25,7 @@ class FollowRequestsController < ApplicationController
   def set_follow = @follow = Follow.find(params[:id])
 
   # The follow_request notification has been actioned — remove it so its card
-  # disappears (requests are managed from the card; the inbox page is deferred).
-  def dismiss_request_notification
-    Notification.where(user_id: @follow.followed_id, subject_user_id: @follow.follower_id,
-      category: :follow_request).destroy_all
-  end
+  # disappears. The behaviour lives on the model (Follow#dismiss_request_notification!)
+  # so the accept/decline/expiry/cancel paths share one implementation.
+  def dismiss_request_notification = @follow.dismiss_request_notification!
 end
