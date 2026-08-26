@@ -22,9 +22,11 @@
     per-voter list "to show who voted"; that is exactly the de-anonymization hole the
     `new_vote` notification comment on Hujah warns about, for the same reason.
 
-    Small-N spectator suppression (hiding the tally under a minimum-voter threshold)
-    is a pre-existing DEFERRED item (2a in the backlog) — out of scope here, and this
-    partial reproduces the prior behaviour of showing the tally at any N, including 0.
+    Small-N spectator suppression (verdict-k, 2026): below UserAnalytics::K total
+    verdicts the winner-hero's crown/pills/bar/percentages are ALL suppressed, because
+    each is derived from the tally and leaks an individual vote at tiny N. Only the
+    spectator TOTAL and the viewer's OWN verdict show below k. See the branch below and
+    Debate#verdict_visible?.
 
     `.verdict-hero` is a component class (`app/assets/tailwind/application.css`),
     same treatment as `.trending-hero`: the gradient's second stop is a fixed literal
@@ -51,53 +53,71 @@
       </div>
     <% end %>
   <% else %>
-    <%
-      tally = debate.verdict_tally
-      total = tally.values.sum
-      winner = debate.verdict_winner
-      challenger_pct = total.zero? ? 0 : (tally["challenger"].to_i * 100.0 / total).round
-      opponent_pct = total.zero? ? 0 : (tally["opponent"].to_i * 100.0 / total).round
-    %>
+    <%# verdict-k secret ballot: the winner and the split are BOTH derived from the tally,
+        so below UserAnalytics::K spectators they leak an individual vote (at N=1 the
+        "winner" IS that one voter). Everything derived from the split — winner, crown,
+        Winner pill, dimming, the result bar and its percentages — is computed and emitted
+        ONLY inside the verdict_visible? branch, so nothing below k reaches the DOM. The
+        spectator TOTAL is always safe (it names no one), and the viewer's OWN verdict is
+        their own vote, so both may show below k. See Debate#verdict_visible?. %>
+    <% total = debate.total_verdicts %>
     <div class="rounded-3xl verdict-hero shadow p-4 text-center" data-testid="verdict-hero">
       <div class="text-xs font-extrabold uppercase tracking-wide opacity-80">Verdict</div>
 
-      <div class="mt-3 flex items-center justify-center gap-4">
-        <% [[:challenger, debate.challenger], [:opponent, debate.opponent]].each do |side, participant| %>
-          <% is_winner = winner == side %>
-          <% dimmed = winner != :draw && !is_winner %>
-          <div class="flex flex-col items-center gap-1.5 <%= "opacity-60" if dimmed %>">
-            <div class="relative">
-              <%= render "ui/avatar", user: participant, size: :md, variant: :tile, class: "border-2 border-white" %>
-              <% if is_winner %>
-                <%= lucide_icon("crown", class: "verdict-crown w-5 h-5 absolute -top-3.5 left-1/2 -translate-x-1/2",
-                      style: "fill:#ffd76a;stroke:#ffd76a") %>
-              <% end %>
+      <% if debate.verdict_visible? %>
+        <%
+          tally = debate.verdict_tally
+          winner = debate.verdict_winner
+          challenger_pct = total.zero? ? 0 : (tally["challenger"].to_i * 100.0 / total).round
+          opponent_pct = total.zero? ? 0 : (tally["opponent"].to_i * 100.0 / total).round
+        %>
+        <div class="mt-3 flex items-center justify-center gap-4">
+          <% [[:challenger, debate.challenger], [:opponent, debate.opponent]].each do |side, participant| %>
+            <% is_winner = winner == side %>
+            <% dimmed = winner != :draw && !is_winner %>
+            <div class="flex flex-col items-center gap-1.5 <%= "opacity-60" if dimmed %>">
+              <div class="relative">
+                <%= render "ui/avatar", user: participant, size: :md, variant: :tile, class: "border-2 border-white" %>
+                <% if is_winner %>
+                  <%= lucide_icon("crown", class: "verdict-crown w-5 h-5 absolute -top-3.5 left-1/2 -translate-x-1/2",
+                        style: "fill:#ffd76a;stroke:#ffd76a") %>
+                <% end %>
+              </div>
+              <span class="text-sm font-extrabold">@<%= participant.username %></span>
+              <span class="text-[10px] font-bold uppercase tracking-wide bg-white/20 px-2.5 py-0.5 rounded-full">
+                <%= is_winner ? "Winner" : (side == :challenger ? "Challenger" : "Opponent") %>
+              </span>
             </div>
-            <span class="text-sm font-extrabold">@<%= participant.username %></span>
-            <span class="text-[10px] font-bold uppercase tracking-wide bg-white/20 px-2.5 py-0.5 rounded-full">
-              <%= is_winner ? "Winner" : (side == :challenger ? "Challenger" : "Opponent") %>
-            </span>
-          </div>
-          <% if side == :challenger %><span class="text-xl font-black opacity-70" aria-hidden="true">&middot;</span><% end %>
+            <% if side == :challenger %><span class="text-xl font-black opacity-70" aria-hidden="true">&middot;</span><% end %>
+          <% end %>
+        </div>
+
+        <% if winner == :draw %>
+          <div class="mt-2 text-xs font-extrabold uppercase tracking-wide">Draw</div>
         <% end %>
-      </div>
 
-      <% if winner == :draw %>
-        <div class="mt-2 text-xs font-extrabold uppercase tracking-wide">Draw</div>
+        <%# The single result bar — challenger's share fills from the left, same width-%
+            idiom the old three-row tally used. Draw-choice votes are counted in `total`
+            (the footnote's spectator count) but, like the mockup, are not their own
+            segment: the bar and the two percentages below it compare the two
+            PARTICIPANTS only. %>
+        <div class="mt-4 h-3 rounded-full bg-white/25 overflow-hidden">
+          <div class="h-3 bg-white rounded-full" style="width: <%= challenger_pct %>%"></div>
+        </div>
+        <div class="mt-2 flex justify-between text-xs font-bold">
+          <span><%= challenger_pct %>%</span>
+          <span class="opacity-80"><%= opponent_pct %>%</span>
+        </div>
+      <% else %>
+        <%# Below k — winner + split sealed. Show only the viewer's own verdict (their vote). %>
+        <% own_verdict = debate.verdict_by(current_user) %>
+        <% if own_verdict.present? %>
+          <div class="mt-3 text-sm font-extrabold">Your verdict: <%= own_verdict.capitalize %></div>
+        <% end %>
+        <div class="mt-3 text-xs font-medium opacity-85">
+          Final verdict sealed until <%= UserAnalytics::K %> spectators have voted
+        </div>
       <% end %>
-
-      <%# The single result bar — challenger's share fills from the left, same width-%
-          idiom the old three-row tally used. Draw-choice votes are counted in `total`
-          (the footnote's spectator count) but, like the mockup, are not their own
-          segment: the bar and the two percentages below it compare the two
-          PARTICIPANTS only. %>
-      <div class="mt-4 h-3 rounded-full bg-white/25 overflow-hidden">
-        <div class="h-3 bg-white rounded-full" style="width: <%= challenger_pct %>%"></div>
-      </div>
-      <div class="mt-2 flex justify-between text-xs font-bold">
-        <span><%= challenger_pct %>%</span>
-        <span class="opacity-80"><%= opponent_pct %>%</span>
-      </div>
 
       <div class="mt-2.5 text-[11px] opacity-85">
         Decided by <%= total %> <%= "spectator".pluralize(total) %> over <%= debate.rounds_limit %> <%= "round".pluralize(debate.rounds_limit) %>

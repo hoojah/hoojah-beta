@@ -17,7 +17,7 @@ RSpec.describe "Debate spectator verdict", type: :system, js: true do
     create(:debate, challenger: challenger, opponent: opponent, status: :concluded)
   end
 
-  it "lets a visible spectator vote on a concluded debate and updates the tally" do
+  it "lets a visible spectator vote on a concluded debate but SEALS the winner below k" do
     login_as_system(spectator)
     visit debate_path(debate.slug)
 
@@ -33,17 +33,45 @@ RSpec.describe "Debate spectator verdict", type: :system, js: true do
     # Vote challenger; create.turbo_stream.erb replaces the verdict block in place.
     click_button "@#{challenger.username}"
 
-    # After voting: the winner-hero (Hoojah 2026, Phase 3.6), challenger crowned at
-    # 100% (1/1), and the buttons are gone (a spectator's single verdict is immutable).
+    # verdict-k: a single verdict (N=1) is below k, so the winner + split are SEALED.
+    # The hero shows the viewer's own verdict and the sealed note — never a winner or a
+    # percentage that would out this lone voter. The buttons are gone (verdict is immutable).
     expect(page).to have_css("[data-testid='verdict-hero']")
-    expect(page).to have_content(/winner/i)
-    expect(page).to have_content("100%")
+    expect(page).to have_content("Your verdict: Challenger")
+    expect(page).to have_content("Final verdict sealed until #{UserAnalytics::K} spectators have voted")
     expect(page).to have_content("Decided by 1 spectator over #{debate.rounds_limit} rounds")
+    expect(page).to have_no_content(/winner/i)
+    expect(page).to have_no_content("100%")
     expect(page).to have_no_button("@#{challenger.username}")
     expect(page).to have_no_button("@#{opponent.username}")
     expect(page).to have_no_button("Draw")
 
     expect(debate.debate_verdicts.count).to eq(1)
     expect(debate.verdict_tally).to eq({"challenger" => 1})
+  end
+
+  it "reveals the winner-hero once the electorate clears k (N reaches 3)" do
+    # Two prior verdicts already cast by other spectators; the UI vote makes it 3 (>= k),
+    # so create.turbo_stream re-renders the now-VISIBLE winner-hero in place.
+    create(:debate_verdict, debate: debate, user: create(:user), choice: :challenger)
+    create(:debate_verdict, debate: debate, user: create(:user), choice: :challenger)
+
+    login_as_system(spectator)
+    visit debate_path(debate.slug)
+
+    # Still below k (N=2) before this spectator votes: no winner shown yet.
+    expect(page).to have_no_content(/winner/i)
+
+    click_button "@#{challenger.username}"
+
+    # N=3 now — the full winner-hero appears: challenger crowned at 100% (3/3).
+    expect(page).to have_css("[data-testid='verdict-hero']")
+    expect(page).to have_css("svg.verdict-crown")
+    expect(page).to have_content(/winner/i)
+    expect(page).to have_content("100%")
+    expect(page).to have_content("Decided by 3 spectators over #{debate.rounds_limit} rounds")
+    expect(page).to have_no_content("sealed")
+
+    expect(debate.verdict_tally).to eq({"challenger" => 3})
   end
 end

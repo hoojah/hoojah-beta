@@ -104,4 +104,65 @@ RSpec.describe DebateVerdict, type: :model do
       expect(d.verdict_winner).to eq(:draw)
     end
   end
+
+  # verdict-k (2026): secret ballot for spectator verdicts. Below UserAnalytics::K total
+  # verdicts the winner is derivable from the tiny counts (at N=1 the "winner" IS that one
+  # voter's choice), so the view suppresses the winner + split. These are the model
+  # predicates the view gates on. Mirrors Hujah#total_votes / #breakdown_visible?.
+  describe "#total_verdicts" do
+    it "sums the verdict_tally counts across every choice" do
+      d = debate(status: :concluded)
+      d.cast_verdict(by: spectator, choice: "challenger")
+      d.cast_verdict(by: create(:user), choice: "opponent")
+      d.cast_verdict(by: create(:user), choice: "draw")
+      expect(d.total_verdicts).to eq(3)
+    end
+
+    it "is 0 with no verdicts" do
+      expect(debate(status: :concluded).total_verdicts).to eq(0)
+    end
+  end
+
+  describe "#verdict_visible?" do
+    it "is false at 2 total verdicts (below k)" do
+      d = debate(status: :concluded)
+      d.cast_verdict(by: spectator, choice: "challenger")
+      d.cast_verdict(by: create(:user), choice: "opponent")
+      expect(d.verdict_visible?).to be(false)
+    end
+
+    it "is true at exactly 3 total verdicts (the k boundary)" do
+      d = debate(status: :concluded)
+      d.cast_verdict(by: spectator, choice: "challenger")
+      d.cast_verdict(by: create(:user), choice: "challenger")
+      d.cast_verdict(by: create(:user), choice: "opponent")
+      expect(d.verdict_visible?).to be(true)
+    end
+
+    it "reuses the shared UserAnalytics::K threshold" do
+      d = debate(status: :concluded)
+      expect(Debate.instance_method(:verdict_visible?)).to be_present
+      UserAnalytics::K.times { d.cast_verdict(by: create(:user), choice: "challenger") }
+      expect(d.total_verdicts).to eq(UserAnalytics::K)
+      expect(d.verdict_visible?).to be(true)
+    end
+  end
+
+  describe "#verdict_by" do
+    it "returns the user's own verdict choice as a string" do
+      d = debate(status: :concluded)
+      d.cast_verdict(by: spectator, choice: "opponent")
+      expect(d.verdict_by(spectator)).to eq("opponent")
+    end
+
+    it "is nil for a user who has not voted" do
+      d = debate(status: :concluded)
+      expect(d.verdict_by(spectator)).to be_nil
+    end
+
+    it "is nil for a nil user (anonymous)" do
+      d = debate(status: :concluded)
+      expect(d.verdict_by(nil)).to be_nil
+    end
+  end
 end

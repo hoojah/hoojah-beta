@@ -227,6 +227,21 @@ class Debate < ApplicationRecord
     (leaders.size == 1) ? leaders.keys.first : :draw
   end
 
+  # Secret ballot for spectator verdicts (verdict-k): below k total verdicts the winner is
+  # derivable from the tiny counts (at 1 voter the "winner" IS their vote), so the view
+  # suppresses the winner and the split until the electorate clears k. Reuses the shared
+  # UserAnalytics::K — the same floor votes and analytics use, one source, no drift.
+  def total_verdicts = verdict_tally.values.sum
+
+  def verdict_visible? = total_verdicts >= UserAnalytics::K
+
+  # The signed-in viewer's own verdict choice (string) or nil — the one datum safe to show
+  # below k (it's their own vote), mirroring the viewer's-own-vote exception on hoojahs.
+  def verdict_by(user)
+    return unless user
+    debate_verdicts.find_by(user_id: user.id)&.choice
+  end
+
   private
 
   # accept!/conclude! share this: the status label is viewer-agnostic (broadcast to
