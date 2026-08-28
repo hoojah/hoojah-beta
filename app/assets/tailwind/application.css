@@ -413,13 +413,24 @@
   .debate-turn-enter { animation: hfade 200ms ease; }
 }
 
-/* Modal entrance. All native <dialog>s in the app share `data-dialog-target="dialog"`
-   (flag, challenge, profile-edit), so this one rule covers every modal with no markup
-   change. showModal() flips display none→block and sets [open]; @starting-style supplies
-   the first-frame values the transition animates FROM. Centered — modals do not scale
-   from a trigger (audit: transform-origin at the trigger is for popovers, not modals). */
+/* Modal entrance AND exit. All native <dialog>s in the app share `data-dialog-target="dialog"`
+   (flag, challenge, profile-edit), so this one rule covers every modal with no markup change.
+   showModal() flips display none→block and sets [open]; close() reverses it. @starting-style
+   supplies the first-frame values the OPEN transition animates FROM; the `overlay`/`display`
+   `allow-discrete` transitions keep the element in the top layer long enough for the CLOSE
+   transition to play out — without them, close snaps instantly. The base (non-[open]) state
+   now carries the hidden values so the close animates back TO them. Centered — modals do not
+   scale from a trigger (audit: transform-origin at the trigger is for popovers, not modals).
+   Backdrop background is `backdrop:bg-black/40` in the view markup; here we only fade its
+   opacity (0.4 lives in the markup / the `--backdrop` token, not duplicated here). */
 dialog[data-dialog-target="dialog"] {
-  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  opacity: 0;
+  transform: scale(0.96);
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out),
+    overlay 200ms var(--ease-out) allow-discrete,
+    display 200ms var(--ease-out) allow-discrete;
 }
 dialog[data-dialog-target="dialog"][open] {
   opacity: 1;
@@ -432,7 +443,14 @@ dialog[data-dialog-target="dialog"][open] {
   }
 }
 dialog[data-dialog-target="dialog"]::backdrop {
-  transition: opacity 200ms var(--ease-out);
+  opacity: 0;
+  transition:
+    opacity 200ms var(--ease-out),
+    overlay 200ms var(--ease-out) allow-discrete,
+    display 200ms var(--ease-out) allow-discrete;
+}
+dialog[data-dialog-target="dialog"][open]::backdrop {
+  opacity: 1;
 }
 @starting-style {
   dialog[data-dialog-target="dialog"][open]::backdrop {
