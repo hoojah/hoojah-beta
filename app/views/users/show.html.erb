@@ -8,7 +8,17 @@
     a requirement: each tab is a plain `link_to ... ?tab=<key>`, so a JS-off visit
     still navigates (full page reload) and lands on the right tab server-side —
     `data: {turbo_frame: "profile-list"}` only makes Turbo, when present, replace
-    just the frame instead of the whole page. %>
+    just the frame instead of the whole page.
+
+    The frame carries `target: "_top"` so that links to OTHER pages inside it (a
+    hoojah card, a debate card, an author byline, the empty-state CTA) perform a
+    full-page visit rather than asking Turbo for a matching `profile-list` frame on
+    the destination — which has none, so Turbo would render "Content missing"
+    instead of navigating. The tab links keep their explicit
+    `data: {turbo_frame: "profile-list"}`, which overrides the frame default and so
+    still swaps only the frame. Same fix as the trending frame
+    (spec/system/trending_navigation_spec.rb); guarded by
+    spec/system/profile_navigation_spec.rb. %>
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
@@ -38,7 +48,7 @@
       <%= render "profile_tabs", user: @user, active_tab: @active_tab,
             hoojahs_count: @hoojahs_count, responses_count: @responses_count, debates_count: @debates_count %>
 
-      <%= turbo_frame_tag "profile-list", class: "flex flex-col gap-2 mt-2" do %>
+      <%= turbo_frame_tag "profile-list", target: "_top", class: "flex flex-col gap-2 mt-2" do %>
         <% if @list.any? %>
           <% if @active_tab == "debates" %>
             <%= render partial: "debates/debate_card", collection: @list, as: :debate %>

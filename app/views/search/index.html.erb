@@ -12,7 +12,16 @@
          live-suggest swap never yanks focus out of it mid-keystroke.
       3. `search/_results` — the turbo-frame body. `SearchController#index` re-renders
          it on every GET (full page, JS-off submit, or live-suggest fetch alike), so
-         there is exactly one server-side branch for "what results look like". %>
+         there is exactly one server-side branch for "what results look like".
+
+    The results frame carries `target="_top"` so that a result link (a hoojah row, a
+    person row, a hashtag chip or row) performs a full-page visit rather than asking
+    Turbo for a matching `search-results` frame on the destination — which has none,
+    so Turbo would render "Content missing" instead of navigating. The search form
+    keeps its explicit `data-turbo-frame: "search-results"`, which overrides the
+    frame default and so keeps live-suggest swapping only the frame. Same fix as the
+    trending frame (spec/system/trending_navigation_spec.rb); guarded by
+    spec/system/search_navigation_spec.rb. %>
 <%= render "shared/navbar" %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
@@ -35,7 +44,7 @@
     <button type="submit" class="sr-only">Search</button>
   <% end %>
 
-  <turbo-frame id="search-results" class="block mt-4">
+  <turbo-frame id="search-results" target="_top" class="block mt-4">
     <%= render "search/results" %>
   </turbo-frame>
 </main>
