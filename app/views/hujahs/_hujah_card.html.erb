@@ -48,10 +48,12 @@
                  class: "relative z-10 #{hujah.active_debate ? "rounded-t-2xl" : "rounded-2xl"}"} do %>
     <%= render "hujahs/hujah_header", hujah: hujah %>
 
+    <%# Body is deliberately NOT a link (2026 polish): tapping the claim text should
+        select, not navigate, and wrapping it in an anchor nested the tag and mention
+        anchors format_body injects, which is invalid HTML. The thread is reached via
+        the Jump in pill and the response count below. Tags and mentions stay clickable. %>
     <div class="px-4 pt-3 pb-0">
-      <%= link_to hujah_path(hujah.slug), class: "block text-ink no-underline" do %>
-        <div class="hujah-body text-lg leading-snug"><%= format_body(hujah.body) %></div>
-      <% end %>
+      <div class="hujah-body text-ink text-lg leading-snug"><%= format_body(hujah.body) %></div>
     </div>
 
     <%= render "hujahs/vote_bars",
@@ -71,14 +73,24 @@
         <span class="ml-1"><%= hujah.children.size %></span>
       <% end %>
 
+      <% if hujah.conviction_count.to_i > 0 %>
+        <span class="ml-3 flex items-center text-primary" aria-label="Conviction votes">
+          <%= lucide_icon("heart", class: "w-4 h-4") %>
+          <span class="ml-1"><%= hujah.conviction_count %></span>
+        </span>
+      <% end %>
+
       <% if hujah.active_debate %>
         <span class="ml-3 flex items-center text-disagree" aria-label="Live debate on this hujah">
           <%= lucide_icon("swords", class: "w-4 h-4") %>
         </span>
-        <%= link_to hujah_path(hujah.slug),
-              class: "#{ds_button_classes(variant: :outline, tone: "primary", size: :sm)} ml-auto" do %>
-          Jump in <%= lucide_icon("arrow-right", class: "w-3.5 h-3.5") %>
-        <% end %>
+      <% end %>
+
+      <%# Jump in is the primary way into the thread now the body is un-linked: a live
+          debate jumps to the debate room, otherwise to the hujah thread. %>
+      <%= link_to (hujah.active_debate ? debate_path(hujah.active_debate.slug) : hujah_path(hujah.slug)),
+            class: "#{ds_button_classes(variant: :outline, tone: "primary", size: :sm)} ml-auto" do %>
+        Jump in <%= lucide_icon("arrow-right", class: "w-3.5 h-3.5") %>
       <% end %>
     </div>
   <% end %>
