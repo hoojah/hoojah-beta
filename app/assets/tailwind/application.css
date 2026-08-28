@@ -375,6 +375,8 @@
   --hairline:#242732; --field:#2a2e39; --read:#39404e; --unread:var(--neutral);
   --nav:rgba(18,20,26,0.82); --shadow:0 12px 34px -14px rgba(0,0,0,.7);
   --stance-shadow:0 12px 30px -12px;
+  --color-red-50:#341b1e;
+  --color-red-700:#fca5a5;
 }
 
 /* Scheme: Signal (emerald / amber / rose) */

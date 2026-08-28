@@ -115,7 +115,7 @@
           <%= render "ui/divider" unless i.zero? %>
           <%= button_to "/hoojah/#{hujah.slug}/debates",
                 params: {argument_id: argument.id, challenger_stance: cs},
-                class: "w-full text-left px-4 py-3 hover:bg-gray-50 bg-white cursor-pointer" do %>
+                class: "w-full text-left px-4 py-3 hover:bg-gray-50 bg-card cursor-pointer" do %>
             Argue <strong><%= stance_labels[cs] %></strong>
           <% end %>
         <% end %>

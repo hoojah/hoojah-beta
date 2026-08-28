@@ -33,11 +33,13 @@
     opposite of `ui/_card`'s `padded:`, where the conflict is between two utilities of
     the SAME family and the caller cannot win.)
 
-    `bg-white` is likewise unconditional, and three call sites
+    `bg-card` is likewise unconditional, and three call sites
     (`hujahs/_response_filter`, `trending/_trending`, `hujahs/show`) have no background
     today — so moving them onto this partial changes how they look. That is a
     correction, not a regression: EmptyState.jsx sets `background: var(--surface-card)`,
-    so the card surface is the design system's answer. Do not make it conditional.
+    so the card surface is the design system's answer. `bg-card` is the theme-aware token
+    for exactly that surface (= `--card`, = the design system's `--surface-card`), so it
+    flips in dark mode instead of staying frozen white. Do not make it conditional.
 %><% message = local_assigns.fetch(:message)
    icon = local_assigns.fetch(:icon, "message-circle")
    tone = (local_assigns[:tone]&.to_sym == :muted) ? "text-grey" : "text-light-grey"
@@ -46,7 +48,7 @@
    cta_href = local_assigns[:cta_href]
    has_cta = cta_label.present? && cta_href.present? %>
 <% if has_cta %>
-  <div class="flex flex-col items-center gap-3 text-sm p-6 bg-white <%= tone %> <%= local_assigns[:class] %>">
+  <div class="flex flex-col items-center gap-3 text-sm p-6 bg-card <%= tone %> <%= local_assigns[:class] %>">
     <div class="flex items-center gap-1 justify-center">
       <%= lucide_icon(icon, class: "w-4 h-4") if icon.present? %>
       <span><%= message %></span>
@@ -57,7 +59,7 @@
 <%# Flush-left and byte-identical to the pre-CTA output — do NOT re-indent. All nine
     existing call sites take this branch, and the specs assert on text/selectors, not
     whitespace, so a "tidy" edit here would silently change every one of them. %>
-<div class="flex items-center gap-1 text-sm p-3 bg-white <%= tone %> <%= align %> <%= local_assigns[:class] %>">
+<div class="flex items-center gap-1 text-sm p-3 bg-card <%= tone %> <%= align %> <%= local_assigns[:class] %>">
   <%= lucide_icon(icon, class: "w-4 h-4") if icon.present? %>
   <span><%= message %></span>
 </div>

@@ -97,7 +97,7 @@ RSpec.describe "ui/_empty_state", type: :view do
 
   describe "the row" do
     it "is a small-type flex row on the card surface" do
-      expect(state).to have_css("div.flex.items-center.gap-1.text-sm.bg-white")
+      expect(state).to have_css("div.flex.items-center.gap-1.text-sm.bg-card")
     end
 
     it "appends caller classes, since the five call sites pad differently" do
