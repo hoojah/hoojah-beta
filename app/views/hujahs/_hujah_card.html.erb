@@ -65,17 +65,26 @@
         message-circle + response count". Always both, always that order; the swords
         indicator + Jump-in pill are additive, only when `hujah.active_debate` exists. %>
     <div class="px-4 py-2 flex items-center text-sm text-ink-2">
-      <%= link_to hujah_path(hujah.slug), class: "flex items-center text-ink-2 no-underline" do %>
-        <%= lucide_icon("bar-chart-3", class: "w-4 h-4") %>
-        <span class="ml-1"><%= hujah.total_votes %></span>
+      <%# Un-linked (2026 polish): the counts no longer navigate into the hujah page —
+          matches the already-un-linked card body; the thread is reached via the Jump-in
+          pill below. Each indicator carries a native `title=` (no Tailwind safelist
+          needed) so hovering explains what the glyph means. %>
+      <div class="flex items-center">
+        <span class="flex items-center" title="Votes cast">
+          <%= lucide_icon("bar-chart-3", class: "w-4 h-4") %>
+          <span class="ml-1"><%= hujah.total_votes %></span>
+        </span>
         <span class="mx-2">·</span>
-        <%= lucide_icon("message-circle", class: "w-4 h-4") %>
-        <span class="ml-1"><%= hujah.children.size %></span>
-      <% end %>
+        <span class="flex items-center" title="Responses">
+          <%= lucide_icon("message-circle", class: "w-4 h-4") %>
+          <span class="ml-1"><%= hujah.children.size %></span>
+        </span>
+      </div>
 
       <% if hujah.conviction_count.to_i > 0 %>
-        <span class="ml-3 flex items-center text-primary" aria-label="Conviction votes">
-          <%= lucide_icon("heart", class: "w-4 h-4") %>
+        <span class="mx-2">·</span>
+        <span class="flex items-center text-primary" title="Conviction votes" aria-label="Conviction votes">
+          <%= lucide_icon("zap", class: "w-4 h-4") %>
           <span class="ml-1"><%= hujah.conviction_count %></span>
         </span>
       <% end %>

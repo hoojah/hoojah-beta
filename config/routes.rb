@@ -55,6 +55,13 @@ Rails.application.routes.draw do
   get "/hoojah/:slug/respond", to: "hujahs#new", as: :respond_hujah
   post "/hoojah", to: "hujahs#create"
   get "/hoojah/:slug", to: "hujahs#show", as: :hujah
+  # Delete a hoojah (HTML/Turbo twin of Api::V1::HujahsController#destroy). A WRITE
+  # action, so it lives on a MAIN route (CSRF enforced — `button_to method: :delete`
+  # carries the token), never under Api::V1. Owner-only via HujahPolicy#destroy?, and
+  # refused when the hoojah has replies or debates — the same "moderation write on a
+  # slug" shape as `delete "/moderation/:slug/remove"` below. No `as:` — the named
+  # `hujah_path(slug)` from the GET above already resolves the DELETE.
+  delete "/hoojah/:slug", to: "hujahs#destroy"
   # Profile (Task 3.2). Public view at /u/:username; owner-only edit/update.
   # `:username` (not id/slug) mirrors the legacy SPA `/api/v1/:username` shape.
   get "/u/:username", to: "users#show", as: :profile

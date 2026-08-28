@@ -42,12 +42,18 @@
         </summary>
         <%= render layout: "ui/menu", locals: {width: "w-56"} do %>
           <% if user_signed_in? && @hujah.user_id == current_user.id %>
-            <%# `tone: "grey"` IS the disabled row — DropdownMenu's greyed-out state, and
-                the exact case `ds_menu_item_classes`' MENU_ITEM_TONES documents. The tone
-                also drops the hover fill, which matters here and only here: this is an
-                inert `<span>`, and a row that lights up under the cursor claims to be
-                clickable. Do not re-add `hover:bg-gray-100` at this call site. %>
-            <span class="<%= ds_menu_item_classes(tone: "grey") %>">Delete hoojah (Slice 2)</span>
+            <%# `tone: "neutral"` is DropdownMenu.prompt.md's destructive row (neutral is
+                orange under the Spectrum palette — the same tone the report rows use; a
+                menu row has no dedicated danger tone). A real DELETE now — `button_to` carries the
+                CSRF token; `form: {class: "contents"}` collapses the wrapping <form> so the
+                button sits as a normal row in the menu's vertical stack instead of adding a
+                block box. `data-turbo-confirm` goes on the FORM (turbo-rails reads it there,
+                per the moderation "Remove" button) → native confirm, no custom dialog. The
+                controller refuses when the hoojah has replies or a debate. %>
+            <%= button_to "Delete hoojah", hujah_path(@hujah.slug),
+                  method: :delete,
+                  class: ds_menu_item_classes(tone: "neutral"),
+                  form: {class: "contents", data: {turbo_confirm: "Delete this hoojah? This can't be undone."}} %>
           <% end %>
           <% if user_signed_in? %>
             <%= render "hujahs/flag_dialog", hujah: @hujah %>

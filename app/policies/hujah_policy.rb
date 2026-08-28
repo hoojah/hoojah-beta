@@ -31,5 +31,11 @@ class HujahPolicy < ApplicationPolicy
       !user.hidden_user_ids.include?(record.user_id)
   end
 
-  def destroy? = user.present? && record.user_id == user.id
+  # Owner-only — AND never once a moderator has removed it. A `removed` hoojah is
+  # staff-only (visible_to? hides it even from its author), and staff must be able to
+  # review the removed body; letting the author hard-delete it would destroy that
+  # evidence. Mirrors show?'s moderation gate — a removed hoojah is already unreachable
+  # in the author's UI, so this only closes the direct-request/replay hole. (This also
+  # gates the Api::V1 destroy, which shares this policy.)
+  def destroy? = user.present? && record.user_id == user.id && !record.moderation_removed?
 end

@@ -1,0 +1,4 @@
+<%# The hoojah you were viewing is gone — navigate the browser to the feed. `visit`
+    is a custom StreamAction (app/javascript/application.js) that calls Turbo.visit,
+    so this stays a SPA navigation instead of a full reload. %>
+<%= turbo_stream_action_tag "visit", url: root_path %>
