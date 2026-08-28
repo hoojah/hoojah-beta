@@ -12,7 +12,11 @@ require "rails_helper"
 #
 # Both surfaces are driven by the same preload, so one Ruby filter there closes
 # both leaks. This spec asserts on the rendered participant handles ("vs" text)
-# and the "Jump in" footer pill, not just absence of a crash.
+# and the link INTO the debate (`debate_path`) — the two things that surface
+# ONLY when the teaser is visible. (The "Jump in" pill is, since the 2026 polish
+# pass, a persistent generic control on every feed card: when no visible debate
+# exists it targets the thread, so its mere presence is no longer a leak proxy —
+# the debate link it carries only when a visible debate exists is.)
 RSpec.describe "Feed live-debate teaser visibility", type: :request do
   # In production current_user is loaded FRESH from the session on every
   # request; Devise's request-spec `sign_in` instead reuses the passed object,
@@ -33,7 +37,7 @@ RSpec.describe "Feed live-debate teaser visibility", type: :request do
     it "does not leak the strip/footer to an anonymous viewer" do
       get "/"
       expect(response.body).not_to include(vs_text(challenger, opponent))
-      expect(response.body).not_to include("Jump in")
+      expect(response.body).not_to include(debate_path(debate.slug))
     end
 
     it "does not leak the strip/footer to a signed-in non-follower" do
@@ -41,14 +45,14 @@ RSpec.describe "Feed live-debate teaser visibility", type: :request do
       sign_in_fresh stranger
       get "/"
       expect(response.body).not_to include(vs_text(challenger, opponent))
-      expect(response.body).not_to include("Jump in")
+      expect(response.body).not_to include(debate_path(debate.slug))
     end
 
     it "shows the strip/footer to a debate participant (the private challenger themselves)" do
       sign_in_fresh challenger
       get "/"
       expect(response.body).to include(vs_text(challenger, opponent))
-      expect(response.body).to include("Jump in")
+      expect(response.body).to include(debate_path(debate.slug))
     end
 
     it "shows the strip/footer to an accepted follower of the private challenger" do
@@ -57,7 +61,7 @@ RSpec.describe "Feed live-debate teaser visibility", type: :request do
       sign_in_fresh follower
       get "/"
       expect(response.body).to include(vs_text(challenger, opponent))
-      expect(response.body).to include("Jump in")
+      expect(response.body).to include(debate_path(debate.slug))
     end
   end
 
@@ -71,7 +75,7 @@ RSpec.describe "Feed live-debate teaser visibility", type: :request do
     it "shows the strip/footer to everyone, including anonymous — the intended 2026 feature" do
       get "/"
       expect(response.body).to include(vs_text(challenger, opponent))
-      expect(response.body).to include("Jump in")
+      expect(response.body).to include(debate_path(debate.slug))
     end
   end
 
@@ -88,7 +92,7 @@ RSpec.describe "Feed live-debate teaser visibility", type: :request do
       sign_in_fresh blocker
       get "/"
       expect(response.body).not_to include(vs_text(challenger, opponent))
-      expect(response.body).not_to include("Jump in")
+      expect(response.body).not_to include(debate_path(debate.slug))
     end
 
     it "still shows the strip/footer to a different signed-in viewer with no block" do
@@ -96,7 +100,7 @@ RSpec.describe "Feed live-debate teaser visibility", type: :request do
       sign_in_fresh other_viewer
       get "/"
       expect(response.body).to include(vs_text(challenger, opponent))
-      expect(response.body).to include("Jump in")
+      expect(response.body).to include(debate_path(debate.slug))
     end
   end
 end

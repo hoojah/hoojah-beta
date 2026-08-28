@@ -64,9 +64,14 @@ RSpec.describe "hujahs/_hujah_card", type: :view do
   end
 
   describe "the claim body" do
-    it "renders at text-lg and links to the hujah" do
+    # 2026 polish: the body is deliberately NOT a link (tapping the claim selects,
+    # it does not navigate; wrapping it also nested the tag/mention anchors
+    # format_body injects, which is invalid HTML). The thread is reached via the
+    # Jump-in pill / response count instead.
+    it "renders at text-lg and is NOT wrapped in a link to the hujah" do
       c = card
-      expect(c).to have_css("a[href='#{hujah_path(hujah.slug)}'] .text-lg", text: hujah.body)
+      expect(c).to have_css(".hujah-body.text-lg", text: hujah.body)
+      expect(c).to have_no_css("a[href='#{hujah_path(hujah.slug)}'] .hujah-body")
     end
   end
 
@@ -128,24 +133,38 @@ RSpec.describe "hujahs/_hujah_card", type: :view do
       expect(c).to have_content("3")
     end
 
+    # 2026 polish: the Jump-in pill is now PERSISTENT on every card (the primary
+    # way into the thread now the body is un-linked). Its target is smart —
+    # the thread when there is no active debate, the debate room when there is.
+    # The swords indicator stays additive (active debate only).
     context "when the hujah has no active debate" do
-      it "renders neither a swords indicator nor a Jump-in pill" do
+      it "renders no swords indicator, and a Jump-in pill linking to the thread" do
         allow(hujah).to receive(:active_debate).and_return(nil)
         c = card
 
         expect(html).not_to include(glyph("swords", class: "w-4 h-4"))
-        expect(c).to have_no_content("Jump in")
+        expect(c).to have_link("Jump in", href: hujah_path(hujah.slug))
       end
     end
 
     context "when the hujah has an active debate" do
-      it "shows a swords debate indicator and a Jump in pill linking to the hujah" do
+      it "shows a swords debate indicator and a Jump in pill linking to the debate" do
         debate = create(:debate, hujah: hujah, status: :active)
         allow(hujah).to receive(:active_debate).and_return(debate)
         c = card
 
         expect(html).to include(glyph("swords", class: "w-4 h-4"))
-        expect(c).to have_link("Jump in", href: hujah_path(hujah.slug))
+        expect(c).to have_link("Jump in", href: debate_path(debate.slug))
+      end
+    end
+
+    context "when the hujah has conviction votes" do
+      it "shows a heart glyph and the conviction count" do
+        allow(hujah).to receive(:conviction_count).and_return(2)
+        c = card
+
+        expect(html).to include(glyph("heart", class: "w-4 h-4"))
+        expect(c).to have_css("span[aria-label='Conviction votes']", text: "2")
       end
     end
   end
