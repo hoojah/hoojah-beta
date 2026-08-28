@@ -406,6 +406,14 @@
    reader is about to read, not a playful expand. */
 .debate-turn-enter { animation: hrise 220ms cubic-bezier(0.23, 1, 0.32, 1); }
 
+/* Entrance for feed cards APPENDED after first paint via "Load more"
+   (hujahs/index.turbo_stream.erb passes `entering: true` to the append render only).
+   The first-paint collection render in index.html.erb omits the local, so existing
+   cards never animate on initial load or scroll. Same rise-and-fade as a debate turn —
+   calm ease-out, not a playful overshoot. The global reduced-motion guard neutralizes
+   the duration, so no per-rule handling is needed here. */
+.hujah-card-enter { animation: hrise 240ms cubic-bezier(0.23, 1, 0.32, 1); }
+
 @keyframes hfade { from { opacity: 0 } to { opacity: 1 } }
 
 @media (prefers-reduced-motion: reduce) {

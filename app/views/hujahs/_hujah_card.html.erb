@@ -42,7 +42,7 @@
 
     The footer's hairline is `ui/_divider` rather than a `border-t` on the footer
     itself — the design system's "hairline `#f3f4f6` internal dividers" idiom. %>
-<div class="relative mb-2">
+<div class="relative mb-2<%= " hujah-card-enter" if local_assigns[:entering] %>">
   <%= render layout: "ui/card",
         locals: {as: "article", data: {testid: "hujah-card"},
                  class: "relative z-10 #{hujah.active_debate ? "rounded-t-2xl" : "rounded-2xl"}"} do %>

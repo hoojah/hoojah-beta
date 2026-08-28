@@ -12,7 +12,7 @@
     restated inside the block because `turbo_stream.replace` swaps the element itself,
     so an element without it could not be replaced again. %>
 <%= turbo_stream.append "hujah-feed" do %>
-  <%= render partial: "hujah_card", collection: @hujahs, as: :hujah %>
+  <%= render partial: "hujah_card", collection: @hujahs, as: :hujah, locals: {entering: true} %>
 <% end %>
 
 <%= turbo_stream.replace "load-more" do %>
