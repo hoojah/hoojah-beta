@@ -118,6 +118,19 @@
    rather than trusted to the JS source scan. Positioning is inline style, not utilities. */
 @source inline("fixed z-50 w-72 opacity-0 opacity-100 pointer-events-none transition-opacity duration-150");
 
+/* Global reduced-motion guard: when the user asks the OS to minimise motion, near-
+   instant every animation, transition and smooth scroll app-wide. The two targeted
+   `prefers-reduced-motion` blocks lower in this file refine specific effects (keeping
+   a fade while dropping movement); this is the blanket fallback for everything else. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /*
  * The debate turn composer auto-grows with its content via the native CSS
  * `field-sizing` property (no JS auto-grow controller). `rows="3"` stays on the
