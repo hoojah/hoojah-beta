@@ -74,7 +74,7 @@
   <% if heading.present? %>
     <p class="text-xs font-bold text-ink-2 mb-1"><%= heading %></p>
   <% end %>
-  <p class="text-sm text-black mb-2 line-clamp-2"><%= strip_tags(dist.body) %></p>
+  <p class="text-sm text-ink mb-2 line-clamp-2"><%= strip_tags(dist.body) %></p>
   <% if dist.suppressed? %>
     <p class="text-xs text-light-grey">fewer than <%= UserAnalytics::K %> votes</p>
   <% elsif stacked %>

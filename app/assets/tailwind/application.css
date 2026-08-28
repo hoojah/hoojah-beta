@@ -152,29 +152,29 @@
   }
 
   /* Hoojah 2026's initials-avatar treatment (`ui/_avatar`'s `variant: :tile`, backed
-     by `ds_avatar_classes`). `#7d92ff` is a fixed gradient companion stop from the
+     by `ds_avatar_classes`). `#6aa2fc` is a fixed gradient companion stop from the
      mockup, not a stance colour — `--primary` still carries the theme. A component
      class rather than a `bg-gradient-to-br` utility because Tailwind's gradient
      utilities resolve against `--color-*` stops, and this gradient's second stop is
      an intentionally-literal hex with no token of its own. */
   .avatar-tile {
-    background: linear-gradient(135deg, var(--primary), #7d92ff);
+    background: linear-gradient(135deg, var(--primary), #6aa2fc);
     color: #fff;
   }
 
   /* Trending page (Phase 2.5), rank-1 hero card
      (`trending/_trending_rich.html.erb`). Same rationale as `.avatar-tile` above:
-     `#5b74f0` is a fixed gradient companion stop straight from the mockup, not a
+     `#2558e4` is a fixed gradient companion stop straight from the mockup, not a
      stance colour, so it can't be expressed as a `bg-gradient-to-*` utility (those
      resolve against `--color-*` theme stops, and this second stop has none). */
   .trending-hero {
-    background: linear-gradient(120deg, var(--primary), #5b74f0);
+    background: linear-gradient(120deg, var(--primary), #2558e4);
     color: #fff;
   }
 
   /* Debate winner-hero (Hoojah 2026 redesign, Phase 3, Task 3.6) —
      `debates/_verdict.html.erb`'s CONCLUDED-debate verdict panel. Same rationale as
-     `.trending-hero` immediately above (and `.avatar-tile` before it): `#5b74f0` is
+     `.trending-hero` immediately above (and `.avatar-tile` before it): `#2558e4` is
      the mockup's fixed gradient companion stop, not a stance colour, so this can't be
      expressed as a `bg-gradient-to-*` utility (those resolve against `--color-*`
      theme stops, and this second stop has none). Same companion stop as
@@ -182,13 +182,13 @@
      on /trending) — intentionally not unified into one class, since the two surfaces
      are free to diverge again and sharing a name would couple them by accident. */
   .verdict-hero {
-    background: linear-gradient(150deg, var(--primary), #5b74f0);
+    background: linear-gradient(150deg, var(--primary), #2558e4);
     color: #fff;
   }
 
   /* Profile header hero (Hoojah 2026 redesign, Phase 4, Task 4.4) —
      `users/_profile_header.html.erb`'s gradient block. Same rationale as
-     `.trending-hero`/`.verdict-hero` above: `#5b74f0` is the mockup's fixed
+     `.trending-hero`/`.verdict-hero` above: `#2558e4` is the mockup's fixed
      gradient companion stop, not a stance colour, so this can't be expressed as a
      `bg-gradient-to-*` utility (those resolve against `--color-*` theme stops, and
      this second stop has none). Angle (160deg) is the mockup's own, distinct from
@@ -196,7 +196,7 @@
      reason `.verdict-hero`'s comment gives. `_gated_header` stays on the older
      flat `bg-primary` on purpose — Gate 4's whitelist is deliberately plainer. */
   .profile-hero {
-    background: linear-gradient(160deg, var(--primary), #5b74f0);
+    background: linear-gradient(160deg, var(--primary), #2558e4);
     color: #fff;
   }
 }
@@ -329,7 +329,7 @@
      touching a single utility name. Spectrum is the bare-:root default —
      absence of data-scheme means Spectrum. This block is UNLAYERED, so it wins
      over Tailwind's `@layer theme` defaults for the same custom property. */
-  --primary:#415de6; --primary-soft:#eaeeff;
+  --primary:#3579f7; --primary-soft:#eaf2fe;
   --agree:#0ea5a4; --neutral:#e8930c; --disagree:#8b5cf6;
   --agree-soft:#e0f5f4; --neutral-soft:#fdf1de; --disagree-soft:#efeafe;
   --surface:#f4f5f9; --card:#ffffff; --card-2:#f6f7fb;
@@ -367,7 +367,7 @@
 
 /* dark (any scheme) */
 :root[data-theme="dark"] {
-  --primary:#7d92ff; --primary-soft:#1c2140;
+  --primary:#6aa2fc; --primary-soft:#1b2a40;
   --agree:#2dd4cf; --neutral:#fbbf24; --disagree:#a78bfa;
   --agree-soft:#0c2a29; --neutral-soft:#2c2410; --disagree-soft:#221b3a;
   --surface:#0d0e13; --card:#16181f; --card-2:#1c1f28;
@@ -375,6 +375,8 @@
   --hairline:#242732; --field:#2a2e39; --read:#39404e; --unread:var(--neutral);
   --nav:rgba(18,20,26,0.82); --shadow:0 12px 34px -14px rgba(0,0,0,.7);
   --stance-shadow:0 12px 30px -12px;
+  --color-red-50:#341b1e;
+  --color-red-700:#fca5a5;
 }
 
 /* Scheme: Signal (emerald / amber / rose) */

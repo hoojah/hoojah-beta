@@ -54,7 +54,11 @@ RSpec.describe "hujahs/_vote_hero", type: :view do
     end
 
     it "preserves the viewer's own-stance highlight" do
-      expect(widget(current_user_vote: "agree")).to have_css("button[aria-label='Agree'] .text-white")
+      # Soft-tint filled style (unified with the feed vote bars): the voted button
+      # carries a `bg-<stance>-soft` tint + `ring-<stance>` and keeps its stance-coloured
+      # icon/label (not a solid stance fill with white text).
+      w = widget(current_user_vote: "agree")
+      expect(w).to have_css("button[aria-label='Agree'].bg-agree-soft.ring-agree")
     end
 
     it "still shows the conviction_count aggregate (not a per-stance breakdown)" do

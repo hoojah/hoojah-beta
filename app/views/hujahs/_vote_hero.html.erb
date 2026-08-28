@@ -56,12 +56,13 @@
                   data-charge-color="var(--<%= stance %>)"
                   data-action="pointerdown->conviction#start pointerup->conviction#end pointerleave->conviction#leave contextmenu->conviction#noMenu"
                   aria-label="<%= stance.capitalize %>"
-                  class="relative h-[104px] rounded-[20px] border-2 border-<%= stance %> <%= voted ? "bg-#{stance}" : "bg-card" %> flex flex-col items-center justify-center gap-2 cursor-pointer transition active:scale-95 overflow-hidden"
+                  class="relative h-[104px] rounded-[20px] border-2 border-<%= stance %> <%= voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card" %> flex flex-col items-center justify-center gap-2 cursor-pointer transition active:scale-95 overflow-hidden"
                   style="touch-action:none;">
             <% if voted %>
-              <span class="absolute inset-0 bg-<%= stance %>" style="animation:hpop .4s ease;"></span>
+              <span class="absolute inset-0 bg-<%= stance %>-soft" style="animation:hpop .4s ease;"></span>
             <% end %>
-            <span class="relative flex flex-col items-center gap-2 <%= voted ? "text-white" : "text-#{stance}" %>">
+            <span class="relative flex flex-col items-center gap-2 text-<%= stance %>">
+              <%= lucide_icon("check", class: "w-4 h-4") if voted %>
               <%= lucide_icon(icon, class: "w-7 h-7") %>
               <span class="text-xs font-bold"><%= stance.capitalize %></span>
             </span>

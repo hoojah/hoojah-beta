@@ -43,7 +43,8 @@
             data-response-filter-target="tab"
             aria-pressed="false"
             aria-label="Agree"
-            class="shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-bold bg-card border-2 border-agree text-agree aria-pressed:bg-agree aria-pressed:text-white">
+            class="group shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-bold bg-card border-2 border-agree text-agree aria-pressed:bg-agree-soft aria-pressed:ring-2 aria-pressed:ring-agree">
+      <%= lucide_icon("check", class: "w-3.5 h-3.5 hidden group-aria-pressed:inline") %>
       <%= stance_icon("agree", class: "w-3.5 h-3.5") %> Agree
     </button>
     <button type="button"
@@ -52,7 +53,8 @@
             data-response-filter-target="tab"
             aria-pressed="false"
             aria-label="Neutral"
-            class="shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-bold bg-card border-2 border-neutral text-neutral aria-pressed:bg-neutral aria-pressed:text-white">
+            class="group shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-bold bg-card border-2 border-neutral text-neutral aria-pressed:bg-neutral-soft aria-pressed:ring-2 aria-pressed:ring-neutral">
+      <%= lucide_icon("check", class: "w-3.5 h-3.5 hidden group-aria-pressed:inline") %>
       <%= stance_icon("neutral", class: "w-3.5 h-3.5") %> Neutral
     </button>
     <button type="button"
@@ -61,7 +63,8 @@
             data-response-filter-target="tab"
             aria-pressed="false"
             aria-label="Disagree"
-            class="shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-bold bg-card border-2 border-disagree text-disagree aria-pressed:bg-disagree aria-pressed:text-white">
+            class="group shrink-0 inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-bold bg-card border-2 border-disagree text-disagree aria-pressed:bg-disagree-soft aria-pressed:ring-2 aria-pressed:ring-disagree">
+      <%= lucide_icon("check", class: "w-3.5 h-3.5 hidden group-aria-pressed:inline") %>
       <%= stance_icon("disagree", class: "w-3.5 h-3.5") %> Disagree
     </button>
   </div>
