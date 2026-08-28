@@ -20,8 +20,9 @@
     3. The `@handle` says `text-sm` outright. A bare `<small>` is 0.8em — 12.8px
        against the body's 16px — and the design system's UI text is 14px.
 
-    `padded:` stays unset (the inner row owns its padding) and `pr-2 flex items-center
-    mb-1` rides in `class:`; 4px between compact cards, not the feed's 8px. %>
+    `padded:` stays unset (the inner row owns its padding) and `pr-2 flex items-center`
+    rides in `class:`; the vertical rhythm between compact cards is left to the
+    profile-list container's own gap, not a per-card bottom margin. %>
 <% stance = {1 => "agree", 2 => "neutral", 3 => "disagree"}[hujah.vote] || "primary" %>
 <%# Slice B (hovercard): the card is no longer a single outer <a>. The stretched-link
     pattern keeps the whole-card click reaching the hoojah while giving the author
@@ -30,10 +31,10 @@
     overlay anchor (`absolute inset-0 z-0`), and the avatar + name byline are
     `ui/_user_link`s lifted above the overlay with `relative z-10`. %>
 <%= render layout: "ui/card",
-      locals: {stance: stance, class: "relative pr-2 flex items-center mb-1"} do %>
+      locals: {stance: stance, class: "relative pr-2 flex items-center"} do %>
   <%= link_to hujah_path(hujah.slug), class: "absolute inset-0 z-0",
         "aria-label": "Hoojah: #{truncate(strip_tags(hujah.body.to_s), length: 90)}" do %><% end %>
-  <div class="flex py-1">
+  <div class="flex py-2">
     <%= render layout: "ui/user_link", locals: {user: hujah.user, class: "relative z-10 mx-2 shrink-0"} do %>
       <%= render "ui/avatar", user: hujah.user, size: :sm %>
     <% end %>

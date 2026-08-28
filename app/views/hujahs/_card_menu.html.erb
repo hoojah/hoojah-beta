@@ -53,7 +53,7 @@
     <%= link_to "Facebook", "https://www.facebook.com/sharer/sharer.php?u=#{CGI.escape(share_url)}", target: "_blank", rel: "noopener", class: ds_menu_item_classes %>
     <%= mail_to "hello@rudzainy.com", "Email", subject: share_title, body: "#{share_text}\n\n#{share_url}", class: ds_menu_item_classes %>
 
-    <%= render "ui/divider" %>
+    <%= render "ui/divider", class: "my-1" %>
     <% if user_signed_in? %>
       <%= render "hujahs/flag_dialog", hujah: hujah %>
     <% else %>

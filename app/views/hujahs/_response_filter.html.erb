@@ -75,11 +75,11 @@
         <%= render "hujahs/child_card", child: child, hujah: hujah, live_debate_keys: live_debate_keys %>
       <% end %>
       <div data-response-filter-target="empty" hidden>
-        <%= render "ui/empty_state", message: "No responses match this filter yet", class: "px-4" %>
+        <%= render "ui/empty_state", message: "No responses match this filter yet", class: "px-1" %>
       </div>
     <% else %>
       <div id="<%= dom_id(hujah, :responses_empty) %>">
-        <%= render "ui/empty_state", message: "No responses yet", class: "px-4" %>
+        <%= render "ui/empty_state", message: "No responses yet", class: "px-1" %>
       </div>
     <% end %>
   </div>

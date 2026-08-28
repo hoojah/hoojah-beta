@@ -23,7 +23,7 @@
     <%= f.hidden_field :parent_id, value: parent.id %>
   <% end %>
 
-  <header class="sticky top-0 z-20 flex items-center justify-between px-3 py-2 bg-card backdrop-blur border-b border-hairline">
+  <header class="sticky top-0 z-20 flex items-center justify-between px-4 py-2 bg-card backdrop-blur border-b border-hairline">
     <%= link_to((parent.present? ? hujah_path(parent.slug) : root_path),
           class: "w-10 h-10 rounded-2xl flex items-center justify-center text-ink no-underline", aria: {label: "Cancel"}) do %>
       <%= lucide_icon("x", class: "w-5 h-5") %>

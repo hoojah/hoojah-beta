@@ -80,7 +80,7 @@
 <% actor_tile = notification.new_hoojah_response? && notification.subject_user %>
 <%= render layout: "ui/card",
       locals: {id: dom_id(notification), stance: read ? "read" : "unread",
-               class: "rounded-2xl overflow-hidden mb-1"} do %>
+               class: "rounded-2xl overflow-hidden"} do %>
   <div class="flex items-start gap-3 px-3.5 py-3">
     <% if actor_tile %>
       <%= render layout: "ui/user_link", locals: {user: notification.subject_user, class: "shrink-0"} do %>

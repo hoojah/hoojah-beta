@@ -11,12 +11,12 @@
     class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-card shadow text-left">
     <%= render "ui/avatar", user: current_user, size: :row %>
     <span class="flex-1 text-ink-2 text-base">What's your hoojah?</span>
-    <span class="px-4 py-1.5 rounded-full bg-primary text-white text-sm font-bold">Post</span>
+    <span class="px-5 py-2 rounded-full bg-primary text-white text-sm font-bold">Post</span>
   </button>
 
   <div data-composer-target="expanded" hidden class="rounded-2xl bg-card shadow">
     <%= form_with model: Hujah.new, url: "/hoojah", method: :post, local: true, class: "block" do |f| %>
-      <div class="flex items-start gap-3 px-4 pt-4">
+      <div class="flex items-start gap-3 px-4 pt-4 pb-3">
         <%= render "ui/avatar", user: current_user, size: :row %>
         <div class="flex-1 min-w-0">
           <%# Visibility (JS-off safe): a native <select> is the CANONICAL, always-submitted
