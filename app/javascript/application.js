@@ -22,3 +22,25 @@ document.addEventListener("turbo:before-cache", () => {
 Turbo.StreamActions.close_dialog = function () {
   this.targetElements.forEach((el) => el.close())
 }
+
+// Animate notification rows OUT before Turbo removes them. Marking a notification
+// read responds with `<turbo-stream action="remove" target="notification_<id>">`
+// (notifications/destroy.turbo_stream.erb), which otherwise deletes the node in the
+// same frame. We wrap the stream's own `render` so the node fades + slides 8px right,
+// THEN removes — scoped to `remove` actions on `notification_*` ids only, so no other
+// stream is delayed. Reduced-motion opts straight out (the global CSS guard cannot
+// help here — the delay is JS timing, not a CSS transition). Registered ONCE.
+document.addEventListener("turbo:before-stream-render", (event) => {
+  const stream = event.target
+  if (stream.getAttribute("action") !== "remove") return
+  const el = document.getElementById(stream.getAttribute("target"))
+  if (!el || !el.id.startsWith("notification_")) return
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+  const original = event.detail.render
+  event.detail.render = (streamElement) => {
+    el.style.transition = "opacity 160ms var(--ease-out), transform 160ms var(--ease-out)"
+    el.style.opacity = "0"
+    el.style.transform = "translateX(8px)"
+    setTimeout(() => original(streamElement), 160)
+  }
+})
