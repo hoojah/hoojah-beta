@@ -215,7 +215,10 @@ module DesignSystemHelper
   # `!important` outranks the utility. That is load-bearing: the share controller toggles
   # the ATTRIBUTE, not a class, so without preflight's `!important` this row would render
   # `display:block` on every device the Web Share API is missing from.
-  MENU_ITEM_BASE = "block w-full text-left px-3 py-1 text-sm rounded no-underline".freeze
+  # The vertical padding is responsive: `py-2.5` on phones gives each row a ~44px
+  # touch target (a bare `py-1` row measures well under that), and `sm:py-1` restores
+  # the tighter desktop density from `sm` up.
+  MENU_ITEM_BASE = "block w-full text-left px-3 py-2.5 sm:py-1 text-sm rounded no-underline".freeze
 
   # Split out of the base so `tone: "grey"` can drop it. See `ds_menu_item_classes`.
   MENU_ITEM_HOVER = "hover:bg-gray-100".freeze

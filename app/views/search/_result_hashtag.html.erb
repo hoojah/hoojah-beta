@@ -5,7 +5,7 @@
     <%= lucide_icon "hash", class: "w-[18px] h-[18px]" %>
   </span>
   <div class="flex-1 min-w-0">
-    <div class="text-sm font-bold text-ink truncate">#<%= highlight_match(hashtag.display, @query) %></div>
+    <div class="text-sm font-bold text-ink truncate"><%= highlight_match(hashtag.display, @query) %></div>
     <div class="text-xs text-ink-2"><%= pluralize(hashtag.hujahs_count, "hoojah") %></div>
   </div>
   <%= lucide_icon "chevron-right", class: "w-4 h-4 text-faint shrink-0" %>

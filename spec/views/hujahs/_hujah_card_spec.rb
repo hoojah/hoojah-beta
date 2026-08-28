@@ -111,12 +111,13 @@ RSpec.describe "hujahs/_hujah_card", type: :view do
       expect(widget).to have_no_css("[style*='width']")
     end
 
-    # Scope the total to the footer aggregate node (the first count span behind the
-    # bar-chart-3 glyph) rather than a bare "2" anywhere on the card — the loose match
-    # would pass on any stray "2" and can't distinguish the total from a leaked count.
+    # Scope the total to the footer aggregate node (the count span behind the
+    # bar-chart-3 glyph, now the un-linked "Votes cast" group) rather than a bare "2"
+    # anywhere on the card — the loose match would pass on any stray "2" and can't
+    # distinguish the total from a leaked count.
     it "shows the aggregate footer total behind the bar-chart-3 glyph, not a per-stance count" do
-      footer_link = card.find("a.text-ink-2.no-underline")
-      expect(footer_link.find("span.ml-1", match: :first)).to have_text("2", exact: true)
+      votes_group = card.find("span[title='Votes cast']")
+      expect(votes_group.find("span.ml-1", match: :first)).to have_text("2", exact: true)
     end
   end
 
@@ -159,11 +160,11 @@ RSpec.describe "hujahs/_hujah_card", type: :view do
     end
 
     context "when the hujah has conviction votes" do
-      it "shows a heart glyph and the conviction count" do
+      it "shows a zap glyph and the conviction count" do
         allow(hujah).to receive(:conviction_count).and_return(2)
         c = card
 
-        expect(html).to include(glyph("heart", class: "w-4 h-4"))
+        expect(html).to include(glyph("zap", class: "w-4 h-4"))
         expect(c).to have_css("span[aria-label='Conviction votes']", text: "2")
       end
     end

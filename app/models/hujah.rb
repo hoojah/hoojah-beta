@@ -6,6 +6,10 @@ class Hujah < ApplicationRecord
   has_many :debates, dependent: :destroy
   has_many :hashtag_hujahs, dependent: :destroy
   has_many :hashtags, through: :hashtag_hujahs
+  # Notifications carry a nullable `hujah_id` with NO DB foreign key (schema:
+  # `notifications.hujah_id` integer, only `add_foreign_key "notifications", "users"`),
+  # so destroying a hoojah would leave dangling `hujah_id`s. Cascade them here.
+  has_many :notifications, dependent: :destroy
   belongs_to :parent, class_name: "Hujah", optional: true
 
   # Per-post visibility for TOP-LEVEL claims (replies inherit their parent). Enum keys

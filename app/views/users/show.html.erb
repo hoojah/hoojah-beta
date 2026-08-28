@@ -45,10 +45,16 @@
         <%= render "live_debate_card", debate: @active_debate, user: @user %>
       <% end %>
 
-      <%= render "profile_tabs", user: @user, active_tab: @active_tab,
-            hoojahs_count: @hoojahs_count, responses_count: @responses_count, debates_count: @debates_count %>
-
+      <%# The tab bar renders INSIDE the frame (above the list) so a tab click —
+          which Turbo resolves by matching this `profile-list` frame within the full
+          `show.html.erb` response — re-renders the tabs too, moving the active
+          `bg-primary text-white` fill and `aria-current="page"` onto the clicked
+          tab. Rendered outside the frame it stayed frozen on first load: the click
+          swapped only the list, never the tab markup. %>
       <%= turbo_frame_tag "profile-list", target: "_top", class: "flex flex-col gap-2 mt-2" do %>
+        <%= render "profile_tabs", user: @user, active_tab: @active_tab,
+              hoojahs_count: @hoojahs_count, responses_count: @responses_count, debates_count: @debates_count %>
+
         <% if @list.any? %>
           <% if @active_tab == "debates" %>
             <%= render partial: "debates/debate_card", collection: @list, as: :debate %>

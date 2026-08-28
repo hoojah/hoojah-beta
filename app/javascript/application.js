@@ -23,6 +23,17 @@ Turbo.StreamActions.close_dialog = function () {
   this.targetElements.forEach((el) => el.close())
 }
 
+// Navigate the browser from a server response:
+//   <turbo-stream action="visit" url="/"></turbo-stream>
+// Used by hujahs#destroy — it deletes the very record you are viewing, so the show
+// page must leave itself. This app's write actions always answer with a Turbo Stream
+// (the feed/moderation streams stay on the page); a plain `redirect_to` from a Stream-
+// accepting submission is fetched but never rendered, so we navigate explicitly and
+// keep it a SPA visit. Registered ONCE.
+Turbo.StreamActions.visit = function () {
+  Turbo.visit(this.getAttribute("url"))
+}
+
 // Animate notification rows OUT before Turbo removes them. Marking a notification
 // read responds with `<turbo-stream action="remove" target="notification_<id>">`
 // (notifications/destroy.turbo_stream.erb), which otherwise deletes the node in the
