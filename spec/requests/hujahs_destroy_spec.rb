@@ -48,6 +48,20 @@ RSpec.describe "DELETE /hoojah/:slug", type: :request do
     expect(Hujah.exists?(hujah.id)).to be(true)
   end
 
+  it "refuses to let the owner delete their own moderator-removed hoojah" do
+    # HujahPolicy#destroy? gates on moderation_status: a removed hoojah is staff-only and
+    # its body is moderation evidence, so the author must not be able to hard-delete it
+    # (via a replayed/direct DELETE — the UI never shows the button on a removed hoojah).
+    hujah.update!(moderation_status: :removed)
+    sign_in owner
+
+    delete hujah_path(hujah.slug)
+
+    expect(response).to have_http_status(:found)
+    expect(flash[:alert]).to eq("Not allowed.")
+    expect(Hujah.exists?(hujah.id)).to be(true)
+  end
+
   it "lets the owner delete a clean hoojah and redirects to the feed" do
     id = hujah.id
     sign_in owner
@@ -57,6 +71,18 @@ RSpec.describe "DELETE /hoojah/:slug", type: :request do
     expect(response).to have_http_status(:see_other)
     expect(response).to redirect_to(root_path)
     expect(flash[:notice]).to eq("Hoojah deleted.")
+    expect(Hujah.exists?(id)).to be(false)
+  end
+
+  it "answers a Turbo Stream delete with a visit action back to the feed" do
+    id = hujah.id
+    sign_in owner
+
+    delete hujah_path(hujah.slug), as: :turbo_stream
+
+    expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+    expect(response.body).to include('action="visit"')
+    expect(response.body).to include('url="/"')
     expect(Hujah.exists?(id)).to be(false)
   end
 end

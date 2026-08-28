@@ -114,6 +114,12 @@
  */
 @source inline("{bg,text,border}-{grey,light-grey}");
 
+/* Menu rows (MENU_ITEM_BASE / ds_menu_item_classes) grow to a ~44px touch target on
+   phones (`py-3`) and compress on `sm+` (`sm:py-1`). These live only in that Ruby string
+   literal, which the .rb source scan doesn't reliably emit — safelist them (the
+   design_system_helper menu-tone spec enforces this). */
+@source inline("py-3 sm:py-1");
+
 /* Slice B hovercard panel chrome — assembled in hovercard_controller.js, so safelisted
    rather than trusted to the JS source scan. Positioning is inline style, not utilities. */
 @source inline("fixed z-50 w-72 opacity-0 opacity-100 pointer-events-none transition-opacity duration-150");

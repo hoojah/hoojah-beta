@@ -7,10 +7,21 @@ class Hujah < ApplicationRecord
   has_many :hashtag_hujahs, dependent: :destroy
   has_many :hashtags, through: :hashtag_hujahs
   # Notifications carry a nullable `hujah_id` with NO DB foreign key (schema:
-  # `notifications.hujah_id` integer, only `add_foreign_key "notifications", "users"`),
-  # so destroying a hoojah would leave dangling `hujah_id`s. Cascade them here.
-  has_many :notifications, dependent: :destroy
+  # NB: notifications are deliberately NOT cascaded. `Notification belongs_to :hujah,
+  # optional: true` and the serializer/views are nil-safe (Slice 11 Task 9), so a
+  # notification whose hoojah was deleted SURVIVES and renders without the hoojah block —
+  # a `dependent: :destroy` here would erase still-meaningful "someone mentioned you"
+  # rows and break spec/requests/api/v1/notifications_spec's no-500 guarantee.
   belongs_to :parent, class_name: "Hujah", optional: true
+
+  # A HARD destroy is only offered on a "leaf" claim. A hoojah with replies or debates
+  # carries other people's content (child arguments, a whole debate transcript) that the
+  # `dependent: :destroy` cascades above would wipe away — HujahsController#destroy refuses
+  # instead of silently deleting it. `any?` on an unloaded association issues an EXISTS
+  # (not a load), so this stays two cheap queries.
+  def deletable?
+    !(children.any? || debates.any?)
+  end
 
   # Per-post visibility for TOP-LEVEL claims (replies inherit their parent). Enum keys
   # avoid the reserved words public/private. Default = visible_public. The `prefix`

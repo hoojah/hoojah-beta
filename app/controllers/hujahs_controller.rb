@@ -93,18 +93,24 @@ class HujahsController < ApplicationController
     # non-owner trips Pundit::NotAuthorizedError → the ApplicationController rescue
     # redirects back with an alert rather than a bare 403.
     authorize @hujah
-    # Product rule: a HARD destroy is only offered on a "leaf" claim. A hoojah with
-    # replies or debates carries other people's content (child arguments, a whole
-    # debate transcript) that `dependent: :destroy` would cascade away — refuse
-    # instead of silently deleting it. `see_other` so the browser re-GETs the
-    # redirect target after a DELETE.
-    if @hujah.children.any? || @hujah.debates.any?
-      redirect_back fallback_location: hujah_path(@hujah.slug),
-        alert: "You can't delete a hoojah that has responses or a debate.",
-        status: :see_other
-      return
+    # Product rule lives on the model: Hujah#deletable? is false when the hoojah has
+    # replies or a debate — other people's content that `dependent: :destroy` would
+    # cascade away, so we refuse rather than silently delete it. `see_other` so the
+    # browser re-GETs the redirect target after a DELETE.
+    #
+    # `with_lock` closes the check→destroy TOCTOU against a concurrent moderation or a
+    # second delete. It does NOT fully close destroy-vs-reply (creating a reply never
+    # locks the parent row) — that needs an ON DELETE RESTRICT FK on hujahs.parent_id,
+    # tracked in HANDOVER's deferred backlog (a strong_migrations job on a populated table).
+    @hujah.with_lock do
+      unless @hujah.deletable?
+        redirect_back fallback_location: hujah_path(@hujah.slug),
+          alert: "You can't delete a hoojah that has responses or a debate.",
+          status: :see_other
+        return
+      end
+      @hujah.destroy
     end
-    @hujah.destroy
     # Delete is offered only on the show page — you are looking at the record you just
     # removed, so the browser must leave. A Turbo submission answers with a `visit`
     # stream (a `redirect_to` from a Stream-accepting form is fetched but not rendered

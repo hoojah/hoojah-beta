@@ -47,6 +47,14 @@ RSpec.describe "Profile navigation", type: :system, js: true do
     end
     expect(page).to have_current_path("/u/rudz")
 
+    # The active pill must FOLLOW the click — the whole point of rendering the tab bar
+    # inside the profile-list frame. Asserting only that the list swapped (above) passed
+    # even when the tab bar was frozen outside the frame, so pin the highlight itself.
+    debates_tab = find("[data-testid='profile-tab-debates']")
+    expect(debates_tab["aria-current"]).to eq("page")
+    expect(debates_tab[:class]).to include("bg-primary")
+    expect(find("[data-testid='profile-tab-hoojahs']")["aria-current"]).to be_nil
+
     within "turbo-frame#profile-list" do
       find("a[href='#{debate_path(debate.slug)}']").click
     end

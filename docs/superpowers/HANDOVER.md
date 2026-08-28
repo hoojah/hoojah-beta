@@ -25,6 +25,37 @@ them.
 Next up: **Project 3 (Hotwire Native)** — not started. (Slice 11, below, closed the last
 `Api::V1` security items that were meant to be frozen before native clients consume the API.)
 
+## UI fixes + delete-hujah flow — DONE ✅ (branch `ui-fixes-and-delete-hujah`)
+
+_2026-08-28. Five UI corrections + a new owner-only delete-hujah flow. Spec:
+`docs/superpowers/specs/2026-08-28-ui-fixes-and-delete-hujah-design.md`. Reviewed by
+rails-simplifier, rails-security-auditor, better-stimulus, and code-reviewer; Fable-adjudicated._
+
+Shipped: double-`#` hashtag pill fix; feed-card indicator row (un-linked counts, conviction
+`heart`→`zap`, native `title` tooltips, dot before conviction); profile active-tab highlight
+(tab bar moved inside the `profile-list` Turbo frame); responsive menu tap targets
+(`py-3 sm:py-1`); scrollable edit-profile dialog (`open:flex … min-h-0`); **delete hoojah**
+— `DELETE /hoojah/:slug`, owner-only via `HujahPolicy#destroy?` (now also blocks
+moderator-removed content so the audit Notification survives), refused when the hoojah has
+replies/debates (`Hujah#deletable?`, `with_lock`-guarded), native `turbo_confirm`, custom
+`visit` Turbo StreamAction to leave the deleted show page. Notifications are deliberately
+NOT cascaded — they survive a hoojah's deletion and render nil-safe (Slice 11 Task 9 contract).
+
+**Deferred backlog (decisions from the review, not oversights):**
+
+- **`danger` tone for `ds_menu_item_classes`.** The Delete row uses `tone: "neutral"` (orange),
+  visually equal to the Report row; menu rows have no dedicated destructive tone. Adding one is a
+  design-system change (helper + `@source inline` safelist + mirror docs) — out of this branch's
+  scope. The `turbo_confirm` mitigates meanwhile.
+- **Dangling reply notification on leaf-reply destroy.** Deleting a leaf *reply* is allowed; the
+  parent-owner's "X replied to your hoojah" notification carries `hujah_id = parent.id`, so it
+  survives pointing at a now-gone reply (thread still loads). Fix needs a notification→child
+  linkage (currently only `hujah_id = parent`), so it's deferred.
+- **Full destroy-vs-reply race closure.** The `with_lock` in `HujahsController#destroy` closes
+  destroy-vs-destroy and destroy-vs-moderation, but a reply created concurrently never locks the
+  parent row. Fully closing it needs an `ON DELETE RESTRICT` FK on `hujahs.parent_id` — a
+  `strong_migrations` job against a populated table, not for this merge.
+
 ## Slice 11 — Api::V1 Hardening — DONE ✅ (branch `slice-11-api-hardening`, not merged)
 
 _2026-08-25. Closes the SECURITY-FINDINGS OPEN items **A1** (the only one with live-traffic

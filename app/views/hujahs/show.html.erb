@@ -42,8 +42,9 @@
         </summary>
         <%= render layout: "ui/menu", locals: {width: "w-56"} do %>
           <% if user_signed_in? && @hujah.user_id == current_user.id %>
-            <%# `tone: "neutral"` is DropdownMenu.prompt.md's destructive/pink row (the
-                same tone the report rows use). A real DELETE now — `button_to` carries the
+            <%# `tone: "neutral"` is DropdownMenu.prompt.md's destructive row (neutral is
+                orange under the Spectrum palette — the same tone the report rows use; a
+                menu row has no dedicated danger tone). A real DELETE now — `button_to` carries the
                 CSRF token; `form: {class: "contents"}` collapses the wrapping <form> so the
                 button sits as a normal row in the menu's vertical stack instead of adding a
                 block box. `data-turbo-confirm` goes on the FORM (turbo-rails reads it there,

@@ -67,16 +67,16 @@
     <%= lucide_icon("settings", class: "w-5 h-5") %>
   </button>
 
+  <%# `open:flex` (NOT bare `flex`): author `display:flex` beats the UA
+      `dialog:not([open]){display:none}` by origin, so a bare `flex` would keep the dialog
+      on-screen while closed. The `open:` variant scopes the flex column to when the dialog
+      is actually open; `max-h-[90dvh] overflow-hidden` cap it and the form body
+      (`overflow-y-auto min-h-0`) scrolls under the pinned header. %>
   <dialog id="<%= dom_id(user, :edit_dialog) %>"
           data-dialog-target="dialog"
           data-action="click->dialog#backdropClose close->dialog#restoreFocus"
           aria-labelledby="dialog-title-profile-edit"
           <%= "open" if open %>
-<%#      `open:flex` (NOT bare `flex`): author `display:flex` beats the UA
-             `dialog:not([open]){display:none}` by origin, so a bare `flex` would keep the
-             dialog on-screen while closed. The `open:` variant scopes the flex column to
-             when the dialog is actually open; `max-h-[90dvh] overflow-hidden` cap it so the
-             form body (`overflow-y-auto`) scrolls under the pinned header. %>
           class="rounded-lg shadow-lg p-0 w-full max-w-md backdrop:bg-black/40 max-h-[90dvh] overflow-hidden open:flex open:flex-col">
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
       <h5 id="dialog-title-profile-edit" class="text-lg font-medium m-0">Edit your profile</h5>
