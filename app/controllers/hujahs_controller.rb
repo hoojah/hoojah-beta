@@ -111,6 +111,13 @@ class HujahsController < ApplicationController
       end
       @hujah.destroy
     end
+    # Issue #38: return the user to the page they were on BEFORE they opened this
+    # hoojah (captured at button-render time into `return_to`), not always the feed.
+    # Re-validate the param HERE — defense in depth, never trust it blindly — and fall
+    # back to root_path when it's absent/unsafe. `safe_return_path` also refuses the
+    # deleted hoojah's own path (about to 404). The SAME destination drives both the
+    # HTML redirect and the Turbo `visit`, so JS-on and JS-off agree.
+    @destination = helpers.safe_return_path(params[:return_to], hujah_path(@hujah.slug)) || root_path
     # Delete is offered only on the show page — you are looking at the record you just
     # removed, so the browser must leave. A Turbo submission answers with a `visit`
     # stream (a `redirect_to` from a Stream-accepting form is fetched but not rendered
@@ -118,7 +125,7 @@ class HujahsController < ApplicationController
     # follows the `see_other` redirect natively.
     respond_to do |format|
       format.turbo_stream # destroy.turbo_stream.erb → <turbo-stream action="visit">
-      format.html { redirect_to root_path, notice: "Hoojah deleted.", status: :see_other }
+      format.html { redirect_to @destination, notice: "Hoojah deleted.", status: :see_other }
     end
   end
 

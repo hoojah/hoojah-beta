@@ -51,6 +51,51 @@ module HujahsHelper
       .html_safe
   end
 
+  # Issue #38: after deleting a hoojah the user should land back on the page they
+  # were on BEFORE opening this hoojah's show page — captured at button-render time
+  # from `request.referer` (at DESTROY time the referer is the show page itself, so
+  # capturing it then would be useless) and threaded through as a `return_to` param.
+  #
+  # This validates a candidate destination on BOTH sides (render AND destroy — the
+  # controller re-validates, never trusting the param blindly) and returns a SAFE
+  # internal path, or nil for the caller to fall back to root_path:
+  #   - `raw` may be an absolute same-origin URL (that's what `request.referer` is)
+  #     OR an already-extracted local path (that's what the round-tripped param is);
+  #   - a cross-origin absolute URL, a protocol-relative "//host", or anything that
+  #     doesn't resolve to a leading-single-slash local path is rejected
+  #     (open-redirect guard);
+  #   - the deleted hoojah's OWN show path is rejected too — it's about to 404.
+  # We keep only the path (+ query), so the returned value is always a local path.
+  def safe_return_path(raw, current_hujah_path)
+    raw = raw.to_s.strip
+    return nil if raw.empty?
+    # Protocol-relative ("//host") slips past a naive leading-slash check, so reject
+    # it before anything else.
+    return nil if raw.start_with?("//")
+
+    uri = begin
+      URI.parse(raw)
+    rescue URI::InvalidURIError
+      return nil
+    end
+
+    # An absolute URL is allowed ONLY when it targets this same host (same-origin);
+    # a bare path has no host and is fine. Anything off-site → nil.
+    if uri.host.present?
+      return nil unless uri.host == request.host
+      return nil unless uri.scheme.nil? || %w[http https].include?(uri.scheme)
+    end
+
+    path = uri.path
+    return nil unless path.start_with?("/")
+    return nil if path.start_with?("//") # e.g. an absolute "https://host//foo"
+    path += "?#{uri.query}" if uri.query.present?
+
+    # Don't send the user back to the record that just disappeared.
+    return nil if path == current_hujah_path
+    path
+  end
+
   # Secret ballot (2a/A7): the compact total-only label shown in place of the
   # per-stance breakdown when a hoojah is below k=3 total votes. One phrasing shared
   # across every surface (_vote_bars, _vote_hero, _child_card, _user_hujah) so they

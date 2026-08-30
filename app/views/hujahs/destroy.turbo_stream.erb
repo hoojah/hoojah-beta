@@ -1,4 +1,7 @@
-<%# The hoojah you were viewing is gone — navigate the browser to the feed. `visit`
-    is a custom StreamAction (app/javascript/application.js) that calls Turbo.visit,
-    so this stays a SPA navigation instead of a full reload. %>
-<%= turbo_stream_action_tag "visit", url: root_path %>
+<%# The hoojah you were viewing is gone — navigate the browser away from its show
+    page. Issue #38: `@destination` is the page you came from BEFORE opening this
+    hoojah (a validated same-origin path threaded through `return_to`), or the feed
+    (`root_path`) when that's absent/unsafe. `visit` is a custom StreamAction
+    (app/javascript/application.js) that calls Turbo.visit, so this stays a SPA
+    navigation instead of a full reload. %>
+<%= turbo_stream_action_tag "visit", url: @destination %>
