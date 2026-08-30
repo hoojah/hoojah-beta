@@ -34,7 +34,11 @@
     the helper string. Those are button-reset utilities, not a second padding or width,
     so they compose — see the caution in `ds_menu_item_classes`. `hidden` is a bare
     attribute the controller removes; it is not styling. %>
-<% share_url = hujah_url(hujah.slug) %>
+<%# Share URL half (issue #31): the URL threaded into the six intents and
+    data-share-url-value now routes through a short link — the absolute /s/:code from
+    ShortLink.for(hujah), created idempotently on first render — instead of the raw
+    hoojah URL. The share TEXT below stays byte-frozen; only the URL changed. %>
+<% share_url = short_link_url(ShortLink.for(hujah).code) %>
 <% share_text = "\"#{strip_tags(hujah.body)} (by @#{hujah.user.username})\" Do you AGREE? NEUTRAL? DISAGREE?" %>
 <% share_title = "Hoojah by @#{hujah.user.username}" %>
 

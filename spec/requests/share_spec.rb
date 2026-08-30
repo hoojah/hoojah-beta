@@ -7,7 +7,10 @@ RSpec.describe "Share menu", type: :request do
     get "/hoojah/#{hujah.slug}"
     expect(response).to have_http_status(:ok)
 
-    encoded_url = CGI.escape("http://www.example.com/hoojah/#{hujah.slug}")
+    # The URL half of the share menu now routes through the short link /s/:code
+    # (issue #31) rather than the raw hoojah URL. The share TEXT stays frozen.
+    short_url = short_link_url(ShortLink.for(hujah).code, host: "www.example.com")
+    encoded_url = CGI.escape(short_url)
 
     # One <a href> per platform — always present, no JavaScript required.
     expect(response.body).to include("https://wa.me/?text=")           # WhatsApp
@@ -17,8 +20,11 @@ RSpec.describe "Share menu", type: :request do
     expect(response.body).to include("https://www.facebook.com/sharer/sharer.php?u=#{encoded_url}") # Facebook
     expect(response.body).to include("mailto:")                        # Email
 
-    # The absolute hoojah URL is threaded into the share targets.
+    # The absolute short URL is threaded into the share targets, and it is a
+    # 7-char opaque /s/:code — never the internal hoojah path.
     expect(response.body).to include(encoded_url)
+    expect(response.body).to match(%r{/s/[A-Za-z0-9]{7}})
+    expect(response.body).to include(%(data-share-url-value="#{short_url}"))
   end
 
   it "renders a hidden native-share button wired to the share controller" do

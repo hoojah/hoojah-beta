@@ -155,6 +155,11 @@ Rails.application.routes.draw do
   # filtered through Hujah.visible_to / User.visible_to (SearchController), so it
   # can never surface content a normal feed/profile visit wouldn't already show.
   get "/search", to: "search#index", as: :search
+  # Short share links (2026). /s/:code 301s to the stored INTERNAL path only — ShortLink
+  # validates target_path against /hoojah|/debates, so this can never be an open redirect.
+  # Public + unauthenticated: the redirect target enforces its own visibility; an opaque
+  # code reveals nothing. MAIN route (never Api::V1); addressed by opaque code, not a slug.
+  get "/s/:code", to: "short_links#show", as: :short_link
   # Public informational pages (2026). Static, no auth — anyone (signed out included)
   # can read the FAQ and the legal pages. MAIN routes (not Api::V1); they never write,
   # so CSRF posture is irrelevant. Addressed by plain path, not a record slug.
