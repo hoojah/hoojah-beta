@@ -44,6 +44,9 @@
      "primary" => "bg-primary-soft text-primary"
    }[stance] %>
 <% in_debate = local_assigns[:live_debate_keys]&.include?([child.user_id, child.vote]) %>
+<%# Coerce ONCE here (absent-or-nil on the create-stream / missing-local path → 0),
+    so the guard and the pluralize below read the same integer. %>
+<% reply_count = local_assigns[:reply_count].to_i %>
 <div class="relative block mb-2.5"
      data-response-filter-target="item" data-response-filter-vote="<%= stance %>">
   <%= link_to hujah_path(child.slug), class: "absolute inset-0 z-0",
@@ -86,8 +89,8 @@
             plain integer, absent-or-0 for responses with no visible replies. The
             card already navigates to the response's own page, so this needs no
             separate link. %>
-        <% if local_assigns[:reply_count].to_i > 0 %>
-          <span class="inline-flex items-center gap-1"><%= lucide_icon("message-circle", class: "w-3.5 h-3.5") %><%= pluralize(reply_count, "reply") %></span>
+        <% if reply_count > 0 %>
+          <span data-testid="reply-count" class="inline-flex items-center gap-1"><%= lucide_icon("message-circle", class: "w-3.5 h-3.5") %><%= pluralize(reply_count, "reply") %></span>
         <% end %>
       </div>
     </div>

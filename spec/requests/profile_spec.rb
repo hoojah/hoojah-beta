@@ -74,8 +74,12 @@ RSpec.describe "Profile", type: :request do
     sign_in user
     patch "/u/rudz", params: {user: {full_name: "Zoe Kingman"}},
       headers: {"Accept" => "text/vnd.turbo-stream.html"}
-    expect(response.body).to include(ActionView::RecordIdentifier.dom_id(user, :nav_avatar))
-    expect(response.body).to include('action="replace"')
+    nav_avatar_id = ActionView::RecordIdentifier.dom_id(user, :nav_avatar)
+    expect(response.body).to include(nav_avatar_id)
+    # Bite: assert the replace stream TARGETS the nav avatar specifically, not just that
+    # *some* action="replace" is present (the profile_header replace already emits one,
+    # so a bare action="replace" check passed regardless of this feature).
+    expect(response.body).to match(/<turbo-stream action="replace" target="#{Regexp.escape(nav_avatar_id)}"/)
     expect(user.reload.full_name).to eq("Zoe Kingman")
   end
 

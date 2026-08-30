@@ -5,6 +5,10 @@ class ShortLink < ApplicationRecord
   # so nothing absolute (`https://evil.com`), protocol-relative (`//evil.com`),
   # path-traversing (`/hoojah/../etc`), or outside `/hoojah`|`/debates` can ever be
   # persisted — and therefore can never be handed to `redirect_to`.
+  # NOTE: the slug char class assumes friendly_id stays within [a-zA-Z0-9_-] (today's
+  # parameterize output). A future slug generator emitting a `.` or non-ASCII char would
+  # fail this format check, so `ShortLink.for` would raise (RecordInvalid) at share-menu
+  # render time rather than persist an out-of-shape path.
   INTERNAL_PATH_RE = %r{\A/(hoojah|debates)/[a-zA-Z0-9_-]+\z}
 
   validates :target_path, presence: true, uniqueness: true, format: {with: INTERNAL_PATH_RE}

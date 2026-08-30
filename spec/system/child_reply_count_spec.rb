@@ -13,11 +13,14 @@ RSpec.describe "Child card reply count", type: :system, js: true do
     visit hujah_path(parent.slug)
 
     within find("[data-response-filter-target='item']", text: "A response that has its own thread") do
-      expect(page).to have_content("1 reply")
+      expect(page).to have_css("[data-testid='reply-count']", text: "1 reply")
     end
 
+    # Scope the negative to the reply-count badge element itself, not a substring of the
+    # card body: `not_to have_content("reply")` would false-fail the day a copy edit put
+    # the word "reply" in an unrelated response body.
     within find("[data-response-filter-target='item']", text: "A response with no further replies") do
-      expect(page).not_to have_content("reply")
+      expect(page).to have_no_css("[data-testid='reply-count']")
     end
   end
 end
