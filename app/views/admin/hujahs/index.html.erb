@@ -1,0 +1,55 @@
+<%# Admin all-hoojahs listing (Issue #18). Staff-only — Admin::BaseController authorizes
+    :admin, :index? before this renders. Read-only: one row per hujah, newest first.
+    NOT swept by not_removed and NOT visibility-filtered — staff read removed and
+    non-public content. The body is PLAIN truncated text (no format_body here); a
+    `removed` status is highlighted with an explicit conditional literal class, never an
+    interpolated one. %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-5xl mx-auto px-4 py-6">
+  <div class="w-full max-w-2xl mx-auto">
+    <header class="flex items-center justify-between mb-4">
+      <h1 class="text-xl font-extrabold text-ink tracking-tight">All hoojahs</h1>
+    </header>
+
+    <% if @hujahs.empty? %>
+      <%= render "ui/empty_state", message: "No hoojahs yet.", icon: "message-square" %>
+    <% else %>
+      <%= render layout: "ui/card" do %>
+        <ul class="divide-y divide-hairline">
+          <% @hujahs.each do |hujah| %>
+            <li class="py-3">
+              <div class="flex items-center gap-2 flex-wrap text-xs text-grey mb-1">
+                <%= link_to "@#{hujah.user.username}", profile_path(hujah.user.username),
+                      class: "font-semibold text-ink no-underline" %>
+                <% if hujah.parent_id.present? %>
+                  <span class="px-2 py-0.5 rounded-full bg-card-2">response</span>
+                <% end %>
+                <span class="px-2 py-0.5 rounded-full bg-card-2"><%= hujah.visibility %></span>
+                <% if hujah.moderation_removed? %>
+                  <span class="px-2 py-0.5 rounded-full bg-disagree text-white">removed</span>
+                <% else %>
+                  <span class="px-2 py-0.5 rounded-full bg-card-2"><%= hujah.moderation_status %></span>
+                <% end %>
+              </div>
+              <%= link_to hujah_path(hujah.slug), class: "block text-sm text-ink no-underline" do %>
+                <%= truncate(hujah.body, length: 120) %>
+              <% end %>
+              <div class="text-xs text-grey mt-1">
+                <%= hujah.agree_count %> agree · <%= hujah.neutral_count %> neutral · <%= hujah.disagree_count %> disagree
+                · <%= hujah.created_at.strftime("%-d %b %Y") %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+
+      <% if @pagy.next %>
+        <div class="mt-4 text-center">
+          <%= link_to "Load more", admin_hujahs_path(page: @pagy.next),
+                class: "text-sm text-primary no-underline" %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</main>

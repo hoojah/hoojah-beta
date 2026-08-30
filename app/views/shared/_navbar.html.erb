@@ -120,6 +120,10 @@
                   <span id="nav-moderation-count" class="ml-1 text-xs text-grey">(<%= count %>)</span>
                 <% end %>
               <% end %>
+              <%# Admin listings (Issue #18) — read-only all-users / all-hoojahs indexes.
+                  Same staff gate as the Moderation row; plain rows, no count, no dot. %>
+              <%= link_to "All users", admin_users_path, class: ds_menu_item_classes %>
+              <%= link_to "All hoojahs", admin_hujahs_path, class: ds_menu_item_classes %>
             <% end %>
             <%= link_to notifications_path, class: ds_menu_item_classes do %>
               Your notifications

@@ -110,6 +110,12 @@ Rails.application.routes.draw do
   patch "/moderation/:slug/dismiss", to: "moderation#dismiss", as: :dismiss_moderation
   delete "/moderation/:slug/remove", to: "moderation#remove", as: :remove_moderation
   post "/moderation/:slug/warn", to: "moderation#warn", as: :warn_moderation
+  # Admin listings (2026). Staff-only via the headless AdminPolicy (can_moderate? — the
+  # app's single capability gate); distinct from /moderation (the flag QUEUE) and /dashboard
+  # (the user's OWN analytics). Read-only indexes, global not user-scoped, no id/slug in the
+  # URL — pagy(:countless) pages via ?page. MAIN routes; nothing here belongs under Api::V1.
+  get "/admin/users", to: "admin/users#index", as: :admin_users
+  get "/admin/hoojahs", to: "admin/hujahs#index", as: :admin_hujahs
   # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`
   # resolves when `_vote_bars` renders inside the card in the feed AND the show page.
   post "/hoojah/:slug/votes", to: "votes#create", as: :hujah_votes
