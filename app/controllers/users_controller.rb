@@ -104,7 +104,7 @@ class UsersController < ApplicationController
 
   # Email stays API-only (the HTML edit form omits it, matching the legacy SPA).
   def user_params
-    params.require(:user).permit(:full_name, :username, :location, :link, :headline, :photo, :private, :avatar)
+    params.require(:user).permit(:full_name, :username, :location, :link, :headline, :photo, :private, :avatar, :email_notifications)
   end
 
   # Hoojah 2026 (redesign Phase 4, Task 4.5). The list for whichever tab is active.

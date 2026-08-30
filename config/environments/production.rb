@@ -98,6 +98,11 @@ Rails.application.configure do
 
   config.action_mailer.perform_caching = false
 
+  # Issue #3: mailer URL helpers (hujah_url/debate_url/notifications_url in
+  # NotificationMailer) need an absolute host in production. Sourced from APP_HOST
+  # like host authorization above, defaulting to the canonical domain.
+  config.action_mailer.default_url_options = {host: ENV.fetch("APP_HOST", "hoojah.rudzainy.com"), protocol: "https"}
+
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   # config.action_mailer.raise_delivery_errors = false
