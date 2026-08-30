@@ -8,15 +8,24 @@
     aria-label.
 
     The six share intent links + native-share button below are the same markup
-    `_share_menu` renders (WhatsApp/X/Telegram/Reddit/Facebook/Email, byte-identical
-    copy and URLs — this IS the share payload `share_spec` and `_share_menu`'s own
-    header call "the only place Hoojah shouts in caps"), duplicated rather than shared
-    because `_share_menu` bundles its own `<details>` around them and splitting that
-    partial is out of scope for this task. `data-controller="share"` and the three
-    `data-share-*-value` attributes stay on THIS `<details>` — share_controller.js reads
-    them off its nearest `data-controller="share"` ancestor, so the native-share button
-    inside this panel needs them here, not on `_share_menu`'s (which the feed no longer
-    renders).
+    `_share_menu` renders (WhatsApp/X/Telegram/Reddit/Facebook/Email), duplicated rather
+    than shared because `_share_menu` bundles its own `<details>` around them and
+    splitting that partial is out of scope for this task. The share TEXT is byte-identical
+    to `_share_menu`'s — this IS the share payload `share_spec` and `_share_menu`'s own
+    header call "the only place Hoojah shouts in caps".
+
+    The URL, however, is NOT identical since issue #31: the feed deliberately shares the
+    CANONICAL `hujah_url` here, not the `/s/:code` short link the show page's `_share_menu`
+    now emits. That is a load-bearing choice, not drift — `ShortLink.for(hujah)` is a
+    `find_or_create_by!`, i.e. a write-on-GET, and this menu renders on EVERY feed card,
+    so calling it per card would be a feed N+1 that this codebase's N+1 discipline forbids.
+    Short links are applied only on single-item share surfaces (the hoojah show page and
+    the debate verdict), where it is one cheap idempotent query per page.
+
+    `data-controller="share"` and the three `data-share-*-value` attributes stay on THIS
+    `<details>` — share_controller.js reads them off its nearest `data-controller="share"`
+    ancestor, so the native-share button inside this panel needs them here, not on
+    `_share_menu`'s (which the feed no longer renders).
 
     The flag row is `hujahs/_flag_dialog` unmodified — it is already a self-contained
     unit (its own `data-controller="dialog"` scope, its own POST), designed to be
