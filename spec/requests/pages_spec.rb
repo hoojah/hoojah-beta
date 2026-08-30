@@ -10,7 +10,9 @@ RSpec.describe "Pages", type: :request do
   pages = {
     "/faq" => {heading: "Frequently Asked Questions", marker: "secret ballot"},
     "/privacy" => {heading: "Privacy Policy", marker: "Personal Data Protection Act 2010"},
-    "/terms" => {heading: "Terms of Service", marker: "laws of Malaysia"}
+    "/terms" => {heading: "Terms of Service", marker: "laws of Malaysia"},
+    "/about" => {heading: "About Hoojah", marker: "What is Hoojah"},
+    "/tutorials" => {heading: "Getting Started", marker: "first hujah"}
   }
 
   pages.each do |path, expected|

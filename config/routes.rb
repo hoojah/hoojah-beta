@@ -158,6 +158,10 @@ Rails.application.routes.draw do
   # Public informational pages (2026). Static, no auth — anyone (signed out included)
   # can read the FAQ and the legal pages. MAIN routes (not Api::V1); they never write,
   # so CSRF posture is irrelevant. Addressed by plain path, not a record slug.
+  # About tells newcomers what Hoojah is; Tutorials is the getting-started guide. Both
+  # are static, no-auth siblings of the pages below — same posture, plain path, no slug.
+  get "/about", to: "pages#about", as: :about
+  get "/tutorials", to: "pages#tutorials", as: :tutorials
   get "/faq", to: "pages#faq", as: :faq
   get "/privacy", to: "pages#privacy", as: :privacy
   get "/terms", to: "pages#terms", as: :terms
