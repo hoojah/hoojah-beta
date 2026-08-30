@@ -1,0 +1,13 @@
+<%# Locals: `user`. The navbar's always-visible avatar tile (gradient initials via
+    `variant: :tile`), wrapped in a stable Turbo target so a successful profile update
+    can Turbo-replace it in place (Issue #13) — a name/username change alters the visible
+    initials, and this keeps the bar in sync without a full navigation.
+
+    Scope: only the tile lives inside this span. The dropdown MENU contents (the @handle
+    line and "Your profile" link) are intentionally NOT wrapped/refreshed here — they are
+    hidden until the menu opens and self-heal on the next navigation; the always-visible
+    tile is the element this issue is about. The unread-notifications dot also stays
+    OUTSIDE this span (it tracks unread count, not the profile edit). %>
+<span id="<%= dom_id(user, :nav_avatar) %>">
+  <%= render "ui/avatar", user: user, variant: :tile, size: :nav %>
+</span>

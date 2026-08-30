@@ -67,6 +67,18 @@ RSpec.describe "Profile", type: :request do
     expect(user.reload.photo).not_to include("evil.com")
   end
 
+  # Issue #13: a successful profile update must also refresh the ALWAYS-VISIBLE navbar
+  # avatar, not just the profile header — the navbar tile shows gradient initials derived
+  # from the name, so a full_name change makes it stale until the next full navigation.
+  it "streams a replace for the navbar avatar on a successful owner update" do
+    sign_in user
+    patch "/u/rudz", params: {user: {full_name: "Zoe Kingman"}},
+      headers: {"Accept" => "text/vnd.turbo-stream.html"}
+    expect(response.body).to include(ActionView::RecordIdentifier.dom_id(user, :nav_avatar))
+    expect(response.body).to include('action="replace"')
+    expect(user.reload.full_name).to eq("Zoe Kingman")
+  end
+
   it "attaches an uploaded avatar via multipart PATCH" do
     user = create(:user)
     sign_in user
