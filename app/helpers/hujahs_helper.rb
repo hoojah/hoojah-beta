@@ -32,10 +32,50 @@ module HujahsHelper
   HASHTAG_CLOSE = [0xE003].pack("U")  # U+E003, private-use
   HASHTAG_TOKEN_RE = /#{HASHTAG_OPEN}#(\p{L}[\p{L}0-9_]*)#{HASHTAG_CLOSE}/
 
+  # Issue #11: inline emphasis (**bold** / *italic* / _underline_) reuses the SAME
+  # tokens-before-render technique for the SAME security reason: the markdown spans are
+  # tokenized on the RAW text BEFORE simple_format/auto_link with three more DISTINCT
+  # private-use marker pairs (U+E004..U+E009), and the real <strong>/<em>/<u> tags are
+  # substituted AFTER. No gsub ever runs over rendered HTML, so the sanitizer allowlist
+  # is NOT widened and no new XSS surface is introduced. The content between a marker
+  # pair has already been HTML-escaped by simple_format by substitution time, and may
+  # legitimately contain the mention/hashtag anchors spliced in just above (that's fine
+  # — the anchors are our own trusted markup, not user text).
+  #
+  # The boundary lookbehind/lookahead is load-bearing: a preceding word char fails the
+  # `(?<=\A|\s|\()` lookbehind, so a `_` inside a URL (…/wiki/Foo_bar_baz) or an
+  # `@user_name` handle never opens an underline span; `[^*\n]`/`[^_\n]` keep a span
+  # single-line so it can't straddle a simple_format `<p>` boundary. And, exactly as with
+  # the U+E001 mention marker, the final `.delete` strips any orphaned emphasis marker
+  # that auto_link's trailing-punctuation trimmer may have relocated outside an <a>, so a
+  # stranded marker degrades to silent removal (span unformatted, URL intact) rather than
+  # leaking a private-use codepoint.
+  STRONG_OPEN = [0xE004].pack("U")     # U+E004, private-use
+  STRONG_CLOSE = [0xE005].pack("U")    # U+E005, private-use
+  EM_OPEN = [0xE006].pack("U")         # U+E006, private-use
+  EM_CLOSE = [0xE007].pack("U")        # U+E007, private-use
+  UNDERLINE_OPEN = [0xE008].pack("U")  # U+E008, private-use
+  UNDERLINE_CLOSE = [0xE009].pack("U") # U+E009, private-use
+
+  # Tokenizer regexes, applied to RAW text in order bold → italic → underline (bold must
+  # precede italic so `**x**` is consumed as one bold span, never two italic asterisks).
+  BOLD_RE = /(?<=\A|\s|\()\*\*([^*\n]+)\*\*(?=\z|\s|[[:punct:]])/
+  ITALIC_RE = /(?<=\A|\s|\()\*([^*\n]+)\*(?=\z|\s|[[:punct:]])/
+  UNDERLINE_RE = /(?<=\A|\s|\()_([^_\n]+)_(?=\z|\s|[[:punct:]])/
+
+  # Restore regexes, non-greedy so adjacent spans (`**a** **b**`) don't fuse; the span
+  # content is already escaped and may carry our own mention/hashtag anchors.
+  STRONG_TOKEN_RE = /#{STRONG_OPEN}(.+?)#{STRONG_CLOSE}/
+  EM_TOKEN_RE = /#{EM_OPEN}(.+?)#{EM_CLOSE}/
+  UNDERLINE_TOKEN_RE = /#{UNDERLINE_OPEN}(.+?)#{UNDERLINE_CLOSE}/
+
   def format_body(text)
     tokenized = text.to_s
       .gsub(Hujah::MENTION_RE) { "#{MENTION_OPEN}@#{$1}#{MENTION_CLOSE}" }
       .gsub(Hujah::HASHTAG_RE) { "#{HASHTAG_OPEN}##{$1}#{HASHTAG_CLOSE}" }
+      .gsub(BOLD_RE) { "#{STRONG_OPEN}#{$1}#{STRONG_CLOSE}" }
+      .gsub(ITALIC_RE) { "#{EM_OPEN}#{$1}#{EM_CLOSE}" }
+      .gsub(UNDERLINE_RE) { "#{UNDERLINE_OPEN}#{$1}#{UNDERLINE_CLOSE}" }
     linked = auto_link(simple_format(tokenized), html: {target: "_blank", rel: "noopener"})
     linked
       .gsub(MENTION_TOKEN_RE) do
@@ -47,7 +87,13 @@ module HujahsHelper
         # `.downcase` on the href matches Hashtag.canonical (and the /t/:name route).
         %(<a href="/t/#{ERB::Util.url_encode(name.downcase)}" class="text-primary">##{ERB::Util.html_escape(name)}</a>)
       end
-      .delete(MENTION_OPEN + MENTION_CLOSE + HASHTAG_OPEN + HASHTAG_CLOSE)
+      # Emphasis restored AFTER the mention/hashtag anchors, so a span wrapping a mention
+      # (`**hi @rudz**`) sees the finished <a> as its content, not a leftover token.
+      .gsub(STRONG_TOKEN_RE) { "<strong>#{$1}</strong>" }
+      .gsub(EM_TOKEN_RE) { "<em>#{$1}</em>" }
+      .gsub(UNDERLINE_TOKEN_RE) { "<u>#{$1}</u>" }
+      .delete(MENTION_OPEN + MENTION_CLOSE + HASHTAG_OPEN + HASHTAG_CLOSE +
+        STRONG_OPEN + STRONG_CLOSE + EM_OPEN + EM_CLOSE + UNDERLINE_OPEN + UNDERLINE_CLOSE)
       .html_safe
   end
 

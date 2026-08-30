@@ -92,12 +92,31 @@
       </div>
 
       <div class="mt-2 flex items-end gap-2">
-        <textarea name="hujah[body]"
-                  data-argument-composer-target="body"
-                  data-action="input->argument-composer#input"
-                  placeholder="Make your argument…"
-                  rows="2"
-                  class="flex-1 border-none bg-card rounded-xl p-3 resize-none outline-none text-sm leading-relaxed text-ink"></textarea>
+        <%# Issue #11: markdown emphasis toolbar, sharing the textarea with the
+            argument-composer controller (both target the same element). %>
+        <div data-controller="format-toolbar" class="flex-1">
+          <div class="flex items-center gap-1 mb-1">
+            <button type="button" data-action="format-toolbar#bold" aria-label="Bold"
+              class="w-7 h-7 rounded-lg flex items-center justify-center text-ink-2 bg-card active:scale-95">
+              <%= lucide_icon("bold", class: "w-3.5 h-3.5") %>
+            </button>
+            <button type="button" data-action="format-toolbar#italic" aria-label="Italic"
+              class="w-7 h-7 rounded-lg flex items-center justify-center text-ink-2 bg-card active:scale-95">
+              <%= lucide_icon("italic", class: "w-3.5 h-3.5") %>
+            </button>
+            <button type="button" data-action="format-toolbar#underline" aria-label="Underline"
+              class="w-7 h-7 rounded-lg flex items-center justify-center text-ink-2 bg-card active:scale-95">
+              <%= lucide_icon("underline", class: "w-3.5 h-3.5") %>
+            </button>
+          </div>
+          <textarea name="hujah[body]"
+                    data-argument-composer-target="body"
+                    data-format-toolbar-target="field"
+                    data-action="input->argument-composer#input"
+                    placeholder="Make your argument…"
+                    rows="2"
+                    class="w-full border-none bg-card rounded-xl p-3 resize-none outline-none text-sm leading-relaxed text-ink"></textarea>
+        </div>
         <button type="submit"
                 data-argument-composer-target="send"
                 disabled
