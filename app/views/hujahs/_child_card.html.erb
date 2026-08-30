@@ -79,6 +79,16 @@
         <% else %>
           <span><%= vote_total_label(child) %></span>
         <% end %>
+        <%# Reply-thread presence: a subtle signal that this response has its own
+            visible replies (count mirrors visible_children_for — removed/blocked/
+            private-author grandchildren are excluded). `reply_count` is threaded
+            in from `_response_filter` (one grouped query for the whole row) — a
+            plain integer, absent-or-0 for responses with no visible replies. The
+            card already navigates to the response's own page, so this needs no
+            separate link. %>
+        <% if local_assigns[:reply_count].to_i > 0 %>
+          <span class="inline-flex items-center gap-1"><%= lucide_icon("message-circle", class: "w-3.5 h-3.5") %><%= pluralize(reply_count, "reply") %></span>
+        <% end %>
       </div>
     </div>
   </div>

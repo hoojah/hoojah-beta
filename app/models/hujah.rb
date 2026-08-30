@@ -144,6 +144,26 @@ class Hujah < ApplicationRecord
     scope.joins(:user).where("users.private = false OR hujahs.user_id IN (?)", visible_ids)
   end
 
+  # Bulk visible-reply COUNT for many parents at once — the count-surface
+  # counterpart to #visible_children_for (same gate: not_removed; drop hidden
+  # authors when signed in; per-viewer privacy predicate; anonymous → public
+  # authors only). Returns {parent_id => count}; parents with zero visible
+  # replies are ABSENT from the hash (callers treat missing as 0). Mirrors that
+  # gate so a badge count matches exactly what the viewer would see after
+  # clicking through — a removed/blocked/private-author grandchild is not
+  # counted. ONE grouped query for the whole parent set, no N+1.
+  def self.visible_reply_counts_for(parent_ids, viewer)
+    return {} if parent_ids.blank?
+
+    scope = where(parent_id: parent_ids).not_removed
+    scope = scope.where.not(user_id: viewer.hidden_user_ids) if viewer
+    visible_ids = viewer ? viewer.following_ids + [viewer.id] : []
+    scope.joins(:user)
+      .where("users.private = false OR hujahs.user_id IN (?)", visible_ids)
+      .group(:parent_id)
+      .count
+  end
+
   # Moderation (2026): the dismiss/remove/warn composition. Lifted off
   # ModerationController so the transactional invariants live next to the state they
   # protect. Each resolves the pending reports; only `by:` (the acting moderator) is
