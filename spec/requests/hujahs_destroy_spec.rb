@@ -132,6 +132,32 @@ RSpec.describe "DELETE /hoojah/:slug", type: :request do
       expect(response).to redirect_to(root_path)
     end
 
+    it "ignores an opaque javascript: return_to (no crash) and falls back to the feed" do
+      id = hujah.id
+      sign_in owner
+
+      delete hujah_path(hujah.slug), params: {return_to: "javascript:alert(1)"}
+
+      expect(response).to redirect_to(root_path)
+      expect(Hujah.exists?(id)).to be(false)
+    end
+
+    it "ignores an opaque mailto: return_to and falls back to the feed" do
+      sign_in owner
+
+      delete hujah_path(hujah.slug), params: {return_to: "mailto:x@y.com"}
+
+      expect(response).to redirect_to(root_path)
+    end
+
+    it "ignores a backslash-prefixed return_to and falls back to the feed" do
+      sign_in owner
+
+      delete hujah_path(hujah.slug), params: {return_to: "/\\evil.com"}
+
+      expect(response).to redirect_to(root_path)
+    end
+
     it "ignores a return_to pointing at the deleted hoojah itself (it's about to 404)" do
       sign_in owner
       own_path = hujah_path(hujah.slug)

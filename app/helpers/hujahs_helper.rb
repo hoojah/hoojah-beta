@@ -79,20 +79,32 @@ module HujahsHelper
       return nil
     end
 
-    # An absolute URL is allowed ONLY when it targets this same host (same-origin);
-    # a bare path has no host and is fine. Anything off-site → nil.
-    if uri.host.present?
-      return nil unless uri.host == request.host
-      return nil unless uri.scheme.nil? || %w[http https].include?(uri.scheme)
-    end
+    # Opaque-scheme URIs (`javascript:alert(1)`, `mailto:x@y`, `tel:`, `data:`,
+    # `https:evil.com`) have a scheme and an opaque body but NO host and a nil path,
+    # so they must be rejected here — otherwise the nil path would crash the guard
+    # below, and since the controller deletes BEFORE computing the destination, a
+    # crafted return_to would delete the hoojah and then 500 instead of falling back.
+    return nil if uri.opaque.present?
 
+    # An absolute URL is allowed ONLY when it targets this same host (same-origin);
+    # a bare path has no host and is fine. Anything off-site → nil. The scheme
+    # whitelist sits OUTSIDE the host branch too, so a host-less scheme can never slip
+    # through. (`casecmp?` — host comparison is case-insensitive; over-rejecting a
+    # same-site referer that only differs in case would be safe but needlessly strict.)
+    return nil if uri.scheme && !%w[http https].include?(uri.scheme.downcase)
+    return nil if uri.host.present? && !uri.host.casecmp?(request.host)
+
+    # Nil-safe: an opaque URI is already rejected above, but keep `&.` so a future
+    # host-only/pathless URI can't resurrect the crash.
     path = uri.path
-    return nil unless path.start_with?("/")
+    return nil unless path&.start_with?("/")
     return nil if path.start_with?("//") # e.g. an absolute "https://host//foo"
     path += "?#{uri.query}" if uri.query.present?
 
-    # Don't send the user back to the record that just disappeared.
-    return nil if path == current_hujah_path
+    # Don't send the user back to the record that just disappeared. Compare on the
+    # PATH portion only — a show URL carrying a query (`/hoojah/slug?x=1`) must still
+    # be recognised as the about-to-404 page and rejected.
+    return nil if path.split("?").first == current_hujah_path.to_s.split("?").first
     path
   end
 
