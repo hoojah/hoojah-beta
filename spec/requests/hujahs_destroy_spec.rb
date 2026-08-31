@@ -85,4 +85,86 @@ RSpec.describe "DELETE /hoojah/:slug", type: :request do
     expect(response.body).to include('url="/"')
     expect(Hujah.exists?(id)).to be(false)
   end
+
+  # Issue #38: after a successful delete, return the user to the page they were on
+  # BEFORE they opened this hoojah — threaded through as a `return_to` param and
+  # RE-VALIDATED server-side (never trust the param blindly).
+  describe "return_to (issue #38)" do
+    it "redirects to a valid same-origin return_to path" do
+      sign_in owner
+
+      delete hujah_path(hujah.slug), params: {return_to: "/u/someusername"}
+
+      expect(response).to have_http_status(:see_other)
+      expect(response).to redirect_to("/u/someusername")
+    end
+
+    it "carries the return_to destination into the Turbo Stream visit action" do
+      sign_in owner
+
+      delete hujah_path(hujah.slug), params: {return_to: "/u/someusername"}, as: :turbo_stream
+
+      expect(response.body).to include('action="visit"')
+      expect(response.body).to include('url="/u/someusername"')
+    end
+
+    it "falls back to the feed when no return_to is given" do
+      sign_in owner
+
+      delete hujah_path(hujah.slug)
+
+      expect(response).to redirect_to(root_path)
+    end
+
+    it "ignores an absolute off-site return_to (open-redirect guard) and falls back to the feed" do
+      sign_in owner
+
+      delete hujah_path(hujah.slug), params: {return_to: "https://evil.com"}
+
+      expect(response).to redirect_to(root_path)
+    end
+
+    it "ignores a protocol-relative off-site return_to and falls back to the feed" do
+      sign_in owner
+
+      delete hujah_path(hujah.slug), params: {return_to: "//evil.com"}
+
+      expect(response).to redirect_to(root_path)
+    end
+
+    it "ignores an opaque javascript: return_to (no crash) and falls back to the feed" do
+      id = hujah.id
+      sign_in owner
+
+      delete hujah_path(hujah.slug), params: {return_to: "javascript:alert(1)"}
+
+      expect(response).to redirect_to(root_path)
+      expect(Hujah.exists?(id)).to be(false)
+    end
+
+    it "ignores an opaque mailto: return_to and falls back to the feed" do
+      sign_in owner
+
+      delete hujah_path(hujah.slug), params: {return_to: "mailto:x@y.com"}
+
+      expect(response).to redirect_to(root_path)
+    end
+
+    it "ignores a backslash-prefixed return_to and falls back to the feed" do
+      sign_in owner
+
+      delete hujah_path(hujah.slug), params: {return_to: "/\\evil.com"}
+
+      expect(response).to redirect_to(root_path)
+    end
+
+    it "ignores a return_to pointing at the deleted hoojah itself (it's about to 404)" do
+      sign_in owner
+      own_path = hujah_path(hujah.slug)
+
+      delete hujah_path(hujah.slug), params: {return_to: own_path}
+
+      expect(response).to redirect_to(root_path)
+    end
+  end
 end

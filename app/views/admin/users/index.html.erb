@@ -1,0 +1,49 @@
+<%# Admin all-users listing (Issue #18). Staff-only — Admin::BaseController authorizes
+    :admin, :index? before this renders. Read-only: one row per user, newest first.
+    Staff see private accounts (a `Private` badge marks them). Literal Tailwind classes
+    only — never interpolate a class name here. %>
+<%= render "shared/navbar" %>
+
+<main class="max-w-5xl mx-auto px-4 py-6">
+  <div class="w-full max-w-2xl mx-auto">
+    <header class="flex items-center justify-between mb-4">
+      <h1 class="text-xl font-extrabold text-ink tracking-tight">All users</h1>
+    </header>
+
+    <% if @users.empty? %>
+      <%= render "ui/empty_state", message: "No users yet.", icon: "users" %>
+    <% else %>
+      <%= render layout: "ui/card" do %>
+        <ul class="divide-y divide-hairline">
+          <% @users.each do |user| %>
+            <li class="flex items-center gap-3 py-3">
+              <%= render "ui/avatar", user: user, size: :row %>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <%= link_to "@#{user.username}", profile_path(user.username),
+                        class: "text-sm font-semibold text-ink no-underline truncate" %>
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-card-2 text-grey"><%= user.role %></span>
+                  <% if user.private? %>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-card-2 text-grey">Private</span>
+                  <% end %>
+                </div>
+                <p class="text-sm text-grey truncate"><%= user.full_name %></p>
+              </div>
+              <div class="text-right shrink-0 text-xs text-grey">
+                <div><%= user.followers_count %> followers · <%= user.following_count %> following</div>
+                <div><%= user.created_at.strftime("%-d %b %Y") %></div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+
+      <% if @pagy.next %>
+        <div class="mt-4 text-center">
+          <%= link_to "Load more", admin_users_path(page: @pagy.next),
+                class: "text-sm text-primary no-underline" %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</main>

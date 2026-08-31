@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "Pages", type: :request do
-  # Public informational pages (FAQ / Privacy / Terms). These are the same shape as
+  # Public informational pages (FAQ / Privacy / Terms / About / Tutorials). These are the same shape as
   # /trending: skip_authorization, reachable while signed out. Two axes matter here —
   # anonymous visitors get 200 (they are the point of these pages), and a signed-in
   # visitor also gets 200 (a regression guard on ApplicationController's
@@ -10,7 +10,9 @@ RSpec.describe "Pages", type: :request do
   pages = {
     "/faq" => {heading: "Frequently Asked Questions", marker: "secret ballot"},
     "/privacy" => {heading: "Privacy Policy", marker: "Personal Data Protection Act 2010"},
-    "/terms" => {heading: "Terms of Service", marker: "laws of Malaysia"}
+    "/terms" => {heading: "Terms of Service", marker: "laws of Malaysia"},
+    "/about" => {heading: "About Hoojah", marker: "What is Hoojah"},
+    "/tutorials" => {heading: "Getting Started", marker: "first hoojah"}
   }
 
   pages.each do |path, expected|
@@ -36,16 +38,19 @@ RSpec.describe "Pages", type: :request do
 
   # The feed's desktop sidebar carries a small footer card BELOW the trending frame,
   # linking to the same public pages above. It renders on the root feed; assert the
-  # links resolve to /faq, /privacy, /terms and the copyright line is present. The
-  # copyright glyph is emitted as the literal © character, so it round-trips unescaped.
+  # links resolve to /faq, /privacy, /terms, /about, /tutorials and the copyright line
+  # is present. The copyright glyph is emitted as the literal © character, so it
+  # round-trips unescaped.
   describe "the feed sidebar footer card" do
-    it "renders FAQ / Privacy / Terms links and a copyright line" do
+    it "renders FAQ / Privacy / Terms / About / Tutorials links and a copyright line" do
       login_as(create(:user))
       get "/"
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('href="/faq"')
       expect(response.body).to include('href="/privacy"')
       expect(response.body).to include('href="/terms"')
+      expect(response.body).to include('href="/about"')
+      expect(response.body).to include('href="/tutorials"')
       expect(response.body).to include("© 2026 Hoojah")
     end
   end

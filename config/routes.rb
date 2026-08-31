@@ -110,6 +110,12 @@ Rails.application.routes.draw do
   patch "/moderation/:slug/dismiss", to: "moderation#dismiss", as: :dismiss_moderation
   delete "/moderation/:slug/remove", to: "moderation#remove", as: :remove_moderation
   post "/moderation/:slug/warn", to: "moderation#warn", as: :warn_moderation
+  # Admin listings (2026). Staff-only via the headless AdminPolicy (can_moderate? — the
+  # app's single capability gate); distinct from /moderation (the flag QUEUE) and /dashboard
+  # (the user's OWN analytics). Read-only indexes, global not user-scoped, no id/slug in the
+  # URL — pagy(:countless) pages via ?page. MAIN routes; nothing here belongs under Api::V1.
+  get "/admin/users", to: "admin/users#index", as: :admin_users
+  get "/admin/hoojahs", to: "admin/hujahs#index", as: :admin_hujahs
   # HTML voting (Task 4.3). Declared here alongside the feed so `hujah_votes_path`
   # resolves when `_vote_bars` renders inside the card in the feed AND the show page.
   post "/hoojah/:slug/votes", to: "votes#create", as: :hujah_votes
@@ -155,9 +161,18 @@ Rails.application.routes.draw do
   # filtered through Hujah.visible_to / User.visible_to (SearchController), so it
   # can never surface content a normal feed/profile visit wouldn't already show.
   get "/search", to: "search#index", as: :search
+  # Short share links (2026). /s/:code 301s to the stored INTERNAL path only — ShortLink
+  # validates target_path against /hoojah|/debates, so this can never be an open redirect.
+  # Public + unauthenticated: the redirect target enforces its own visibility; an opaque
+  # code reveals nothing. MAIN route (never Api::V1); addressed by opaque code, not a slug.
+  get "/s/:code", to: "short_links#show", as: :short_link
   # Public informational pages (2026). Static, no auth — anyone (signed out included)
   # can read the FAQ and the legal pages. MAIN routes (not Api::V1); they never write,
   # so CSRF posture is irrelevant. Addressed by plain path, not a record slug.
+  # About tells newcomers what Hoojah is; Tutorials is the getting-started guide. Both
+  # are static, no-auth siblings of the pages below — same posture, plain path, no slug.
+  get "/about", to: "pages#about", as: :about
+  get "/tutorials", to: "pages#tutorials", as: :tutorials
   get "/faq", to: "pages#faq", as: :faq
   get "/privacy", to: "pages#privacy", as: :privacy
   get "/terms", to: "pages#terms", as: :terms

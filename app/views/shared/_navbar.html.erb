@@ -69,8 +69,13 @@
 
                 `variant: :tile` (Hoojah 2026, Task 0.4): the gradient-initials TREATMENT
                 on purpose, not merely the no-photo fallback — every signed-in user gets
-                the tile here, photo or not. %>
-            <%= render "ui/avatar", user: current_user, variant: :tile, size: :nav %>
+                the tile here, photo or not.
+
+                Extracted into `shared/nav_current_user_avatar` (Issue #13) so a successful
+                profile update can Turbo-replace it live via update.turbo_stream.erb — the
+                partial wraps the tile in a stable `nav_avatar` target. The unread dot below
+                stays OUTSIDE that span (it tracks unread count, not the profile edit). %>
+            <%= render "shared/nav_current_user_avatar", user: current_user %>
             <% if current_user.unread_notifications_count > 0 %>
               <%# 8px pink dot, never a count badge — the design system is explicit.
                   `role="img"` for the same reason `ui/_avatar`'s fallback carries one:
@@ -115,6 +120,10 @@
                   <span id="nav-moderation-count" class="ml-1 text-xs text-grey">(<%= count %>)</span>
                 <% end %>
               <% end %>
+              <%# Admin listings (Issue #18) — read-only all-users / all-hoojahs indexes.
+                  Same staff gate as the Moderation row; plain rows, no count, no dot. %>
+              <%= link_to "All users", admin_users_path, class: ds_menu_item_classes %>
+              <%= link_to "All hoojahs", admin_hujahs_path, class: ds_menu_item_classes %>
             <% end %>
             <%= link_to notifications_path, class: ds_menu_item_classes do %>
               Your notifications

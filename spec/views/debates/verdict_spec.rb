@@ -177,13 +177,20 @@ RSpec.describe "debates/_verdict", type: :view do
       expect(p).to have_css(".text-disagree", text: "@#{opponent.username}")
     end
 
-    it "offers a Share affordance linking to the debate" do
+    it "offers a Share affordance routing the debate through the /s/:code short link (issue #31 follow-up)" do
       d = debate
       as(challenger)
       out = html(d)
+      p = Capybara.string(out)
 
       expect(out).to include('data-controller="share"')
-      expect(out).to include(debate_url(d.slug))
+      # Issue #31 follow-up: the debate share URL now routes through the short link
+      # (/s/:code) created by ShortLink.for(debate), mirroring hujahs/_share_menu —
+      # not the raw debate_url. The data-share-url-value and the intent links both
+      # inherit that short URL.
+      share_url = p.find('[data-controller="share"]')["data-share-url-value"]
+      expect(share_url).to match(%r{/s/[A-Za-z0-9]{7}\z})
+      expect(out).not_to include(debate_url(d.slug))
     end
   end
 

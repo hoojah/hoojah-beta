@@ -21,6 +21,12 @@
     live/pending debates — is computed ONCE here and threaded to each `_child_card` so the
     "In debate" badge costs no per-card query. %>
 <% live_debate_keys = hujah.debates.where(status: [:pending, :active]).pluck(:opponent_id, :opponent_stance).to_set %>
+<%# Reply counts for the whole response row in ONE grouped query (same
+    once-compute-then-thread pattern as live_debate_keys), so each card's
+    "N replies" badge costs no per-card query. The count mirrors
+    visible_children_for's gate, so it matches what the viewer would see after
+    clicking through. %>
+<% reply_counts = Hujah.visible_reply_counts_for(children.map(&:id), current_user) %>
 <div data-controller="response-filter" data-response-filter-active-value="all">
   <div class="flex items-center justify-between mt-6 mb-2 px-1">
     <span class="text-base font-extrabold text-ink">
@@ -75,7 +81,7 @@
   <div id="<%= dom_id(hujah, :responses) %>" class="mt-3 flex flex-col">
     <% if children.any? %>
       <% children.each do |child| %>
-        <%= render "hujahs/child_card", child: child, hujah: hujah, live_debate_keys: live_debate_keys %>
+        <%= render "hujahs/child_card", child: child, hujah: hujah, live_debate_keys: live_debate_keys, reply_count: reply_counts[child.id] %>
       <% end %>
       <div data-response-filter-target="empty" hidden>
         <%= render "ui/empty_state", message: "No responses match this filter yet", class: "px-1" %>

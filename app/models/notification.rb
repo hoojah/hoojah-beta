@@ -26,4 +26,34 @@ class Notification < ApplicationRecord
   }
 
   scope :unread, -> { where(read: false) }
+
+  # Issue #3: the high-signal categories that trigger an email. Deliberately EXCLUDES
+  # new_vote (secret ballot — the row carries no subject_user_id and per-vote email is
+  # spam), new_hoojah_response, new_follower, follow_accepted, badge_earned, and the
+  # legacy admin/announcement/flag categories.
+  EMAILED_CATEGORIES = %w[
+    mention
+    debate_challenge
+    debate_your_turn
+    debate_declined
+    debate_concluded
+    moderation_removed
+    moderation_warning
+    follow_request
+  ].freeze
+
+  # after_create_commit (NOT after_create): new_vote and counter writes are created
+  # inside Hujah#cast_vote's transaction, and a job must never enqueue for a row that
+  # a rollback would erase. This single choke-point means none of the ~10
+  # Notification.create! call sites need to know about email.
+  after_create_commit :deliver_email_later
+
+  private
+
+  def deliver_email_later
+    return unless EMAILED_CATEGORIES.include?(category)
+    return unless user.email_notifications? && user.email.present?
+
+    NotificationMailer.with(notification: self).notification_email.deliver_later
+  end
 end

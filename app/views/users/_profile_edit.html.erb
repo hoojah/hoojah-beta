@@ -149,6 +149,15 @@
         </label>
       </div>
 
+      <%# Issue #3: opt out of email delivery. The in-app notification still fires;
+          this only silences the high-signal email copy (mentions, debates, moderation). %>
+      <div class="mb-4">
+        <label class="flex items-center gap-2 text-sm text-grey">
+          <%= f.check_box :email_notifications, class: "w-4 h-4" %>
+          <span>Email me about mentions, debates and moderation</span>
+        </label>
+      </div>
+
       <div class="text-right">
         <%= f.submit "Save changes", class: ds_button_classes(variant: :solid) %>
       </div>

@@ -49,10 +49,18 @@
                 button sits as a normal row in the menu's vertical stack instead of adding a
                 block box. `data-turbo-confirm` goes on the FORM (turbo-rails reads it there,
                 per the moderation "Remove" button) → native confirm, no custom dialog. The
-                controller refuses when the hoojah has replies or a debate. %>
+                controller refuses when the hoojah has replies or a debate.
+                Issue #38: capture where the viewer came from BEFORE opening this hoojah
+                (`request.referer`) NOW — at destroy time the referer is this show page
+                itself. `safe_return_path` returns a validated same-origin path (or nil),
+                and `button_to`'s `params:` renders it as a hidden `return_to` input the
+                controller re-validates. Only pass it when present, so the hidden input is
+                absent (→ feed fallback) rather than empty when there's no safe origin. %>
+            <% return_to = safe_return_path(request.referer, hujah_path(@hujah.slug)) %>
             <%= button_to "Delete hoojah", hujah_path(@hujah.slug),
                   method: :delete,
                   class: ds_menu_item_classes(tone: "neutral"),
+                  params: (return_to ? {return_to: return_to} : {}),
                   form: {class: "contents", data: {turbo_confirm: "Delete this hoojah? This can't be undone."}} %>
           <% end %>
           <% if user_signed_in? %>

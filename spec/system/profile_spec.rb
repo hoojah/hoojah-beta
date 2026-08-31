@@ -42,6 +42,28 @@ RSpec.describe "Profile", type: :system, js: true do
     expect(user.reload.headline).to eq("Ships Hotwire")
   end
 
+  # Issue #13: the navbar avatar tile shows gradient INITIALS derived from the name
+  # (variant: :tile), so a full_name change must refresh it live via Turbo Stream —
+  # without a full page navigation. Rudz Rahman -> Zoe Kingman flips "RR" to "ZK".
+  it "refreshes the navbar avatar initials after a profile update, no reload" do
+    login_as_system(user)
+    visit "/u/rudz"
+
+    nav_avatar = "##{ActionView::RecordIdentifier.dom_id(user, :nav_avatar)}"
+    expect(page).to have_selector("#{nav_avatar} [aria-label='Rudz Rahman']")
+
+    find("[aria-label='Edit your profile']").click
+    within("dialog##{ActionView::RecordIdentifier.dom_id(user, :edit_dialog)}") do
+      fill_in "Full name", with: "Zoe Kingman"
+      click_button "Save changes"
+    end
+
+    # The navbar tile now carries the new name/initials, streamed in place.
+    expect(page).to have_selector("#{nav_avatar} [aria-label='Zoe Kingman']")
+    expect(page).to have_no_selector("#{nav_avatar} [aria-label='Rudz Rahman']")
+    expect(user.reload.full_name).to eq("Zoe Kingman")
+  end
+
   it "offers a photo file field on the edit form" do
     # The old client-side Cloudinary upload widget (an "Update photo" button + a
     # hidden user[photo] field) is gone; photo upload is now a plain multipart

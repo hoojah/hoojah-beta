@@ -44,6 +44,9 @@
      "primary" => "bg-primary-soft text-primary"
    }[stance] %>
 <% in_debate = local_assigns[:live_debate_keys]&.include?([child.user_id, child.vote]) %>
+<%# Coerce ONCE here (absent-or-nil on the create-stream / missing-local path → 0),
+    so the guard and the pluralize below read the same integer. %>
+<% reply_count = local_assigns[:reply_count].to_i %>
 <div class="relative block mb-2.5"
      data-response-filter-target="item" data-response-filter-vote="<%= stance %>">
   <%= link_to hujah_path(child.slug), class: "absolute inset-0 z-0",
@@ -78,6 +81,16 @@
           <span class="inline-flex items-center gap-1"><%= stance_icon("disagree", class: "w-3.5 h-3.5") %><%= child.disagree_count.to_i %></span>
         <% else %>
           <span><%= vote_total_label(child) %></span>
+        <% end %>
+        <%# Reply-thread presence: a subtle signal that this response has its own
+            visible replies (count mirrors visible_children_for — removed/blocked/
+            private-author grandchildren are excluded). `reply_count` is threaded
+            in from `_response_filter` (one grouped query for the whole row) — a
+            plain integer, absent-or-0 for responses with no visible replies. The
+            card already navigates to the response's own page, so this needs no
+            separate link. %>
+        <% if reply_count > 0 %>
+          <span data-testid="reply-count" class="inline-flex items-center gap-1"><%= lucide_icon("message-circle", class: "w-3.5 h-3.5") %><%= pluralize(reply_count, "reply") %></span>
         <% end %>
       </div>
     </div>

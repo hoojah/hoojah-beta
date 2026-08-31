@@ -473,4 +473,73 @@ RSpec.describe Hujah, type: :model do
       expect(parent.visible_children_for(viewer)).not_to include(child)
     end
   end
+
+  # Every SQL SELECT the block issues against the `hujahs` table.
+  def hujah_selects
+    seen = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*args|
+      sql = ActiveSupport::Notifications::Event.new(*args).payload[:sql].to_s
+      seen << sql if sql =~ /\ASELECT/i && sql =~ /\bhujahs\b/i
+    end
+    yield
+    seen
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+  end
+
+  describe ".visible_reply_counts_for" do
+    let(:author) { create(:user) }
+    let(:parent) { create(:hujah, user: author) }
+    let(:viewer) { create(:user) }
+
+    it "returns a Hash of parent_id => visible reply count" do
+      create(:hujah, user: create(:user), parent: parent)
+      create(:hujah, user: create(:user), parent: parent)
+      expect(Hujah.visible_reply_counts_for([parent.id], viewer)).to eq(parent.id => 2)
+    end
+
+    it "excludes a removed reply from the count" do
+      create(:hujah, user: create(:user), parent: parent)
+      create(:hujah, user: create(:user), parent: parent, moderation_status: :removed)
+      expect(Hujah.visible_reply_counts_for([parent.id], viewer)).to eq(parent.id => 1)
+    end
+
+    it "excludes a private author's reply from a stranger (and from anonymous)" do
+      create(:hujah, user: create(:user, private: true), parent: parent)
+      expect(Hujah.visible_reply_counts_for([parent.id], viewer)).to eq({})
+      expect(Hujah.visible_reply_counts_for([parent.id], nil)).to eq({})
+    end
+
+    it "includes a private author's reply for an accepted follower and for the author" do
+      priv = create(:user, private: true)
+      create(:hujah, user: priv, parent: parent)
+      priv.passive_follows.create!(follower: viewer, status: :accepted)
+      expect(Hujah.visible_reply_counts_for([parent.id], viewer)).to eq(parent.id => 1)
+      expect(Hujah.visible_reply_counts_for([parent.id], priv)).to eq(parent.id => 1)
+    end
+
+    it "excludes a reply authored by someone in the viewer's hidden set (block)" do
+      blocked = create(:user)
+      create(:hujah, user: blocked, parent: parent)
+      viewer.blocks_made.create!(blocked: blocked)
+      expect(Hujah.visible_reply_counts_for([parent.id], viewer)).to eq({})
+    end
+
+    it "counts only public-author replies for an anonymous viewer" do
+      create(:hujah, user: create(:user), parent: parent)
+      create(:hujah, user: create(:user, private: true), parent: parent)
+      expect(Hujah.visible_reply_counts_for([parent.id], nil)).to eq(parent.id => 1)
+    end
+
+    it "omits (treats as absent/0) a parent with no visible replies" do
+      expect(Hujah.visible_reply_counts_for([parent.id], viewer)).to eq({})
+    end
+
+    it "issues exactly one grouped query regardless of the number of parents" do
+      parents = create_list(:hujah, 3, user: author)
+      parents.each { |p| create(:hujah, user: create(:user), parent: p) }
+      selects = hujah_selects { Hujah.visible_reply_counts_for(parents.map(&:id), viewer) }
+      expect(selects.size).to eq(1)
+    end
+  end
 end

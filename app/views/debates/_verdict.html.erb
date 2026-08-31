@@ -148,7 +148,7 @@
         mockup's single outlined pill rather than a small trigger glyph, since this is
         the one prominent CTA on the hero, not a corner affordance. %>
     <%
-      debate_share_url = debate_url(debate.slug)
+      debate_share_url = short_link_url(ShortLink.for(debate).code)
       # Moderation: gate the quoted claim per-record — the concluded transcript's share
       # text must not leak a removed claim's body to a non-staff spectator/participant.
       debate_share_motion = debate.hujah.visible_to?(current_user) ? strip_tags(debate.hujah.body) : "a removed hoojah"

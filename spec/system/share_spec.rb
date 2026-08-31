@@ -16,6 +16,12 @@ RSpec.describe "Sharing a hoojah", type: :system, js: true do
 
     find("summary[aria-label='Share this hoojah']").click
 
+    # The URL half now routes through the short link /s/:code (issue #31): the raw
+    # short URL is on data-share-url-value; the social hrefs carry it CGI-escaped.
+    expect(page).to have_selector(
+      %([data-controller="share"][data-share-url-value*="/s/"])
+    )
+
     within('[data-controller="share"]') do
       expect(page).to have_link("WhatsApp", href: /wa\.me/)
       expect(page).to have_link("X", href: /x\.com\/intent\/tweet/)

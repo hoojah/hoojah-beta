@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Notification, type: :model do
+  include ActiveJob::TestHelper
+
   describe "the category enum" do
     # `category` is a plain integer column with existing rows, so the integers are
     # the contract — renumbering or reordering these reinterprets history.
@@ -119,6 +121,49 @@ RSpec.describe Notification, type: :model do
       fresh = Notification.create!(user: user, category: :announcement)
       expect(fresh.read).to be(false)
       expect(Notification.unread).to include(fresh)
+    end
+  end
+
+  # Issue #3: a single choke-point (`after_create_commit`) enqueues one email per
+  # high-signal notification, so none of the ~10 Notification.create! call sites
+  # change and a double-send is structurally impossible.
+  describe "email delivery" do
+    # (a) A high-signal category (mention) enqueues the mailer.
+    it "enqueues NotificationMailer#notification_email for a mention" do
+      expect {
+        create(:notification, category: :mention)
+      }.to have_enqueued_mail(NotificationMailer, :notification_email)
+    end
+
+    # (b) new_vote is EXCLUDED (secret ballot: the row has no subject_user_id, and
+    # emailing per vote is spam), so it enqueues nothing.
+    it "enqueues nothing for new_vote" do
+      owner = create(:user)
+      hujah = create(:hujah, user: owner)
+      expect {
+        create(:notification, category: :new_vote, user: owner, hujah: hujah, subject_user: nil)
+      }.not_to have_enqueued_mail(NotificationMailer, :notification_email)
+    end
+
+    # (c) A recipient who has turned email off gets nothing.
+    it "enqueues nothing when the recipient disabled email notifications" do
+      recipient = create(:user, email_notifications: false)
+      expect {
+        create(:notification, category: :mention, user: recipient)
+      }.not_to have_enqueued_mail(NotificationMailer, :notification_email)
+    end
+
+    # (d) after_create_commit (NOT after_create): a row created inside a
+    # transaction that rolls back must never enqueue a job. new_vote / counter
+    # writes run inside cast_vote's transaction, so this invariant is load-bearing.
+    it "enqueues nothing for a notification whose transaction rolls back" do
+      recipient = create(:user)
+      expect {
+        ActiveRecord::Base.transaction do
+          Notification.create!(user: recipient, category: :mention)
+          raise ActiveRecord::Rollback
+        end
+      }.not_to have_enqueued_mail(NotificationMailer, :notification_email)
     end
   end
 end

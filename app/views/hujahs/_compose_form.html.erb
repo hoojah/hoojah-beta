@@ -60,10 +60,30 @@
       </div>
     <% end %>
 
-    <%= f.text_area :body, rows: 4, placeholder: "What's your hoojah?",
-          data: {composer_target: "body", action: "input->composer#input"},
-          "aria-label": "What's your hoojah?",
-          class: "w-full mt-4 border-0 p-0 bg-transparent resize-none focus:ring-0 text-xl font-semibold leading-snug text-ink" %>
+    <%# Issue #11: markdown emphasis toolbar. The format-toolbar controller wraps the
+        textarea selection with **/*/_ tokens (parsed server-side by format_body) and
+        re-dispatches `input` so the composer counters stay in sync. Shares the textarea
+        with the composer controller (both target the same element). %>
+    <div data-controller="format-toolbar">
+      <div class="flex items-center gap-1 mt-4">
+        <button type="button" data-action="format-toolbar#bold" aria-label="Bold"
+          class="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 bg-card-2 active:scale-95">
+          <%= lucide_icon("bold", class: "w-4 h-4") %>
+        </button>
+        <button type="button" data-action="format-toolbar#italic" aria-label="Italic"
+          class="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 bg-card-2 active:scale-95">
+          <%= lucide_icon("italic", class: "w-4 h-4") %>
+        </button>
+        <button type="button" data-action="format-toolbar#underline" aria-label="Underline"
+          class="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 bg-card-2 active:scale-95">
+          <%= lucide_icon("underline", class: "w-4 h-4") %>
+        </button>
+      </div>
+      <%= f.text_area :body, rows: 4, placeholder: "What's your hoojah?",
+            data: {composer_target: "body", format_toolbar_target: "field", action: "input->composer#input"},
+            "aria-label": "What's your hoojah?",
+            class: "w-full mt-2 border-0 p-0 bg-transparent resize-none focus:ring-0 text-xl font-semibold leading-snug text-ink" %>
+    </div>
 
     <% if parent.nil? %>
       <div class="mt-auto pt-4">

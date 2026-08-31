@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_26_173401) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_30_100002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -182,6 +182,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_26_173401) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
+  create_table "short_links", force: :cascade do |t|
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.string "target_path", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_short_links_on_code", unique: true
+    t.index ["target_path"], name: "index_short_links_on_target_path", unique: true
+  end
+
   create_table "user_badges", force: :cascade do |t|
     t.string "badge_key", null: false
     t.datetime "created_at", null: false
@@ -194,6 +203,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_26_173401) do
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", default: ""
+    t.boolean "email_notifications", default: true, null: false
     t.string "encrypted_password", default: "", null: false
     t.integer "followers_count", default: 0, null: false
     t.integer "following_count", default: 0, null: false
