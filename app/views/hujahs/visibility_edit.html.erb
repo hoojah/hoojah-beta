@@ -1,0 +1,67 @@
+<%# Change-visibility form (Slice 2, editable-hujah). Pick a target; submitting the GET
+    select reloads this page with ?to= so the SERVER computes the preview. For a TIGHTENING
+    target this doubles as the confirmation screen: exact counts, entanglement blockers
+    (their owners must delete/promote them), and a typed-confirm field. No JS required.
+    Static theme-token utilities only — no interpolated stance classes, so no @source
+    inline safelist change. @blocker_args (not @change.blockers) is iterated because the
+    service returns partial-select records without body/slug. %>
+<div class="max-w-xl mx-auto p-4">
+  <%= render layout: "ui/card", locals: {padded: true} do %>
+    <h1 class="text-lg font-bold text-ink mb-1">Change visibility</h1>
+    <p class="text-sm text-ink-2 mb-4">Current: <strong class="text-ink"><%= @hujah.visibility.humanize %></strong></p>
+
+    <%= form_with url: visibility_hujah_path(@hujah.slug), method: :get, class: "flex flex-col gap-3" do |f| %>
+      <%= f.select :to, Hujah.visibilities.keys.map { |k| [k.humanize, k] }, {selected: params[:to]},
+            class: "w-full rounded-xl border border-hairline bg-card text-ink p-2" %>
+      <%= f.submit "Preview change", class: ds_button_classes(tone: "grey", size: :sm) %>
+    <% end %>
+
+    <% if @change %>
+      <% if @change.loosening? || @change.no_op? %>
+        <%# Widening (or no change) is non-destructive — one tap applies it. %>
+        <%= form_with url: visibility_hujah_path(@hujah.slug), method: :patch, class: "mt-5" do %>
+          <%= hidden_field_tag "hujah[visibility]", @change.to %>
+          <p class="text-sm text-ink-2 mb-3">
+            <%= @change.no_op? ? "That's the current visibility." : "This only widens who can see the hoojah — nothing is removed." %>
+          </p>
+          <%= submit_tag "Apply", class: ds_button_classes(tone: "primary") %>
+        <% end %>
+      <% else %>
+        <%# Destructive tighten: exact counts, then blockers OR the typed-confirm. %>
+        <% counts = @change.counts %>
+        <div class="mt-5 p-3 rounded-xl bg-card-2 text-sm">
+          <p class="font-bold text-ink mb-1">This permanently removes:</p>
+          <ul class="list-disc ml-5 text-ink-2 space-y-0.5">
+            <li><strong class="text-ink"><%= counts[:users] %></strong> participant<%= "s" unless counts[:users] == 1 %></li>
+            <li><strong class="text-ink"><%= counts[:votes] %></strong> vote<%= "s" unless counts[:votes] == 1 %></li>
+            <li><strong class="text-ink"><%= counts[:arguments] %></strong> argument<%= "s" unless counts[:arguments] == 1 %></li>
+          </ul>
+          <p class="text-faint mt-2">This action is permanent and cannot be undone.</p>
+        </div>
+
+        <% if @blocker_args&.any? %>
+          <div class="mt-4 p-3 rounded-xl border border-hairline text-sm">
+            <p class="font-bold text-disagree mb-1">Blocked</p>
+            <p class="text-ink-2 mb-2">These arguments are entangled with other people's replies, votes, or a
+              debate, so they can't be removed. Their authors must delete or promote each to a standalone hoojah first:</p>
+            <ul class="list-disc ml-5 text-ink-2 space-y-1">
+              <% @blocker_args.each do |arg| %>
+                <li><%= link_to truncate(arg.body, length: 60), hujah_path(arg.slug), class: "text-primary" %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% else %>
+          <%= form_with url: visibility_hujah_path(@hujah.slug), method: :patch, class: "mt-4" do %>
+            <%= hidden_field_tag "hujah[visibility]", @change.to %>
+            <label class="block text-sm text-ink-2 mb-1" for="confirm">
+              Type <strong class="text-ink"><%= HujahsController::VISIBILITY_CONFIRM_WORD %></strong> to confirm:
+            </label>
+            <%= text_field_tag :confirm, nil, id: "confirm", autocomplete: "off",
+                  class: "w-full rounded-xl border border-hairline bg-card text-ink p-2 mb-3" %>
+            <%= submit_tag "Tighten visibility permanently", class: ds_button_classes(tone: "disagree") %>
+          <% end %>
+        <% end %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

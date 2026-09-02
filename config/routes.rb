@@ -69,6 +69,14 @@ Rails.application.routes.draw do
   # (subtree travels); slug is unchanged — same record, same URL (the body, which the slug
   # derives from, is untouched).
   post "/hoojah/:slug/promote", to: "hujahs#promote", as: :promote_hujah
+  # Change a top-level hoojah's visibility (Slice 2). GET renders the change form; when
+  # `?to=` names a TIGHTER audience it doubles as the confirmation screen (exact counts +
+  # entanglement blockers + typed-confirm). PATCH applies it. WRITE → MAIN routes (CSRF
+  # on), never Api::V1. Owner + top-level + not-removed via change_visibility?.
+  # update_visibility re-computes counts and re-checks entanglement server-side inside
+  # VisibilityChange#apply!'s row lock — never trusting the client — and fails closed.
+  get "/hoojah/:slug/visibility", to: "hujahs#visibility_edit", as: :visibility_hujah
+  patch "/hoojah/:slug/visibility", to: "hujahs#update_visibility"
   # Edit a hoojah's body (HTML/Turbo). A WRITE, so it lives on a MAIN route (CSRF
   # enforced — form_with carries the token), NEVER under Api::V1. GET renders the
   # composer in edit mode; PATCH applies the body change. Owner-only + time-boxed via

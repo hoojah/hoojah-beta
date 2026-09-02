@@ -1,5 +1,8 @@
 class HujahsController < ApplicationController
-  before_action :authenticate_user!, only: [:new, :create, :edit, :update, :destroy, :promote]
+  before_action :authenticate_user!, only: [:new, :create, :edit, :update, :destroy, :promote, :visibility_edit, :update_visibility]
+
+  # The word the owner must type to confirm a destructive (tightening) visibility change.
+  VISIBILITY_CONFIRM_WORD = "REMOVE"
 
   def index
     skip_authorization
@@ -169,6 +172,63 @@ class HujahsController < ApplicationController
     redirect_back fallback_location: hujah_path(@hujah.slug),
       alert: "This hoojah can't be promoted (its body is too short for a top-level claim).",
       status: :see_other
+  end
+
+  # Slice 2: the change-visibility form. When `?to=` names a target the form doubles as
+  # the confirmation screen; for a TIGHTENING target it renders the exact counts and any
+  # entanglement blockers. change_visibility? is owner + top-level + not-removed.
+  def visibility_edit
+    @hujah = Hujah.friendly.find(params[:slug])
+    authorize @hujah, :change_visibility?
+    if params[:to].present? && Hujah.visibilities.key?(params[:to])
+      @change = VisibilityChange.new(@hujah, to: params[:to])
+      # blockers are PARTIAL-SELECT records (:id, :parent_id, :user_id) — no body/slug.
+      # Reload them as FULL records so the view can render body/slug without raising
+      # ActiveModel::MissingAttributeError. One query for the whole set.
+      @blocker_args = Hujah.where(id: @change.blockers.map(&:id)) if @change.tightening?
+    end
+  end
+
+  # Slice 2: apply a visibility change. Loosening/no-op update the column directly;
+  # tightening is destructive and gated: entanglement blockers refuse the change, and the
+  # owner must type VISIBILITY_CONFIRM_WORD. VisibilityChange#apply! re-derives the
+  # affected set and re-checks entanglement UNDER a row lock, so the server never trusts
+  # the client and fails closed on anything that changed since the confirmation GET.
+  def update_visibility
+    @hujah = Hujah.friendly.find(params[:slug])
+    authorize @hujah, :change_visibility?
+    to = params.require(:hujah).permit(:visibility)[:visibility]
+
+    unless Hujah.visibilities.key?(to)
+      redirect_to(visibility_hujah_path(@hujah.slug), alert: "Unknown visibility.") and return
+    end
+
+    change = VisibilityChange.new(@hujah, to: to)
+
+    if change.no_op?
+      redirect_to hujah_path(@hujah.slug), notice: "Visibility unchanged.", status: :see_other
+    elsif change.loosening?
+      @hujah.update!(visibility: to)
+      redirect_to hujah_path(@hujah.slug), notice: "Visibility updated.", status: :see_other
+    else
+      if change.blockers.any?
+        redirect_to(visibility_hujah_path(@hujah.slug, to: to),
+          alert: "Resolve the entangled arguments before tightening.") and return
+      end
+      if params[:confirm] != VISIBILITY_CONFIRM_WORD
+        redirect_to(visibility_hujah_path(@hujah.slug, to: to),
+          alert: "Type #{VISIBILITY_CONFIRM_WORD} to confirm the permanent removal.") and return
+      end
+      begin
+        change.apply!
+        redirect_to hujah_path(@hujah.slug),
+          notice: "Visibility tightened. Affected participation was permanently removed.",
+          status: :see_other
+      rescue VisibilityChange::Blocked
+        redirect_to(visibility_hujah_path(@hujah.slug, to: to),
+          alert: "An argument became entangled — the change was blocked.", status: :see_other)
+      end
+    end
   end
 
   private
