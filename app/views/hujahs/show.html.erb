@@ -48,6 +48,12 @@
             <% if @hujah.body_editable? %>
               <%= link_to "Edit hoojah", edit_hujah_path(@hujah.slug), class: ds_menu_item_classes %>
             <% end %>
+            <%# Slice 2 (editable-hujah): visibility is a TOP-LEVEL-only affordance — a reply
+                inherits its parent's visibility. A link to the change form (which becomes
+                the destructive confirmation screen on a tighten). %>
+            <% if @hujah.parent_id.nil? && !@hujah.moderation_removed? %>
+              <%= link_to "Change visibility", visibility_hujah_path(@hujah.slug), class: ds_menu_item_classes %>
+            <% end %>
             <%# `tone: "neutral"` is DropdownMenu.prompt.md's destructive row (neutral is
                 orange under the Spectrum palette — the same tone the report rows use; a
                 menu row has no dedicated danger tone). A real DELETE now — `button_to` carries the
