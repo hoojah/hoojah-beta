@@ -280,7 +280,7 @@ class Hujah < ApplicationRecord
   }
 
   after_create_commit :notify_parent_owner, if: :has_parent?
-  after_create_commit :notify_mentions # create only -- edit-mention handling deferred with the edit UI
+  after_create_commit :notify_mentions # create-only; newly-added mentions on a body edit are handled by notify_new_mentions below
   # Slice 1: edit-aware mention notification. notify_mentions above stays CREATE-only;
   # on a body edit this fires for ONLY the handles newly added to the body (diff
   # old-vs-new), so pre-existing mentions never re-fire. saved_change_to_body? is
