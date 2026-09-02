@@ -55,7 +55,106 @@ class VisibilityChange
     @blockers ||= affected_arguments.select { |arg| entangled?(arg) }
   end
 
+  # The destructive purge, row-locked. Re-derives the affected set/blockers UNDER the
+  # lock (fail closed on anything newly entangled between the confirmation GET and here)
+  # and performs the ordered steps in one transaction. Returns the archive.
+  def apply!
+    raise NotTightening unless tightening?
+
+    hujah.with_lock do
+      reset_memos!
+      raise Blocked if blockers.any?
+
+      affected = affected_participants
+      archive = HujahArchive.create!(
+        hujah_id: hujah.id,
+        snapshot: build_snapshot,                      # (2) from CURRENT state
+        visibility_before: Hujah.visibilities.fetch(hujah.visibility),
+        token: SecureRandom.urlsafe_base64(12)
+      )
+      affected.each { |u| archive.participants.create!(user_id: u.id) } # (3)
+
+      affected_ids = affected.map(&:id)
+      Vote.where(hujah_id: hujah.id, user_id: affected_ids).delete_all   # (4a)
+      destroy_affected_arguments!(affected_ids.to_set)                   # (4b)
+      recompute_counters!                                                # (5)
+      hujah.update!(visibility: @to)                                     # (5 dirty counters + 6)
+
+      affected.each do |u|                                               # (7)
+        # Secret ballot: NO subject_user_id — this row must not become a
+        # de-anonymization primitive; the category just says "your participation
+        # was archived".
+        Notification.create!(user_id: u.id, category: :hujah_archived, hujah_id: hujah.id)
+      end
+      archive
+    end
+  end
+
   private
+
+  def reset_memos!
+    @candidate_users = @candidate_ids = @subtree_hujahs = nil
+    @affected_participants = @affected_arguments = @blockers = nil
+    @author_follower_ids = nil
+  end
+
+  # Destroy only the ROOTS of each affected-argument subtree; dependent: :destroy
+  # cascades their descendants. Safe because a non-blocked change guarantees no affected
+  # argument carries another user's reply/vote/debate — so every descendant of an
+  # affected root is the same (affected) author's content, never a bystander's.
+  # subtree_hujahs holds PARTIAL records (select :id, :parent_id, :user_id) — reload the
+  # full record via Hujah.find before destroy! so the cascade + callbacks see every column.
+  def destroy_affected_arguments!(affected_ids)
+    args = subtree_hujahs.select { |h| affected_ids.include?(h.user_id) }
+    arg_ids = args.map(&:id).to_set
+    roots = args.reject { |h| arg_ids.include?(h.parent_id) }
+    roots.each { |root| Hujah.find(root.id).destroy! }
+  end
+
+  # Recount from scratch (design: safest). votes.vote is the legacy array column — the
+  # LAST element is the current stance. assign_attributes leaves the counters dirty for
+  # the single update! in #apply! that also writes visibility.
+  def recompute_counters!
+    remaining = hujah.votes.reload.to_a
+    hujah.assign_attributes(
+      agree_count: remaining.count { |v| v.vote.last == 1 },
+      neutral_count: remaining.count { |v| v.vote.last == 2 },
+      disagree_count: remaining.count { |v| v.vote.last == 3 },
+      conviction_count: remaining.count(&:conviction?)
+    )
+  end
+
+  def build_snapshot
+    {
+      "body" => hujah.body,
+      "author" => hujah.user.username,
+      "author_name" => hujah.user.try(:full_name),
+      "created_at" => hujah.created_at.iso8601,
+      "agree_count" => hujah.agree_count,
+      "neutral_count" => hujah.neutral_count,
+      "disagree_count" => hujah.disagree_count,
+      "conviction_count" => hujah.conviction_count,
+      # Slice 3 shipped: use the hoojah's real (custom-or-default) stance labels.
+      "stance_labels" => {
+        "agree" => hujah.stance_label(1),
+        "neutral" => hujah.stance_label(2),
+        "disagree" => hujah.stance_label(3)
+      },
+      "arguments" => hujah.children.map { |c| snapshot_argument(c) }
+    }
+  end
+
+  def snapshot_argument(arg)
+    {
+      "author" => arg.user.username,
+      "body" => arg.body,
+      "stance" => Hujah::STANCES[arg.vote],
+      "agree_count" => arg.agree_count.to_i,
+      "neutral_count" => arg.neutral_count.to_i,
+      "disagree_count" => arg.disagree_count.to_i,
+      "children" => arg.children.map { |g| snapshot_argument(g) }
+    }
+  end
 
   def affected_arguments
     @affected_arguments ||= begin
