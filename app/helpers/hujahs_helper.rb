@@ -176,4 +176,13 @@ module HujahsHelper
     label = hujah.stance_label(position)
     (label == Hujah::STANCES[position]) ? label.capitalize : label
   end
+
+  # Slice 3: the share blurb for a hoojah — body + author + the three stance words
+  # (SHOUT-cased, custom labels when set). Single source of truth so _card_menu and
+  # _share_menu can never drift; a default hoojah yields the byte-frozen
+  # "Do you AGREE? NEUTRAL? DISAGREE?" tail that share_spec asserts.
+  def hujah_share_text(hujah)
+    "\"#{strip_tags(hujah.body)} (by @#{hujah.user.username})\" " \
+      "Do you #{hujah.stance_label(1).upcase}? #{hujah.stance_label(2).upcase}? #{hujah.stance_label(3).upcase}?"
+  end
 end
