@@ -68,26 +68,41 @@ class VisibilityChange
   def subtree_hujahs
     @subtree_hujahs ||= begin
       collected = []
-      frontier = hujah.children.to_a
+      frontier = hujah.children.select(:id, :parent_id, :user_id).to_a
       until frontier.empty?
         collected.concat(frontier)
-        frontier = Hujah.where(parent_id: frontier.map(&:id)).to_a
+        frontier = Hujah.where(parent_id: frontier.map(&:id)).select(:id, :parent_id, :user_id).to_a
       end
       collected
     end
   end
 
-  # Mirrors Hujah#visible_to?'s TOP-LEVEL branch with the CANDIDATE visibility — the
-  # hoojah is top-level and not removed, so no parent recursion / no moderation gate
-  # applies. Kept in lockstep with that method: account privacy first, then the
-  # per-post visibility case.
+  # The author's accepted-follower ids, loaded ONCE (accepted-only `followers` through
+  # scope), so the affected-set scan tests membership in Ruby instead of a per-viewer
+  # accepted_follower? exists? query (the N+1 this repo otherwise batches).
+  def author_follower_ids
+    @author_follower_ids ||= hujah.user.follower_ids.to_set
+  end
+
+  # Batched equivalent of User#visible_to?: a non-private author is visible to anyone;
+  # a private author only to themselves + accepted followers.
+  def author_visible_to?(viewer)
+    return true unless hujah.user.private?
+    viewer.id == hujah.user_id || author_follower_ids.include?(viewer.id)
+  end
+
+  # Mirrors Hujah#visible_to?'s TOP-LEVEL branch with the CANDIDATE visibility, batched —
+  # the hoojah is top-level and not removed, so no parent recursion / no moderation gate
+  # applies. Kept in lockstep with that method: account privacy first, then the per-post
+  # visibility case. Uses the preloaded author_follower_ids instead of a per-viewer
+  # accepted_follower? query.
   def visible_under?(viewer, visibility)
-    return false unless hujah.user.visible_to?(viewer)
+    return false unless author_visible_to?(viewer)
 
     case visibility.to_s
     when "visible_public" then true
-    when "followers_only" then viewer == hujah.user || hujah.user.accepted_follower?(viewer)
-    when "private_only" then viewer == hujah.user
+    when "followers_only" then viewer.id == hujah.user_id || author_follower_ids.include?(viewer.id)
+    when "private_only" then viewer.id == hujah.user_id
     else false
     end
   end
