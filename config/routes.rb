@@ -62,6 +62,12 @@ Rails.application.routes.draw do
   # slug" shape as `delete "/moderation/:slug/remove"` below. No `as:` — the named
   # `hujah_path(slug)` from the GET above already resolves the DELETE.
   delete "/hoojah/:slug", to: "hujahs#destroy"
+  # Promote a reply to a standalone top-level claim (Slice 2, editable-hujah). A WRITE
+  # action → MAIN route (CSRF on; button_to carries the token), never Api::V1. Owner-only
+  # + child-only via HujahPolicy#promote?. Used from the reply's owner menu and as an
+  # entanglement resolution when the author tightens a parent's visibility. parent_id → nil
+  # (subtree travels), slug regenerates; FriendlyId :history keeps the old slug redirecting.
+  post "/hoojah/:slug/promote", to: "hujahs#promote", as: :promote_hujah
   # Edit a hoojah's body (HTML/Turbo). A WRITE, so it lives on a MAIN route (CSRF
   # enforced — form_with carries the token), NEVER under Api::V1. GET renders the
   # composer in edit mode; PATCH applies the body change. Owner-only + time-boxed via

@@ -328,6 +328,27 @@ class Hujah < ApplicationRecord
     will_save_change_to_body? || slug.blank?
   end
 
+  # Slice 2 (editable-hujah): detach this reply into a standalone top-level claim. The
+  # whole subtree travels with it (descendants keep pointing here). vote: nil drops the
+  # stance-toward-parent context — a top-level claim has no parent to take a stance on.
+  # This is where the top-level `body >= 8` validation first applies (parent_id is now
+  # nil), so a too-short reply raises ActiveRecord::RecordInvalid here and the whole
+  # promotion rolls back; the controller rescues it.
+  #
+  # Slug regeneration is deliberate but NOT via `slug: nil`: FriendlyId 5.7's
+  # History#scope_for_slug_generator excludes THIS record's own historic slugs from
+  # conflict detection ("allow reversion back to a previously used slug"), so a blanked
+  # slug regenerates to the byte-identical value from the same body — verified. Appending
+  # a short random suffix forces a genuinely fresh canonical slug; the old slug already
+  # sits in friendly_id_slugs (recorded on create) and keeps redirecting via
+  # Hujah.friendly.find (:history).
+  def promote!
+    transaction do
+      update!(parent_id: nil, vote: nil)
+      update!(slug: "#{slug}-#{SecureRandom.alphanumeric(6).downcase}")
+    end
+  end
+
   # The closed vote domain, in one place. `votes.vote` stores these integers;
   # everything user-facing (stance colours, CSS classes, the serializer) speaks the
   # string. COUNTER_FOR is derived so the two can never drift apart.

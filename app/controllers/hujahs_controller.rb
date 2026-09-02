@@ -1,5 +1,5 @@
 class HujahsController < ApplicationController
-  before_action :authenticate_user!, only: [:new, :create, :edit, :update, :destroy]
+  before_action :authenticate_user!, only: [:new, :create, :edit, :update, :destroy, :promote]
 
   def index
     skip_authorization
@@ -155,6 +155,20 @@ class HujahsController < ApplicationController
       format.turbo_stream # destroy.turbo_stream.erb → <turbo-stream action="visit">
       format.html { redirect_to @destination, notice: "Hoojah deleted.", status: :see_other }
     end
+  end
+
+  def promote
+    @hujah = Hujah.friendly.find(params[:slug])
+    # Owner + child + not-removed via HujahPolicy#promote?. A non-owner / top-level target
+    # trips Pundit::NotAuthorizedError → ApplicationController rescue redirects back with
+    # an alert (not a bare 403).
+    authorize @hujah, :promote?
+    @hujah.promote!
+    redirect_to hujah_path(@hujah.slug), notice: "Promoted to a standalone hoojah.", status: :see_other
+  rescue ActiveRecord::RecordInvalid
+    redirect_back fallback_location: hujah_path(@hujah.slug),
+      alert: "This hoojah can't be promoted (its body is too short for a top-level claim).",
+      status: :see_other
   end
 
   private
