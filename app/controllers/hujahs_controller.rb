@@ -110,6 +110,7 @@ class HujahsController < ApplicationController
       redirect_to hujah_path(@hujah.slug), notice: "Hoojah updated.", status: :see_other
     else
       @parent = @hujah.parent
+      @hujah.restore_attributes([:slug]) # revert FriendlyId's in-memory slug regen so the re-rendered form PATCHes the persisted slug, not a never-saved one
       render :edit, status: :unprocessable_content
     end
   end

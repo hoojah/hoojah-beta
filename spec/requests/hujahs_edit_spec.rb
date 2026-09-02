@@ -73,6 +73,18 @@ RSpec.describe "Editing a hoojah body", type: :request do
     reply = create(:hujah, user: owner, parent: parent, body: "A reply body long enough")
     sign_in owner
     patch hujah_path(reply.slug), params: {hujah: {body: "Edited reply body", allow_debates: "0"}}
-    expect(reply.reload.allow_debates).to be(true)
+    expect(reply.reload.body).to eq("Edited reply body")
+    expect(reply.allow_debates).to be(true)
+  end
+
+  it "restores the persisted slug when a top-level edit fails validation, keeping the form re-submittable" do
+    sign_in owner
+    original_slug = hujah.slug
+    patch hujah_path(hujah.slug), params: {hujah: {body: "short"}} # < 8 chars → invalid for a top-level claim
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(hujah.reload.slug).to eq(original_slug)
+    expect(hujah.body).to eq("The original claim about nasi lemak")
+    # the re-rendered form must target the persisted slug, not a phantom one
+    expect(response.body).to include(hujah_path(original_slug))
   end
 end
