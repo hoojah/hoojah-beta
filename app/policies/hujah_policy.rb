@@ -48,4 +48,17 @@ class HujahPolicy < ApplicationPolicy
   def edit? = user.present? && record.user_id == user.id && !record.moderation_removed? && record.body_editable?
 
   def update? = edit?
+
+  # Slice 2 (editable-hujah): visibility is changeable only by the OWNER of a TOP-LEVEL,
+  # non-removed claim. Top-level only — a reply inherits its parent's visibility, so it
+  # has none of its own to change. Removed mirrors destroy?: a removed claim is staff-only.
+  def change_visibility? =
+    user.present? && record.user_id == user.id &&
+      record.parent_id.nil? && !record.moderation_removed?
+
+  # Slice 2: promoting a reply to a standalone top-level claim is owner-only and valid
+  # only on a CHILD (parent_id present) that is not removed.
+  def promote? =
+    user.present? && record.user_id == user.id &&
+      record.parent_id.present? && !record.moderation_removed?
 end
