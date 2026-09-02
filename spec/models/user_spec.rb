@@ -285,4 +285,43 @@ RSpec.describe User, type: :model do
       expect(existing.reload.uid).to eq("original")
     end
   end
+
+  describe "#can_customize_stances? (Slice 3 eligibility)" do
+    let(:user) { create(:user) }
+
+    it "is false for a new user with no posts" do
+      expect(user.can_customize_stances?).to be false
+    end
+
+    it "is false at 9 default top-level hoojahs and true at 10 (boundary)" do
+      create_list(:hujah, 9, user: user)
+      expect(user.can_customize_stances?).to be false
+      create(:hujah, user: user)
+      expect(user.can_customize_stances?).to be true
+    end
+
+    it "excludes custom-labelled posts from the count" do
+      create_list(:hujah, 9, user: user)
+      # A CUSTOM top-level post does not count toward the threshold. An ineligible author
+      # can't actually mint one via create! (enforce_stance_label_eligibility nils the
+      # labels) and the columns are attr_readonly, so drop to update_all — a direct SQL
+      # UPDATE that skips callbacks + the readonly guard — to isolate the COUNT exclusion.
+      custom = create(:hujah, user: user)
+      Hujah.where(id: custom.id).update_all(agree_label: "Yes", neutral_label: "Meh", disagree_label: "No")
+      expect(user.can_customize_stances?).to be false
+    end
+
+    it "excludes replies from the count" do
+      parent = create(:hujah, user: create(:user))
+      create_list(:hujah, 9, user: user)
+      create(:hujah, user: user, parent_id: parent.id)
+      expect(user.can_customize_stances?).to be false
+    end
+
+    it "excludes removed posts from the count" do
+      create_list(:hujah, 9, user: user)
+      create(:hujah, user: user, moderation_status: :removed)
+      expect(user.can_customize_stances?).to be false
+    end
+  end
 end
