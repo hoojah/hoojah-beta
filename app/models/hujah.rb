@@ -14,10 +14,12 @@ class Hujah < ApplicationRecord
   # rows and break spec/requests/api/v1/notifications_spec's no-500 guarantee.
   belongs_to :parent, class_name: "Hujah", optional: true
 
-  # Slice 3: custom stance labels are IMMUTABLE after create. attr_readonly makes Rails
-  # silently drop any assignment to these columns on UPDATE, so no edit path (present or
-  # future) can rewrite them — the tamper-proof half of the gate; the create-time
-  # eligibility coercion below is the other half.
+  # Slice 3: custom stance labels are IMMUTABLE after create. Under the Rails 8.1 default
+  # (raise_on_assign_to_attr_readonly), assigning one on a persisted record raises
+  # ActiveRecord::ReadonlyAttributeError — loud by design: no request path can reach it
+  # (edit_params never permits label keys; the API has no hujah update), so a raise here
+  # signals a programmer bug, not user tampering. The create-time eligibility coercion
+  # below is the actual tamper gate.
   attr_readonly :agree_label, :neutral_label, :disagree_label
 
   # A HARD destroy is only offered on a "leaf" claim. A hoojah with replies or debates
@@ -285,9 +287,10 @@ class Hujah < ApplicationRecord
       .where.not(user_id: user.hidden_user_ids)
   }
 
-  # Slice 3: normalise first (so a tampered "Agree" collapses to nil BEFORE the
-  # eligibility check reads it), then coerce away labels the author may not set. Both
-  # run on create only — the columns are attr_readonly on update.
+  # Slice 3: normalise then coerce, both create-only (columns are attr_readonly after).
+  # enforce_stance_label_eligibility only checks parent_id + author eligibility, so the
+  # order is defensive (future-proofs an eligibility check that might consult
+  # custom_stances?), not currently load-bearing.
   before_validation :normalize_stance_labels, on: :create
   before_validation :enforce_stance_label_eligibility, on: :create
 
@@ -459,7 +462,7 @@ class Hujah < ApplicationRecord
       column = STANCE_LABEL_COLUMNS.fetch(position)
       raw = self[column]
       next if raw.nil?
-      cleaned = raw.to_s.gsub(/\s+/, " ").strip[0, CUSTOM_LABEL_MAX]
+      cleaned = raw.to_s.gsub(/\s+/, " ").strip[0, CUSTOM_LABEL_MAX].strip
       cleaned = nil if cleaned.blank? || cleaned.casecmp?(default_token)
       self[column] = cleaned
     end

@@ -623,12 +623,11 @@ RSpec.describe Hujah, type: :model do
       let(:author) { create(:user) }
       before { allow_any_instance_of(User).to receive(:can_customize_stances?).and_return(true) }
 
-      it "ignores label changes on update" do
+      it "raises on any attempt to reassign a label after create, leaving it unchanged" do
         h = author.hujahs.create!(body: "an editable claim body", agree_label: "Yes")
-        h.update(agree_label: "Hacked", disagree_label: "Nope")
-        h.reload
-        expect(h.agree_label).to eq("Yes")
-        expect(h.disagree_label).to be_nil
+        expect { h.update(agree_label: "Hacked") }
+          .to raise_error(ActiveRecord::ReadonlyAttributeError)
+        expect(h.reload.agree_label).to eq("Yes")
       end
     end
   end
