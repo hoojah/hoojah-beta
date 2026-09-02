@@ -63,6 +63,7 @@ class VisibilityChange
 
     hujah.with_lock do
       reset_memos!
+      raise NotTightening unless tightening? # re-check under the lock: visibility may have moved since the pre-lock guard (double-submit race)
       raise Blocked if blockers.any?
 
       affected = affected_participants

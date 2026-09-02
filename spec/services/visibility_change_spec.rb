@@ -194,5 +194,24 @@ RSpec.describe VisibilityChange do
       expect(h.reload.visibility).to eq("visible_public")
       expect(HujahArchive.count).to eq(0)
     end
+
+    it "rolls back ALL destructive writes if a later step raises (atomicity)" do
+      h = create(:hujah, user: author, visibility: :visible_public)
+      h.cast_vote(by: stranger, choice: 1)
+      arg = create(:hujah, user: stranger, parent_id: h.id, body: "Strangers argument body")
+
+      # Fail the LAST step (notifications), which runs after the deletes + visibility update.
+      allow(Notification).to receive(:create!).and_raise("boom")
+
+      expect { VisibilityChange.new(h, to: "private_only").apply! }.to raise_error("boom")
+
+      h.reload
+      expect(h.visibility).to eq("visible_public")       # visibility update rolled back
+      expect(h.agree_count).to eq(1)                      # counters rolled back
+      expect(Vote.exists?(hujah_id: h.id, user_id: stranger.id)).to be(true) # vote restored
+      expect(Hujah.exists?(arg.id)).to be(true)           # argument restored
+      expect(HujahArchive.count).to eq(0)                 # archive rolled back
+      expect(HujahArchiveParticipant.count).to eq(0)
+    end
   end
 end
