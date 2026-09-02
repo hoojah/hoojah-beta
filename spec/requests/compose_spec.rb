@@ -84,4 +84,47 @@ RSpec.describe "Compose", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("FOLLOWERS_ONLY_VISIBLE body")
   end
+
+  describe "custom stance labels (Slice 3)" do
+    def make_eligible(u)
+      # 10 default top-level posts clears the threshold.
+      create_list(:hujah, 10, user: u)
+    end
+
+    it "persists normalised custom labels when the author is eligible" do
+      make_eligible(user)
+      sign_in user
+      post "/hoojah", params: {hujah: {
+        body: "A brand new claim about transit fares",
+        agree_label: "  Totally  agreed ", neutral_label: "AGREE-ISH", disagree_label: "Disagree"
+      }}
+      h = Hujah.order(:created_at).last
+      expect(h.agree_label).to eq("Totally agreed") # trimmed + collapsed
+      expect(h.neutral_label).to eq("AGREE-ISH")    # kept (not the neutral default token)
+      expect(h.disagree_label).to be_nil            # equals default token → nil
+    end
+
+    it "coerces custom labels to nil when the author is NOT eligible (tamper-proof)" do
+      sign_in user # zero prior posts → ineligible
+      post "/hoojah", params: {hujah: {
+        body: "A brand new claim about transit fares",
+        agree_label: "Yes", neutral_label: "Meh", disagree_label: "No"
+      }}
+      h = Hujah.order(:created_at).last
+      expect(h.agree_label).to be_nil
+      expect(h.neutral_label).to be_nil
+      expect(h.disagree_label).to be_nil
+    end
+
+    it "ignores custom labels on a reply even from an eligible author" do
+      make_eligible(user)
+      parent = create(:hujah, user: create(:user))
+      parent.cast_vote(by: user, choice: 1)
+      sign_in user
+      post "/hoojah", params: {hujah: {
+        body: "my reply", parent_id: parent.id, vote: 1, agree_label: "Yes"
+      }}
+      expect(Hujah.order(:created_at).last.agree_label).to be_nil
+    end
+  end
 end

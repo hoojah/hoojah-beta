@@ -200,8 +200,14 @@ class HujahsController < ApplicationController
   # Body is stored RAW (no <br> hack); it renders via the `format_body` helper.
   # A missing/spoofed parent_id makes `Hujah.find` raise RecordNotFound → 404,
   # which the request spec accepts.
+  #
+  # Slice 3: agree/neutral/disagree_label ride the create path only. They are
+  # attr_readonly on the model (immutable after create) and coerced to nil there when
+  # the author is not eligible (top-level + can_customize_stances?), so permitting them
+  # here is safe — the gate is enforced in the model, not by withholding the param.
   def compose_params
-    params.require(:hujah).permit(:body, :parent_id, :vote, :visibility, :allow_debates)
+    params.require(:hujah).permit(:body, :parent_id, :vote, :visibility, :allow_debates,
+      :agree_label, :neutral_label, :disagree_label)
   end
 
   # Slice 1 body edit: permit ONLY the body — never stance/visibility/custom labels
