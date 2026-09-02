@@ -42,6 +42,12 @@
         </summary>
         <%= render layout: "ui/menu", locals: {width: "w-56"} do %>
           <% if user_signed_in? && @hujah.user_id == current_user.id %>
+            <%# Slice 1: edit is offered only while the body is editable (owner-only is
+                already established by the enclosing branch; body_editable? adds the
+                15-min window + no-conviction gate). Links to the composer in edit mode. %>
+            <% if @hujah.body_editable? %>
+              <%= link_to "Edit hoojah", edit_hujah_path(@hujah.slug), class: ds_menu_item_classes %>
+            <% end %>
             <%# `tone: "neutral"` is DropdownMenu.prompt.md's destructive row (neutral is
                 orange under the Spectrum palette — the same tone the report rows use; a
                 menu row has no dedicated danger tone). A real DELETE now — `button_to` carries the
@@ -97,6 +103,7 @@
           @<%= @hujah.user.username %>
           <span class="mx-1">·</span>
           <time datetime="<%= @hujah.created_at.iso8601 %>" data-local="time-ago"><%= @hujah.created_at.strftime("%b %-d") %></time>
+          <% if @hujah.body_edited? %><span class="mx-1">·</span><span class="text-faint">edited</span><% end %>
         </div>
       </div>
     </div>

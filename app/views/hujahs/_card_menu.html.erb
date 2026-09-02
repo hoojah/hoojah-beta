@@ -63,6 +63,11 @@
     <%= mail_to "hello@rudzainy.com", "Email", subject: share_title, body: "#{share_text}\n\n#{share_url}", class: ds_menu_item_classes %>
 
     <%= render "ui/divider", class: "my-1" %>
+    <%# Slice 1: owner-only edit entry on the feed card, shown only while the body is
+        editable (15-min window, no conviction). Same target as the show-page menu. %>
+    <% if user_signed_in? && hujah.user_id == current_user.id && hujah.body_editable? %>
+      <%= link_to "Edit hoojah", edit_hujah_path(hujah.slug), class: ds_menu_item_classes %>
+    <% end %>
     <% if user_signed_in? %>
       <%= render "hujahs/flag_dialog", hujah: hujah %>
     <% else %>
