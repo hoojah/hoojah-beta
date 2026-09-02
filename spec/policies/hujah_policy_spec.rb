@@ -71,4 +71,36 @@ RSpec.describe HujahPolicy do
       expect(HujahPolicy.new(other, hujah).vote?).to be(true)
     end
   end
+
+  # ── Slice 1 body edit: owner + not-removed + within the edit window ──────────────
+  describe "edit?/update? (body edit window)" do
+    it "permits the owner to edit a fresh, active, conviction-free hoojah" do
+      h = create(:hujah, user: owner)
+      expect(HujahPolicy.new(owner, h).edit?).to be(true)
+      expect(HujahPolicy.new(owner, h).update?).to be(true)
+    end
+
+    it "forbids a non-owner and an anonymous viewer" do
+      h = create(:hujah, user: owner)
+      expect(HujahPolicy.new(other, h).edit?).to be(false)
+      expect(HujahPolicy.new(nil, h).edit?).to be(false)
+      expect(HujahPolicy.new(other, h).update?).to be(false)
+    end
+
+    it "forbids the owner once the 15-minute window has passed" do
+      h = create(:hujah, user: owner, created_at: 16.minutes.ago)
+      expect(HujahPolicy.new(owner, h).edit?).to be(false)
+      expect(HujahPolicy.new(owner, h).update?).to be(false)
+    end
+
+    it "forbids the owner once a conviction has been cast" do
+      h = create(:hujah, user: owner, conviction_count: 1)
+      expect(HujahPolicy.new(owner, h).edit?).to be(false)
+    end
+
+    it "forbids editing a moderator-removed hoojah even for the owner" do
+      h = create(:hujah, user: owner, moderation_status: :removed)
+      expect(HujahPolicy.new(owner, h).edit?).to be(false)
+    end
+  end
 end

@@ -38,4 +38,14 @@ class HujahPolicy < ApplicationPolicy
   # in the author's UI, so this only closes the direct-request/replay hole. (This also
   # gates the Api::V1 destroy, which shares this policy.)
   def destroy? = user.present? && record.user_id == user.id && !record.moderation_removed?
+
+  # Slice 1 (editable hujah): the body edit surface. Owner-only, never on a
+  # moderator-removed hoojah (mirrors destroy?'s evidence guard), and only while the
+  # edit window is open (Hujah#body_editable? — 15 min, closed early by the first
+  # conviction). Because update? repeats body_editable?, the controller's
+  # `authorize @hujah` is itself the fail-closed server-side re-check for a window
+  # that closes between the GET and the PATCH. nil-safe for an anonymous caller.
+  def edit? = user.present? && record.user_id == user.id && !record.moderation_removed? && record.body_editable?
+
+  def update? = edit?
 end
