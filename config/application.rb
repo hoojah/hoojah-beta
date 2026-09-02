@@ -31,6 +31,15 @@ module Hoojah
     # Don't generate system test files.
     config.generators.system_tests = nil
 
+    # Slice 3: attr_readonly on Hujah's stance-label columns is a TAMPER guard, not a
+    # validation — an update that tries to rewrite a locked label must be a silent no-op,
+    # not a 500. `load_defaults 8.1` sets raise_on_assign_to_attr_readonly to true (which
+    # would raise ActiveRecord::ReadonlyAttributeError on such an assignment); we opt back
+    # into the drop-silently behaviour the immutability contract depends on. Hujah's
+    # stance labels are the ONLY attr_readonly attributes in the app, so this has no other
+    # blast radius.
+    config.active_record.raise_on_assign_to_attr_readonly = false
+
     # Rate limiting / throttling (login, signup, password reset, votes).
     config.middleware.use Rack::Attack
   end

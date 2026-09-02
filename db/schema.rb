@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_02_071655) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_02_081244) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -152,14 +152,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_02_071655) do
 
   create_table "hujahs", force: :cascade do |t|
     t.integer "agree_count", default: 0
+    t.string "agree_label"
     t.boolean "allow_debates", default: true, null: false
     t.text "body", null: false
     t.datetime "body_edited_at"
     t.integer "conviction_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.integer "disagree_count", default: 0
+    t.string "disagree_label"
     t.integer "moderation_status", default: 0, null: false
     t.integer "neutral_count", default: 0
+    t.string "neutral_label"
     t.integer "parent_id"
     t.string "slug"
     t.datetime "updated_at", null: false

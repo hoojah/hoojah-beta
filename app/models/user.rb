@@ -39,6 +39,16 @@ class User < ApplicationRecord
   # The ONLY capability gate the rest of the app reads (policies, nav, views).
   def can_moderate? = moderator? || admin?
 
+  # Slice 3: a per-post custom-stance-label author must have posted 10+ DEFAULT
+  # top-level hoojahs — top-level (parent_id nil), not moderator-removed, and carrying
+  # no custom labels (all three label columns nil). Custom posts don't count toward
+  # unlocking; this is the eligibility gate the composer UI and the create-time
+  # coercion both consult.
+  def can_customize_stances?
+    hujahs.where(parent_id: nil).not_removed
+      .where(agree_label: nil, neutral_label: nil, disagree_label: nil).count >= 10
+  end
+
   before_validation { self.email = email.to_s.downcase.strip }
 
   RESERVED_USERNAMES = %w[login signup logout password edit cancel new hoojah hoojahs u users

@@ -14,6 +14,12 @@ class Hujah < ApplicationRecord
   # rows and break spec/requests/api/v1/notifications_spec's no-500 guarantee.
   belongs_to :parent, class_name: "Hujah", optional: true
 
+  # Slice 3: custom stance labels are IMMUTABLE after create. attr_readonly makes Rails
+  # silently drop any assignment to these columns on UPDATE, so no edit path (present or
+  # future) can rewrite them — the tamper-proof half of the gate; the create-time
+  # eligibility coercion below is the other half.
+  attr_readonly :agree_label, :neutral_label, :disagree_label
+
   # A HARD destroy is only offered on a "leaf" claim. A hoojah with replies or debates
   # carries other people's content (child arguments, a whole debate transcript) that the
   # `dependent: :destroy` cascades above would wipe away — HujahsController#destroy refuses
@@ -279,6 +285,12 @@ class Hujah < ApplicationRecord
       .where.not(user_id: user.hidden_user_ids)
   }
 
+  # Slice 3: normalise first (so a tampered "Agree" collapses to nil BEFORE the
+  # eligibility check reads it), then coerce away labels the author may not set. Both
+  # run on create only — the columns are attr_readonly on update.
+  before_validation :normalize_stance_labels, on: :create
+  before_validation :enforce_stance_label_eligibility, on: :create
+
   after_create_commit :notify_parent_owner, if: :has_parent?
   after_create_commit :notify_mentions # create-only; newly-added mentions on a body edit are handled by notify_new_mentions below
   # Slice 1: edit-aware mention notification. notify_mentions above stays CREATE-only;
@@ -318,6 +330,33 @@ class Hujah < ApplicationRecord
   # string. COUNTER_FOR is derived so the two can never drift apart.
   STANCES = {1 => "agree", 2 => "neutral", 3 => "disagree"}.freeze
   COUNTER_FOR = STANCES.transform_values { |stance| :"#{stance}_count" }.freeze
+
+  # Slice 3 — per-position custom stance labels. STANCE_LABEL_COLUMNS maps the same
+  # 1/2/3 vote positions STANCES uses to the nullable string column that overrides each
+  # default token. A column is nil when uncustomised, so `default` and `custom` are a
+  # pure presence test (see #custom_stances? / #default_hujah?).
+  STANCE_LABEL_COLUMNS = {1 => :agree_label, 2 => :neutral_label, 3 => :disagree_label}.freeze
+  CUSTOM_LABEL_MAX = 24
+
+  # The label shown for vote position 1/2/3 on THIS record's own surfaces: the custom
+  # label when set, else the default STANCES token. Replies always render defaults —
+  # only a top-level claim (parent_id nil) may carry custom labels.
+  def stance_label(position)
+    default = STANCES.fetch(position)
+    return default unless parent_id.nil?
+    self[STANCE_LABEL_COLUMNS.fetch(position)].presence || default
+  end
+
+  # Does this hoojah carry ANY custom label? (Presence test — a column is nil unless
+  # customised.) Drives the badge award and the eligibility count's exclusion.
+  def custom_stances?
+    agree_label.present? || neutral_label.present? || disagree_label.present?
+  end
+
+  # A "default hoojah" for the Slice-3 eligibility count: top-level and uncustomised.
+  def default_hujah?
+    parent_id.nil? && !custom_stances?
+  end
 
   # Trending top-level hoojahs by Hacker-News gravity on TOTAL activity (votes +
   # child arguments), decayed by age. Computed on read and cached for 15 min: the
@@ -410,6 +449,30 @@ class Hujah < ApplicationRecord
 
   def award_authoring_badge
     UserBadge.award(user, is_parent? ? "first_hoojah" : "first_argument")
+  end
+
+  # Trim, collapse internal whitespace (which also strips newlines), cap at
+  # CUSTOM_LABEL_MAX, and treat a value equal to its default token (case-insensitive) as
+  # "not customised" → nil. Empty/blank → nil.
+  def normalize_stance_labels
+    STANCES.each do |position, default_token|
+      column = STANCE_LABEL_COLUMNS.fetch(position)
+      raw = self[column]
+      next if raw.nil?
+      cleaned = raw.to_s.gsub(/\s+/, " ").strip[0, CUSTOM_LABEL_MAX]
+      cleaned = nil if cleaned.blank? || cleaned.casecmp?(default_token)
+      self[column] = cleaned
+    end
+  end
+
+  # Custom labels survive ONLY on a top-level claim by an eligible author; anything else
+  # (a reply, or an author under the 10-default-post threshold) has them coerced to nil,
+  # so a hand-crafted POST cannot bypass the composer's server-side gate.
+  def enforce_stance_label_eligibility
+    return if parent_id.nil? && user&.can_customize_stances?
+    self.agree_label = nil
+    self.neutral_label = nil
+    self.disagree_label = nil
   end
 
   def notify_parent_owner

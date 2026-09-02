@@ -7,6 +7,12 @@ FactoryBot.define do
     disagree_count { 0 }
     vote { 0 }
 
+    trait :custom_stances do
+      agree_label { "Yes" }
+      neutral_label { "Meh" }
+      disagree_label { "No" }
+    end
+
     trait :has_parent do
       after(:create) do |hujah|
         parent_hujah = create(:hujah)

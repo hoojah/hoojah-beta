@@ -542,4 +542,94 @@ RSpec.describe Hujah, type: :model do
       expect(selects.size).to eq(1)
     end
   end
+
+  describe "custom stance labels (Slice 3)" do
+    describe "#stance_label" do
+      it "returns the default token for each position on a plain top-level hoojah" do
+        h = build(:hujah)
+        expect(h.stance_label(1)).to eq("agree")
+        expect(h.stance_label(2)).to eq("neutral")
+        expect(h.stance_label(3)).to eq("disagree")
+      end
+
+      it "returns the stored custom label per position on a top-level hoojah" do
+        h = build(:hujah, agree_label: "Yes", neutral_label: "Meh", disagree_label: "No")
+        expect(h.stance_label(1)).to eq("Yes")
+        expect(h.stance_label(2)).to eq("Meh")
+        expect(h.stance_label(3)).to eq("No")
+      end
+
+      it "falls back to the default token for a position left uncustomised" do
+        h = build(:hujah, agree_label: "Yes", neutral_label: nil, disagree_label: nil)
+        expect(h.stance_label(1)).to eq("Yes")
+        expect(h.stance_label(2)).to eq("neutral")
+        expect(h.stance_label(3)).to eq("disagree")
+      end
+
+      it "always returns defaults for a reply, even if label columns are set" do
+        parent = create(:hujah)
+        child = build(:hujah, parent_id: parent.id, agree_label: "Yes", disagree_label: "No")
+        expect(child.stance_label(1)).to eq("agree")
+        expect(child.stance_label(3)).to eq("disagree")
+      end
+    end
+
+    describe "#custom_stances? / #default_hujah?" do
+      it "custom_stances? is true when any label column is present" do
+        expect(build(:hujah, neutral_label: "Meh").custom_stances?).to be true
+        expect(build(:hujah).custom_stances?).to be false
+      end
+
+      it "default_hujah? is true only for a top-level hoojah with no custom labels" do
+        expect(build(:hujah).default_hujah?).to be true
+        expect(build(:hujah, agree_label: "Yes").default_hujah?).to be false
+      end
+
+      it "default_hujah? is false for a reply" do
+        parent = create(:hujah)
+        expect(build(:hujah, parent_id: parent.id).default_hujah?).to be false
+      end
+    end
+
+    describe "normalisation on create" do
+      let(:author) { create(:user) }
+      before { allow_any_instance_of(User).to receive(:can_customize_stances?).and_return(true) }
+
+      it "trims and collapses internal whitespace" do
+        h = author.hujahs.create!(body: "a normal claim body", agree_label: "  Totally   agreed  ")
+        expect(h.agree_label).to eq("Totally agreed")
+      end
+
+      it "caps a label at 24 characters" do
+        h = author.hujahs.create!(body: "a normal claim body", disagree_label: "x" * 40)
+        expect(h.disagree_label.length).to eq(24)
+      end
+
+      it "stores nil when a label equals its default token case-insensitively" do
+        h = author.hujahs.create!(body: "a normal claim body",
+          agree_label: "AGREE", neutral_label: "Neutral", disagree_label: "  disagree ")
+        expect(h.agree_label).to be_nil
+        expect(h.neutral_label).to be_nil
+        expect(h.disagree_label).to be_nil
+      end
+
+      it "stores nil for a blank label" do
+        h = author.hujahs.create!(body: "a normal claim body", neutral_label: "   ")
+        expect(h.neutral_label).to be_nil
+      end
+    end
+
+    describe "immutability (attr_readonly)" do
+      let(:author) { create(:user) }
+      before { allow_any_instance_of(User).to receive(:can_customize_stances?).and_return(true) }
+
+      it "ignores label changes on update" do
+        h = author.hujahs.create!(body: "an editable claim body", agree_label: "Yes")
+        h.update(agree_label: "Hacked", disagree_label: "Nope")
+        h.reload
+        expect(h.agree_label).to eq("Yes")
+        expect(h.disagree_label).to be_nil
+      end
+    end
+  end
 end
