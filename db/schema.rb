@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_02_081244) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_02_092629) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -148,6 +148,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_02_081244) do
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_hashtags_on_name", unique: true
+  end
+
+  create_table "hujah_archive_participants", force: :cascade do |t|
+    t.bigint "archive_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["archive_id", "user_id"], name: "index_hujah_archive_participants_on_archive_id_and_user_id", unique: true
+    t.index ["archive_id"], name: "index_hujah_archive_participants_on_archive_id"
+  end
+
+  create_table "hujah_archives", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "hujah_id", null: false
+    t.jsonb "snapshot", default: {}, null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.integer "visibility_before", null: false
+    t.index ["hujah_id"], name: "index_hujah_archives_on_hujah_id"
+    t.index ["token"], name: "index_hujah_archives_on_token", unique: true
   end
 
   create_table "hujahs", force: :cascade do |t|

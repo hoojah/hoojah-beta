@@ -22,7 +22,12 @@ class Notification < ApplicationRecord
     # Moderation (2026): author-facing. Exact integers are load-bearing — the legacy
     # API serializes the category as its integer.
     moderation_removed: 14,
-    moderation_warning: 15
+    moderation_warning: 15,
+    # Slice 2 (editable-hujah): sent to a participant whose votes/arguments were
+    # purged when the author tightened this hoojah's visibility. FK-less hujah_id
+    # (like every category here) so it survives the hoojah's later deletion. NOT in
+    # EMAILED_CATEGORIES — a purge is not a high-signal per-user email event.
+    hujah_archived: 16
   }
 
   scope :unread, -> { where(read: false) }

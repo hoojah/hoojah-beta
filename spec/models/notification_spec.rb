@@ -6,7 +6,7 @@ RSpec.describe Notification, type: :model do
   describe "the category enum" do
     # `category` is a plain integer column with existing rows, so the integers are
     # the contract — renumbering or reordering these reinterprets history.
-    it "maps all sixteen categories to stable integers" do
+    it "maps all seventeen categories to stable integers" do
       expect(Notification.categories).to eq(
         "admin" => 0,
         "announcement" => 1,
@@ -23,8 +23,19 @@ RSpec.describe Notification, type: :model do
         "follow_request" => 12,
         "follow_accepted" => 13,
         "moderation_removed" => 14,
-        "moderation_warning" => 15
+        "moderation_warning" => 15,
+        "hujah_archived" => 16
       )
+    end
+
+    # Slice 2 (editable-hujah): the purge notification. Integer 16 is the next free
+    # value; like every category the integer is the contract, not the symbol.
+    it "supports the hujah_archived category at integer 16" do
+      expect(Notification.categories["hujah_archived"]).to eq(16)
+    end
+
+    it "does not email the hujah_archived category (in-app only)" do
+      expect(Notification::EMAILED_CATEGORIES).not_to include("hujah_archived")
     end
 
     # Moderation (2026): the exact integers are load-bearing — the legacy API
