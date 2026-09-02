@@ -630,5 +630,23 @@ RSpec.describe Hujah, type: :model do
         expect(h.reload.agree_label).to eq("Yes")
       end
     end
+
+    describe "eligibility coercion on create" do
+      let(:author) { create(:user) }
+
+      it "coerces custom labels to nil for an ineligible author" do
+        allow_any_instance_of(User).to receive(:can_customize_stances?).and_return(false)
+        h = author.hujahs.create!(body: "a normal claim body", agree_label: "Yes", disagree_label: "No")
+        expect(h.agree_label).to be_nil
+        expect(h.disagree_label).to be_nil
+      end
+
+      it "coerces custom labels to nil on a reply even from an eligible author" do
+        allow_any_instance_of(User).to receive(:can_customize_stances?).and_return(true)
+        parent = create(:hujah)
+        reply = author.hujahs.create!(body: "a reply body here", parent_id: parent.id, agree_label: "Yes")
+        expect(reply.agree_label).to be_nil
+      end
+    end
   end
 end
