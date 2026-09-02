@@ -1,0 +1,15 @@
+<ul class="space-y-2">
+  <% args.each do |arg| %>
+    <li>
+      <%= render layout: "ui/card", locals: {padded: true} do %>
+        <div class="text-sm text-ink-2 mb-1">@<%= arg["author"] %> · <%= arg["stance"] %></div>
+        <p class="text-ink whitespace-pre-line"><%= arg["body"] %></p>
+      <% end %>
+      <% if arg["children"].present? %>
+        <div class="ml-4 mt-2">
+          <%= render "hujah_archives/argument_tree", args: arg["children"] %>
+        </div>
+      <% end %>
+    </li>
+  <% end %>
+</ul>

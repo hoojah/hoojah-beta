@@ -40,6 +40,14 @@ class HujahsController < ApplicationController
 
   def show
     @hujah = Hujah.friendly.find(params[:slug])
+    # Slice 2 (editable-hujah): a participant purged by a visibility tighten can no longer
+    # see the live post — but they ARE entitled to their frozen archive. Route them there
+    # instead of the generic not-authorized handling. skip_authorization satisfies
+    # verify_authorized on this early-return branch (no authorize runs here).
+    if !@hujah.visible_to?(current_user) && HujahArchiveParticipant.for(current_user, @hujah).exists?
+      skip_authorization
+      return redirect_to(hujah_archive_path(@hujah.slug))
+    end
     # Slice 7b (Gate 5): a private author's hoojah is viewable only by themselves and
     # accepted followers. HujahPolicy#show? = record.user.visible_to?(user) (nil-safe;
     # anonymous → the ApplicationController Pundit rescue redirects, not a bare 403).

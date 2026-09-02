@@ -77,6 +77,11 @@ Rails.application.routes.draw do
   # VisibilityChange#apply!'s row lock — never trusting the client — and fails closed.
   get "/hoojah/:slug/visibility", to: "hujahs#visibility_edit", as: :visibility_hujah
   patch "/hoojah/:slug/visibility", to: "hujahs#update_visibility"
+  # Frozen read-only archive of a tightened hoojah (Slice 2). Resolves the VIEWER's latest
+  # archive for :slug (HujahArchiveParticipant.for). A purged user who hits the live post
+  # is redirected here by HujahsController#show; old slugs 301 via FriendlyId :history then
+  # hit that same gate. Read-only; MAIN route. Per-viewer archive → no token in the URL.
+  get "/hoojah/:slug/archived", to: "hujah_archives#show", as: :hujah_archive
   # Edit a hoojah's body (HTML/Turbo). A WRITE, so it lives on a MAIN route (CSRF
   # enforced — form_with carries the token), NEVER under Api::V1. GET renders the
   # composer in edit mode; PATCH applies the body change. Owner-only + time-boxed via
