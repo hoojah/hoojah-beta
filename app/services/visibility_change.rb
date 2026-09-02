@@ -41,11 +41,10 @@ class VisibilityChange
   def affected_participant_ids = affected_participants.map(&:id)
 
   def counts
-    ids = affected_participant_ids.to_set
     {
-      users: ids.size,
-      votes: hujah.votes.where(user_id: ids.to_a).count,
-      arguments: subtree_hujahs.count { |h| ids.include?(h.user_id) }
+      users: affected_participant_ids.size,
+      votes: hujah.votes.where(user_id: affected_participant_ids).count,
+      arguments: affected_arguments.size
     }
   end
 
@@ -59,14 +58,16 @@ class VisibilityChange
   private
 
   def affected_arguments
-    ids = affected_participant_ids.to_set
-    subtree_hujahs.select { |h| ids.include?(h.user_id) }
+    @affected_arguments ||= begin
+      ids = affected_participant_ids.to_set
+      subtree_hujahs.select { |h| ids.include?(h.user_id) }
+    end
   end
 
   # Entangled = carries OTHER users' content that a purge would wrongly destroy: a reply
   # or vote from someone other than the arg's own author, or ANY debate (a debate always
   # couples two users and its transcript is shared content). `.exists?` issues an EXISTS,
-  # not a load.
+  # not a load. Per-arg EXISTS is deliberate: the affected-args set is bounded, so no batching.
   def entangled?(arg)
     arg.children.where.not(user_id: arg.user_id).exists? ||
       arg.votes.where.not(user_id: arg.user_id).exists? ||
