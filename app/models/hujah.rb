@@ -74,6 +74,21 @@ class Hujah < ApplicationRecord
     }
   end
 
+  # Slice 1 (editable hujah): the body edit window. An author may fix their wording
+  # for a short grace period after posting — closed PERMANENTLY at 15 minutes OR the
+  # first conviction, whichever comes first. Applies to top-level claims AND replies.
+  EDIT_WINDOW = 15.minutes
+
+  # Body is editable only while the window is open: active (not moderator-removed),
+  # no conviction cast yet, within EDIT_WINDOW of creation. `moderation_active?`
+  # already covers the removed case; the policy repeats `!moderation_removed?` for
+  # symmetry with destroy?.
+  def body_editable? = moderation_active? && conviction_count.zero? && created_at > EDIT_WINDOW.ago
+
+  # Has the body been edited since posting? Driven by the body_edited_at stamp, NOT
+  # updated_at (which cast_vote bumps on every vote via the counter increment!s).
+  def body_edited? = body_edited_at.present?
+
   validates :body, presence: true
   # 2026: a top-level claim must be a substantial statement (>= 8 chars); replies
   # (parent_id present) stay unconstrained so a terse "Agreed." still posts.
@@ -275,6 +290,12 @@ class Hujah < ApplicationRecord
   # moderation flip so the next Hujah.trending recomputes without the removed id.
   after_update_commit :bust_trending_cache, if: -> { saved_change_to_moderation_status? }
 
+  # Slice 1: record WHEN the body was last edited, but ONLY on an actual body change.
+  # updated_at is unreliable as an "edited" signal — cast_vote's increment!/decrement!
+  # on the counter columns touches updated_at without touching the body. before_update
+  # (not after) so the stamp persists in the SAME UPDATE as the new body/slug.
+  before_update :stamp_body_edited_at, if: :will_save_change_to_body?
+
   extend FriendlyId
 
   friendly_id :slug_source, use: [:slugged, :history]
@@ -379,6 +400,8 @@ class Hujah < ApplicationRecord
   private
 
   def bust_trending_cache = Rails.cache.delete("trending:v1")
+
+  def stamp_body_edited_at = self.body_edited_at = Time.current
 
   def award_authoring_badge
     UserBadge.award(user, is_parent? ? "first_hoojah" : "first_argument")
