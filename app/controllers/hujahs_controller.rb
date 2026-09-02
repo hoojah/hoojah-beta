@@ -200,7 +200,7 @@ class HujahsController < ApplicationController
     to = params.require(:hujah).permit(:visibility)[:visibility]
 
     unless Hujah.visibilities.key?(to)
-      redirect_to(visibility_hujah_path(@hujah.slug), alert: "Unknown visibility.") and return
+      return redirect_to(visibility_hujah_path(@hujah.slug), alert: "Unknown visibility.", status: :see_other)
     end
 
     change = VisibilityChange.new(@hujah, to: to)
@@ -212,12 +212,12 @@ class HujahsController < ApplicationController
       redirect_to hujah_path(@hujah.slug), notice: "Visibility updated.", status: :see_other
     else
       if change.blockers.any?
-        redirect_to(visibility_hujah_path(@hujah.slug, to: to),
-          alert: "Resolve the entangled arguments before tightening.") and return
+        return redirect_to(visibility_hujah_path(@hujah.slug, to: to),
+          alert: "Resolve the entangled arguments before tightening.", status: :see_other)
       end
       if params[:confirm] != VISIBILITY_CONFIRM_WORD
-        redirect_to(visibility_hujah_path(@hujah.slug, to: to),
-          alert: "Type #{VISIBILITY_CONFIRM_WORD} to confirm the permanent removal.") and return
+        return redirect_to(visibility_hujah_path(@hujah.slug, to: to),
+          alert: "Type #{VISIBILITY_CONFIRM_WORD} to confirm the permanent removal.", status: :see_other)
       end
       begin
         change.apply!

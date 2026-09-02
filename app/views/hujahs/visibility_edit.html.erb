@@ -32,9 +32,9 @@
         <div class="mt-5 p-3 rounded-xl bg-card-2 text-sm">
           <p class="font-bold text-ink mb-1">This permanently removes:</p>
           <ul class="list-disc ml-5 text-ink-2 space-y-0.5">
-            <li><strong class="text-ink"><%= counts[:users] %></strong> participant<%= "s" unless counts[:users] == 1 %></li>
-            <li><strong class="text-ink"><%= counts[:votes] %></strong> vote<%= "s" unless counts[:votes] == 1 %></li>
-            <li><strong class="text-ink"><%= counts[:arguments] %></strong> argument<%= "s" unless counts[:arguments] == 1 %></li>
+            <li><strong class="text-ink"><%= counts[:users] %></strong> <%= "participant".pluralize(counts[:users]) %></li>
+            <li><strong class="text-ink"><%= counts[:votes] %></strong> <%= "vote".pluralize(counts[:votes]) %></li>
+            <li><strong class="text-ink"><%= counts[:arguments] %></strong> <%= "argument".pluralize(counts[:arguments]) %></li>
           </ul>
           <p class="text-faint mt-2">This action is permanent and cannot be undone.</p>
         </div>
