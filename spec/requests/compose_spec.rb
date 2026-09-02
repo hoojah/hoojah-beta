@@ -127,4 +127,23 @@ RSpec.describe "Compose", type: :request do
       expect(Hujah.order(:created_at).last.agree_label).to be_nil
     end
   end
+
+  describe "custom stance labels rendering (Slice 3)" do
+    let(:author) { create(:user, username: "labeler") }
+
+    it "shows custom labels on the top-level vote hero and share text" do
+      create_list(:hujah, 10, user: author)
+      h = author.hujahs.create!(body: "a claim with renamed stances",
+        agree_label: "Yes", neutral_label: "Meh", disagree_label: "No")
+      get "/hoojah/#{h.slug}"
+      expect(response.body).to include("Yes").and include("Meh").and include("No")
+      expect(response.body).to include("Do you YES? MEH? NO?")
+    end
+
+    it "renders default tokens on a hoojah with no custom labels (share text unchanged)" do
+      h = create(:hujah, user: author, body: "a plain default claim body")
+      get "/hoojah/#{h.slug}"
+      expect(response.body).to include("Do you AGREE? NEUTRAL? DISAGREE?")
+    end
+  end
 end

@@ -33,7 +33,10 @@
 
     Locals: hujah. %>
 <% share_url = hujah_url(hujah.slug) %>
-<% share_text = "\"#{strip_tags(hujah.body)} (by @#{hujah.user.username})\" Do you AGREE? NEUTRAL? DISAGREE?" %>
+<%# Slice 3: the three shouted stance words are label-driven — hujah.stance_label(1|2|3)
+    .upcase. For a DEFAULT hoojah these ARE "AGREE"/"NEUTRAL"/"DISAGREE", so the payload
+    stays byte-identical (share_spec's byte-frozen text); a custom hoojah shouts its own. %>
+<% share_text = "\"#{strip_tags(hujah.body)} (by @#{hujah.user.username})\" Do you #{hujah.stance_label(1).upcase}? #{hujah.stance_label(2).upcase}? #{hujah.stance_label(3).upcase}?" %>
 <% share_title = "Hoojah by @#{hujah.user.username}" %>
 
 <details class="relative shrink-0"

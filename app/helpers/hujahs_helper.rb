@@ -162,4 +162,18 @@ module HujahsHelper
     n = hujah.total_votes
     n.zero? ? "No votes yet" : "#{n} #{"vote".pluralize(n)}"
   end
+
+  # Slice 3 — the stance word shown on a hoojah's OWN vote buttons / aria-labels. A
+  # custom label is rendered VERBATIM (the author chose its casing, e.g. "AGREE-ISH");
+  # a default falls back to the capitalised token ("Agree"), matching the pre-Slice-3
+  # `stance.capitalize` these call sites used. `Hujah#stance_label` already returns the
+  # lowercase default token when uncustomised, and normalize_stance_labels nils any
+  # custom label that case-insensitively equals its default token, so "equals the
+  # default token" is a reliable is-default test. Replies always take the default branch
+  # (stance_label returns defaults for them). The percent legend keeps the RAW
+  # lowercase token instead — it reads as a caption, not a button.
+  def stance_display_label(hujah, position)
+    label = hujah.stance_label(position)
+    (label == Hujah::STANCES[position]) ? label.capitalize : label
+  end
 end

@@ -55,7 +55,7 @@
                   data-stance="<%= stance %>"
                   data-charge-color="var(--<%= stance %>)"
                   data-action="pointerdown->conviction#start pointerup->conviction#end pointerleave->conviction#leave contextmenu->conviction#noMenu"
-                  aria-label="<%= stance.capitalize %>"
+                  aria-label="<%= stance_display_label(hujah, choice) %>"
                   class="relative h-[104px] rounded-[20px] border-2 border-<%= stance %> <%= voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card" %> flex flex-col items-center justify-center gap-2 cursor-pointer transition active:scale-95 overflow-hidden"
                   style="touch-action:none;">
             <% if voted %>
@@ -64,7 +64,7 @@
             <span class="relative flex flex-col items-center gap-2 text-<%= stance %>">
               <%= lucide_icon("check", class: "w-4 h-4") if voted %>
               <%= lucide_icon(icon, class: "w-7 h-7") %>
-              <span class="text-xs font-bold"><%= stance.capitalize %></span>
+              <span class="text-xs font-bold"><%= stance_display_label(hujah, choice) %></span>
             </span>
           </button>
         <% end %>

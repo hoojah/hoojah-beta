@@ -68,8 +68,8 @@
       <% end %>
     </div>
     <div class="flex justify-between mt-2 text-xs font-bold">
-      <% rows.each do |stance, _choice, _count| %>
-        <span class="text-<%= stance %>"><%= pct[stance] %>% <%= stance %></span>
+      <% rows.each do |stance, choice, _count| %>
+        <span class="text-<%= stance %>"><%= pct[stance] %>% <%= hujah.stance_label(choice) %></span>
       <% end %>
     </div>
   <% else %>
@@ -85,13 +85,13 @@
       <%= button_to hujah_votes_path(hujah.slug),
             params: { vote: choice },
             form: { class: "flex-1" },
-            aria: { label: stance.capitalize, pressed: voted.to_s },
+            aria: { label: stance_display_label(hujah, choice), pressed: voted.to_s },
             class: "w-full h-10 rounded-xl border-[1.5px] border-#{stance} text-#{stance} " \
                    "#{voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card"} " \
                    "flex items-center justify-center gap-1.5 text-xs font-bold transition active:scale-95" do %>
         <%= lucide_icon("check", class: "w-3.5 h-3.5") if voted %>
         <%= stance_icon(stance, class: "w-4 h-4") %>
-        <%= stance.capitalize %>
+        <%= stance_display_label(hujah, choice) %>
       <% end %>
     <% end %>
   </div>
