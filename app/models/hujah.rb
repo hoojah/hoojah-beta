@@ -452,6 +452,10 @@ class Hujah < ApplicationRecord
 
   def award_authoring_badge
     UserBadge.award(user, is_parent? ? "first_hoojah" : "first_argument")
+    # Slice 3: a top-level claim that carries any custom label earns the custom badge.
+    # custom_stances? reads the persisted (already-coerced) columns, so an ineligible
+    # author whose labels were nilled never qualifies.
+    UserBadge.award(user, "first_custom_hoojah") if is_parent? && custom_stances?
   end
 
   # Trim, collapse internal whitespace (which also strips newlines), cap at

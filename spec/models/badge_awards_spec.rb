@@ -31,3 +31,44 @@ RSpec.describe "Badge awards", type: :model do
     expect { h.cast_vote(by: voter, choice: 1) }.to change { h.reload.agree_count }.by(1)
   end
 end
+
+RSpec.describe "first_custom_hoojah badge (Slice 3)", type: :model do
+  let(:user) { create(:user) }
+
+  def eligible!(u)
+    create_list(:hujah, 10, user: u)
+  end
+
+  it "registers the badge key" do
+    expect(Badge::REGISTRY).to have_key("first_custom_hoojah")
+  end
+
+  it "awards first_custom_hoojah when an eligible author posts a top-level custom hoojah" do
+    eligible!(user)
+    expect {
+      user.hujahs.create!(body: "a claim with custom stances", agree_label: "Yes")
+    }.to change { user.user_badges.where(badge_key: "first_custom_hoojah").count }.by(1)
+  end
+
+  it "does not award it for a default top-level hoojah" do
+    eligible!(user)
+    expect {
+      user.hujahs.create!(body: "a plain default claim body")
+    }.not_to change { user.user_badges.where(badge_key: "first_custom_hoojah").count }
+  end
+
+  it "does not award it when labels are coerced away for an ineligible author" do
+    # Zero prior posts → ineligible → labels nilled → not a custom post.
+    expect {
+      user.hujahs.create!(body: "a claim that wanted custom stances", agree_label: "Yes")
+    }.not_to change { user.user_badges.where(badge_key: "first_custom_hoojah").count }
+  end
+
+  it "awards it at most once" do
+    eligible!(user)
+    user.hujahs.create!(body: "first custom claim body", agree_label: "Yes")
+    expect {
+      user.hujahs.create!(body: "second custom claim body", disagree_label: "No")
+    }.not_to change { user.user_badges.where(badge_key: "first_custom_hoojah").count }
+  end
+end

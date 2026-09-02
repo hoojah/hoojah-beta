@@ -15,6 +15,11 @@ class Badge
       description: "Posted your first argument on someone's hoojah",
       icon: "message-circle"
     },
+    "first_custom_hoojah" => {
+      name: "First Custom Hoojah",
+      description: "Posted a hoojah with your own stance labels",
+      icon: "pencil"
+    },
     "first_follower" => {
       name: "First Follower",
       description: "Gained your first follower",
