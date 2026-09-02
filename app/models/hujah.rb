@@ -281,6 +281,11 @@ class Hujah < ApplicationRecord
 
   after_create_commit :notify_parent_owner, if: :has_parent?
   after_create_commit :notify_mentions # create only -- edit-mention handling deferred with the edit UI
+  # Slice 1: edit-aware mention notification. notify_mentions above stays CREATE-only;
+  # on a body edit this fires for ONLY the handles newly added to the body (diff
+  # old-vs-new), so pre-existing mentions never re-fire. saved_change_to_body? is
+  # false during cast_vote (which never touches body), so a vote never triggers it.
+  after_update_commit :notify_new_mentions, if: :saved_change_to_body?
   # Off the hot path (after commit, never inside cast_vote's transaction): the
   # first top-level hoojah earns first_hoojah; the first reply earns first_argument.
   after_create_commit :award_authoring_badge
@@ -412,14 +417,31 @@ class Hujah < ApplicationRecord
       hujah_id: parent.id, subject_user_id: user_id)
   end
 
-  # Inline, create-only, idempotent (matches every existing notification
-  # callback). Cap 10 unique handles/hoojah (anti-spam + dedup); skip self and
-  # unknown handles; the `exists?` guard makes it "at most once per (hoojah,
-  # mentioner, mentioned)" -- robust to any future edit churn without body-diffing.
+  # Inline, create-only, idempotent (matches every existing notification callback).
+  # All the anti-spam/dedup/skip/exists? mechanics now live in the shared writer
+  # notify_mention_handles below; this just feeds it every handle in the new body.
   def notify_mentions
-    handles = body.scan(MENTION_RE).flatten.uniq.first(10)
+    notify_mention_handles(mention_handles(body))
+  end
+
+  # Edit-only (Slice 1): notify ONLY handles present in the NEW body but not the OLD.
+  # saved_change_to_body returns [before, after] in the after_update_commit callback.
+  def notify_new_mentions
+    before, after = saved_change_to_body
+    notify_mention_handles(mention_handles(after) - mention_handles(before))
+  end
+
+  # Parse @handles out of arbitrary text -- deduped, capped at 10 (anti-spam). Shared
+  # by the create-time notify_mentions and the edit-time notify_new_mentions diff.
+  def mention_handles(text)
+    text.to_s.scan(MENTION_RE).flatten.uniq.first(10)
+  end
+
+  # Shared writer: skip empty; skip self + hidden (blocked/blocked-by) users; the
+  # exists? guard makes it "at most once per (hoojah, mentioner, mentioned)".
+  # Slice 7: never notify a hidden (blocked/blocked-by) user of a mention.
+  def notify_mention_handles(handles)
     return if handles.empty? # skip the lookup (and hidden_user_ids) for the common no-mention case
-    # Slice 7: never notify a hidden (blocked/blocked-by) user of a mention.
     User.where(username: handles).where.not(id: user_id).where.not(id: user.hidden_user_ids).each do |u|
       next if Notification.exists?(user: u, hujah_id: id, category: :mention, subject_user_id: user_id)
       Notification.create!(user: u, category: :mention, hujah_id: id, subject_user_id: user_id)
