@@ -332,21 +332,16 @@ class Hujah < ApplicationRecord
   # whole subtree travels with it (descendants keep pointing here). vote: nil drops the
   # stance-toward-parent context — a top-level claim has no parent to take a stance on.
   # This is where the top-level `body >= 8` validation first applies (parent_id is now
-  # nil), so a too-short reply raises ActiveRecord::RecordInvalid here and the whole
-  # promotion rolls back; the controller rescues it.
+  # nil), so a too-short reply raises ActiveRecord::RecordInvalid and nothing changes;
+  # the controller rescues it.
   #
-  # Slug regeneration is deliberate but NOT via `slug: nil`: FriendlyId 5.7's
-  # History#scope_for_slug_generator excludes THIS record's own historic slugs from
-  # conflict detection ("allow reversion back to a previously used slug"), so a blanked
-  # slug regenerates to the byte-identical value from the same body — verified. Appending
-  # a short random suffix forces a genuinely fresh canonical slug; the old slug already
-  # sits in friendly_id_slugs (recorded on create) and keeps redirecting via
-  # Hujah.friendly.find (:history).
+  # The slug deliberately does NOT change: it derives from the body (which promote does
+  # not touch), and one unique index covers all hujahs, so the reply's slug is already a
+  # valid, unique top-level slug. Same record, same URL — every shared link keeps working
+  # with no redirect at all. (Do NOT set slug: nil — FriendlyId :history would just
+  # regenerate the byte-identical slug from the unchanged body anyway.)
   def promote!
-    transaction do
-      update!(parent_id: nil, vote: nil)
-      update!(slug: "#{slug}-#{SecureRandom.alphanumeric(6).downcase}")
-    end
+    update!(parent_id: nil, vote: nil)
   end
 
   # The closed vote domain, in one place. `votes.vote` stores these integers;

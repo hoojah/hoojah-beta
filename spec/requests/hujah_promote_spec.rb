@@ -5,7 +5,7 @@ RSpec.describe "Promote a hoojah to top-level", type: :request do
   let(:other) { create(:user) }
   def sign_in_fresh(u) = sign_in(User.find(u.id))
 
-  it "detaches the reply, clears its stance vote, regenerates the slug, keeps its subtree" do
+  it "detaches the reply, clears its stance vote, keeps its slug, keeps its subtree" do
     parent = create(:hujah, user: owner, body: "Parent claim body here")
     reply = create(:hujah, user: owner, parent_id: parent.id, vote: 1, body: "Reply worth promoting")
     grandchild = create(:hujah, user: other, parent_id: reply.id, body: "Grandchild reply body")
@@ -17,9 +17,9 @@ RSpec.describe "Promote a hoojah to top-level", type: :request do
     reply.reload
     expect(reply.parent_id).to be_nil
     expect(reply.vote).to be_nil
-    expect(reply.slug).not_to eq(old_slug)
+    expect(reply.slug).to eq(old_slug) # slug derives from body; promote doesn't touch it
     expect(grandchild.reload.parent_id).to eq(reply.id) # subtree travelled
-    expect(Hujah.friendly.find(old_slug).id).to eq(reply.id) # FriendlyId history
+    expect(Hujah.friendly.find(old_slug).id).to eq(reply.id) # URL stable — same record, same link
     expect(response).to have_http_status(:see_other).or have_http_status(:found)
   end
 

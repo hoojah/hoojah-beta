@@ -66,7 +66,8 @@ Rails.application.routes.draw do
   # action → MAIN route (CSRF on; button_to carries the token), never Api::V1. Owner-only
   # + child-only via HujahPolicy#promote?. Used from the reply's owner menu and as an
   # entanglement resolution when the author tightens a parent's visibility. parent_id → nil
-  # (subtree travels), slug regenerates; FriendlyId :history keeps the old slug redirecting.
+  # (subtree travels); slug is unchanged — same record, same URL (the body, which the slug
+  # derives from, is untouched).
   post "/hoojah/:slug/promote", to: "hujahs#promote", as: :promote_hujah
   # Edit a hoojah's body (HTML/Turbo). A WRITE, so it lives on a MAIN route (CSRF
   # enforced — form_with carries the token), NEVER under Api::V1. GET renders the
