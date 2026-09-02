@@ -25,6 +25,59 @@ them.
 Next up: **Project 3 (Hotwire Native)** — not started. (Slice 11, below, closed the last
 `Api::V1` security items that were meant to be frozen before native clients consume the API.)
 
+## Editable Hujah — DONE ✅ (branch `editable-hujah`, not merged)
+
+_2026-09-03. Three independent slices letting an author edit their hujah. Spec:
+`docs/superpowers/specs/2026-09-02-editable-hujah-design.md`; plans:
+`docs/superpowers/plans/2026-09-02-editable-hujah-slice-{1,2,3}-*.md`. Built subagent-driven
+(Opus implementers) with Fable-5 as the spec-compliance/architect gate + a code-quality gate per
+task. **34 commits**, `bin/ci` green (**1379 examples, 0 failures**; Brakeman 0; bundler-audit clean)._
+
+- **Slice 1 — Edit body (time-boxed).** `Hujah#body_editable?` = active + `conviction_count.zero?`
+  + within `EDIT_WINDOW` (15 min) — applies to top-level AND replies. `body_edited_at` stamped by a
+  `before_update` callback (NOT `updated_at`, which `cast_vote` bumps). `HujahPolicy#edit?/#update?`
+  (owner + not-removed + window); `update?` re-derives the window so `authorize` IS the fail-closed
+  re-check. `GET /hoojah/:slug/edit` + `PATCH /hoojah/:slug` on MAIN routes (CSRF on); `_compose_form`
+  gained an `edit_mode`. Edit-aware `@mention` diff (only NEWLY-added handles notified). "· edited"
+  marker. On a failed edit, `restore_attributes([:slug])` reverts FriendlyId's in-memory slug regen.
+- **Slice 3 — Custom stance labels (top-level only, immutable).** 3 nullable string columns
+  (`agree_label`/`neutral_label`/`disagree_label`). `User#can_customize_stances?` = 10+ default
+  top-level non-removed posts. Per-field, normalised (`\s+`→space, cap 24, default-token→nil),
+  eligibility-coerced (`before_validation on: :create`), and `attr_readonly` (kept Rails 8.1's
+  RAISE-on-assign default — immutability is loud by design; a global config flip was rejected).
+  `Hujah#stance_label(pos)` renders at the top-level record's OWN surfaces via
+  `HujahsHelper#stance_display_label` (verbatim custom / capitalised default); children always
+  default. Inline click-to-edit on the composer for eligible authors (`stance_labels_controller.js`,
+  keyboard-accessible). `first_custom_hoojah` badge. Render-point edits add **no** Tailwind classes
+  (verified: bundle md5 unchanged with a positive control).
+- **Slice 2 — Change visibility (permanent, destructive; top-level only).** `VisibilityChange`
+  service (`app/services/visibility_change.rb`): direction by enum rank; `affected_participants`
+  (voters + subtree arg authors who lose access, prospective `visible_under?` mirroring
+  `Hujah#visible_to?` EXACTLY — batched via `author_follower_ids` to kill the N+1); `blockers`
+  (an affected arg with OTHER users' reply/vote or ANY debate); `apply!` — row-locked purge
+  (re-checks `tightening?`+`blockers` UNDER the lock, snapshots BEFORE deleting, recounts AFTER via
+  `Hujah::COUNTER_FOR`, secret-ballot notification with NO `subject_user_id`). Loosening never purges.
+  `hujah_archives`/`hujah_archive_participants` tables (FK-less `hujah_id`); `hujah_archived`
+  notification cat 16. `Hujah#promote!` detaches a reply (parent_id/vote nil, **slug stays stable** —
+  it derives from the body, which promote doesn't touch). `visibility_edit` (counts + entangled
+  blockers reloaded full since the service returns partial-selects + typed-confirm "REMOVE") /
+  `update_visibility` (fail-closed server re-check). `HujahsController#show` redirects a purged
+  participant to their frozen `hujah_archives#show` (read-only snapshot; **breakdown gated by the same
+  `VOTE_BREAKDOWN_MIN` k-anonymity rule** so a lone co-voter's stance can't be deduced). `DebateChannel`
+  already stops streaming to a purged spectator (leak spec pins it).
+
+**Deferred (this feature):**
+- **Archive URL breaks if the hoojah is later deleted.** `HujahArchivesController#show` and the
+  `#show` redirect both resolve via `Hujah.friendly.find(slug)`, so a tightened-then-DELETED hoojah
+  (a vote-only hoojah is `deletable?`) 404s before the surviving archive data is consulted — the
+  purged voter loses the access the FK-less design promised them. Fix needs the archive addressed
+  independently of the live record (store the slug on `HujahArchive`, or a token-based `/archive/:token`
+  URL — the plan deliberately kept tokens out of the URL, so this is a small redesign).
+- **Redirect-to-archive fires for ANY invisibility cause**, not just a tighten (a purged participant
+  later blocked, or the hoojah moderation-removed, still lands on their archive). Matches the
+  "archive is the permanent record" intent, but worth a product confirmation for the removed case.
+- **Not pushed.** Branch `editable-hujah` off `master` (34 commits). Merge when ready.
+
 ## UI fixes + delete-hujah flow — DONE ✅ (branch `ui-fixes-and-delete-hujah`)
 
 _2026-08-28. Five UI corrections + a new owner-only delete-hujah flow. Spec:
