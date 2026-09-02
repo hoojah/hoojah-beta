@@ -57,4 +57,49 @@ RSpec.describe VisibilityChange do
       expect(counts).to eq(users: 1, votes: 1, arguments: 1)
     end
   end
+
+  describe "#blockers (entanglement, fail closed)" do
+    let(:author) { create(:user, username: "author") }
+    let(:stranger) { create(:user, username: "stranger") }
+    let(:other) { create(:user, username: "other") }
+
+    def public_hujah = create(:hujah, user: author, visibility: :visible_public)
+
+    it "is empty when an affected arg is a clean leaf (no others' replies/votes/debate)" do
+      h = public_hujah
+      h.cast_vote(by: stranger, choice: 1)
+      create(:hujah, user: stranger, parent_id: h.id, body: "A lonely argument here")
+      expect(VisibilityChange.new(h, to: "private_only").blockers).to be_empty
+    end
+
+    it "blocks when an affected arg has a reply from ANOTHER user" do
+      h = public_hujah
+      h.cast_vote(by: stranger, choice: 1)
+      arg = create(:hujah, user: stranger, parent_id: h.id, body: "An argument with a reply")
+      create(:hujah, user: other, parent_id: arg.id, body: "Someone elses reply here")
+
+      blockers = VisibilityChange.new(h, to: "private_only").blockers
+      expect(blockers.map(&:id)).to contain_exactly(arg.id)
+    end
+
+    it "blocks when an affected arg has a vote from ANOTHER user" do
+      h = public_hujah
+      h.cast_vote(by: stranger, choice: 1)
+      arg = create(:hujah, user: stranger, parent_id: h.id, body: "An argument with a vote")
+      arg.cast_vote(by: other, choice: 2)
+
+      expect(VisibilityChange.new(h, to: "private_only").blockers.map(&:id))
+        .to contain_exactly(arg.id)
+    end
+
+    it "blocks when an affected arg is attached to a debate" do
+      h = public_hujah
+      h.cast_vote(by: stranger, choice: 1)
+      arg = create(:hujah, user: stranger, parent_id: h.id, body: "An argument in a debate")
+      create(:debate, hujah: arg, challenger: stranger, opponent: other, status: :active)
+
+      expect(VisibilityChange.new(h, to: "private_only").blockers.map(&:id))
+        .to contain_exactly(arg.id)
+    end
+  end
 end

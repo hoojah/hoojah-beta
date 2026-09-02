@@ -49,7 +49,29 @@ class VisibilityChange
     }
   end
 
+  # Affected arguments that are ENTANGLED with other users' participation. A non-empty
+  # result FAILS the change closed (design: the whole change is blocked). Resolution is
+  # the ARGUMENT OWNER's: delete it or promote it to a standalone top-level hoojah.
+  def blockers
+    @blockers ||= affected_arguments.select { |arg| entangled?(arg) }
+  end
+
   private
+
+  def affected_arguments
+    ids = affected_participant_ids.to_set
+    subtree_hujahs.select { |h| ids.include?(h.user_id) }
+  end
+
+  # Entangled = carries OTHER users' content that a purge would wrongly destroy: a reply
+  # or vote from someone other than the arg's own author, or ANY debate (a debate always
+  # couples two users and its transcript is shared content). `.exists?` issues an EXISTS,
+  # not a load.
+  def entangled?(arg)
+    arg.children.where.not(user_id: arg.user_id).exists? ||
+      arg.votes.where.not(user_id: arg.user_id).exists? ||
+      arg.debates.exists?
+  end
 
   def candidate_users
     @candidate_users ||= User.where(id: candidate_ids).to_a
