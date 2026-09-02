@@ -1,5 +1,5 @@
 class HujahsController < ApplicationController
-  before_action :authenticate_user!, only: [:new, :create, :destroy]
+  before_action :authenticate_user!, only: [:new, :create, :edit, :update, :destroy]
 
   def index
     skip_authorization
@@ -84,6 +84,33 @@ class HujahsController < ApplicationController
     else
       @parent ||= nil
       render :new, status: :unprocessable_content
+    end
+  end
+
+  def edit
+    @hujah = Hujah.friendly.find(params[:slug])
+    # HujahPolicy#edit? — owner + not-removed + within the edit window. A non-owner
+    # or an expired window trips Pundit::NotAuthorizedError → the ApplicationController
+    # rescue redirects back with "Not allowed." (never a bare 403).
+    authorize @hujah
+    @parent = @hujah.parent
+    render :edit
+  end
+
+  def update
+    @hujah = Hujah.friendly.find(params[:slug])
+    # HujahPolicy#update? repeats body_editable?, so `authorize` IS the fail-closed
+    # server-side re-check for a window that closed between the GET and this PATCH —
+    # it raises → redirect back with an alert. No separate manual re-check needed
+    # (a second identical guard would be unreachable dead code).
+    authorize @hujah
+    if @hujah.update(edit_params)
+      # see_other so the browser re-GETs the show page after the PATCH. body_edited_at
+      # is stamped by the model's before_update callback, not here.
+      redirect_to hujah_path(@hujah.slug), notice: "Hoojah updated.", status: :see_other
+    else
+      @parent = @hujah.parent
+      render :edit, status: :unprocessable_content
     end
   end
 
@@ -174,5 +201,15 @@ class HujahsController < ApplicationController
   # which the request spec accepts.
   def compose_params
     params.require(:hujah).permit(:body, :parent_id, :vote, :visibility, :allow_debates)
+  end
+
+  # Slice 1 body edit: permit ONLY the body — never stance/visibility/custom labels
+  # (those are other slices, and stance/visibility are immutable here). allow_debates
+  # rides the same form but is a TOP-LEVEL-only control (replies have no such toggle),
+  # so it is permitted only when this is a top-level claim.
+  def edit_params
+    permitted = [:body]
+    permitted << :allow_debates if @hujah.parent_id.nil?
+    params.require(:hujah).permit(*permitted)
   end
 end

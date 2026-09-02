@@ -13,10 +13,14 @@
 
     The avatar is `ui/_avatar` at `md`; `image_tag current_user.photo` raises on a blank
     photo, so the partial's fallback matters here. %>
+<%# edit_mode: optional `edit` local, falsy on every create/respond path. In edit mode
+    the same form PATCHes the existing hoojah's body instead of POSTing a new one. %>
+<% edit_mode = local_assigns[:edit] %>
 <%# turbo: false — the full-page composer navigates on success (create redirects to the
     new hoojah). Without it the Turbo form would consume create.turbo_stream.erb, which
     prepends to the (absent) feed, leaving the user stranded on the composer. %>
-<%= form_with model: hujah, url: "/hoojah", method: :post, local: true,
+<%= form_with model: hujah,
+      url: (edit_mode ? hujah_path(hujah.slug) : "/hoojah"), method: (edit_mode ? :patch : :post), local: true,
       data: {turbo: false, controller: "composer", composer_require_min_value: parent.nil?},
       class: "min-h-screen flex flex-col bg-surface" do |f| %>
   <% if parent.present? %>
@@ -24,19 +28,22 @@
   <% end %>
 
   <header class="sticky top-0 z-20 flex items-center justify-between px-4 py-2 bg-card backdrop-blur border-b border-hairline">
-    <%= link_to((parent.present? ? hujah_path(parent.slug) : root_path),
+    <%# Cancel returns to the hoojah being edited in edit mode; else to the parent (reply)
+        or the feed (top-level compose). %>
+    <%= link_to((edit_mode ? hujah_path(hujah.slug) : (parent.present? ? hujah_path(parent.slug) : root_path)),
           class: "w-10 h-10 rounded-2xl flex items-center justify-center text-ink no-underline", aria: {label: "Cancel"}) do %>
       <%= lucide_icon("x", class: "w-5 h-5") %>
     <% end %>
-    <span class="text-[15px] font-extrabold text-ink">New hoojah</span>
-    <%= f.submit "Post", data: {composer_target: "post"},
-          class: "px-5 py-2 rounded-full border-2 border-primary text-primary bg-card font-bold text-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-default" %>
+    <span class="text-[15px] font-extrabold text-ink"><%= edit_mode ? "Edit hoojah" : "New hoojah" %></span>
+    <%= f.submit(edit_mode ? "Save" : "Post", data: {composer_target: "post"},
+          class: "px-5 py-2 rounded-full border-2 border-primary text-primary bg-card font-bold text-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-default") %>
   </header>
 
   <main class="flex-1 w-full max-w-xl mx-auto px-4 py-4 flex flex-col">
     <% if parent.present? %>
       <%= render "hujahs/parent_card", parent: parent %>
-      <%= render "hujahs/stance_picker", form: f, parent: parent %>
+      <%# Stance is immutable on edit — hide the picker, keep the parent card for context. %>
+      <%= render "hujahs/stance_picker", form: f, parent: parent unless edit_mode %>
     <% else %>
       <div class="flex items-center gap-2.5">
         <%= render "ui/avatar", user: current_user, size: :md %>
@@ -47,15 +54,18 @@
               JS was off. Styled as the mockup's pill via `appearance-none` + an overlaid
               chevron, dark-safe theme tokens. There is exactly one hujah[visibility] field,
               so no double-submit; the composer controller only reads it, never adds another. %>
-          <div class="relative inline-block mt-0.5">
-            <%= f.select :visibility,
-                  [["Public", "visible_public"], ["Followers", "followers_only"], ["Private", "private_only"]],
-                  {}, data: {composer_target: "select"}, "aria-label": "Who can see this",
-                  class: "appearance-none text-[11.5px] font-bold text-primary bg-primary-soft pl-2.5 pr-7 py-1 rounded-full cursor-pointer focus:outline-none" %>
-            <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-primary">
-              <%= lucide_icon("chevron-down", class: "w-2.5 h-2.5") %>
-            </span>
-          </div>
+          <%# Visibility is immutable on edit — the select is hidden and never submitted. %>
+          <% unless edit_mode %>
+            <div class="relative inline-block mt-0.5">
+              <%= f.select :visibility,
+                    [["Public", "visible_public"], ["Followers", "followers_only"], ["Private", "private_only"]],
+                    {}, data: {composer_target: "select"}, "aria-label": "Who can see this",
+                    class: "appearance-none text-[11.5px] font-bold text-primary bg-primary-soft pl-2.5 pr-7 py-1 rounded-full cursor-pointer focus:outline-none" %>
+              <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-primary">
+                <%= lucide_icon("chevron-down", class: "w-2.5 h-2.5") %>
+              </span>
+            </div>
+          <% end %>
         </div>
       </div>
     <% end %>
@@ -85,7 +95,9 @@
             class: "w-full mt-2 border-0 p-0 bg-transparent resize-none focus:ring-0 text-xl font-semibold leading-snug text-ink" %>
     </div>
 
-    <% if parent.nil? %>
+    <%# Suggested hashtags + the weigh-in preview are compose-only affordances — the body
+        edit hides them (stance/vote mechanics are immutable here). %>
+    <% if parent.nil? && !edit_mode %>
       <div class="mt-auto pt-4">
         <% if Array(@suggested_tags).any? %>
           <div class="text-[11px] font-bold uppercase tracking-wide text-faint mb-2">Suggested hashtags</div>

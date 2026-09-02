@@ -62,6 +62,14 @@ Rails.application.routes.draw do
   # slug" shape as `delete "/moderation/:slug/remove"` below. No `as:` — the named
   # `hujah_path(slug)` from the GET above already resolves the DELETE.
   delete "/hoojah/:slug", to: "hujahs#destroy"
+  # Edit a hoojah's body (HTML/Turbo). A WRITE, so it lives on a MAIN route (CSRF
+  # enforced — form_with carries the token), NEVER under Api::V1. GET renders the
+  # composer in edit mode; PATCH applies the body change. Owner-only + time-boxed via
+  # HujahPolicy#edit?/#update? (15-min window, closed early by the first conviction).
+  # `/hoojah/:slug/edit` is two segments so it can't be shadowed by the `/hoojah/:slug`
+  # show above; PATCH takes no `as:` — the named `hujah_path(slug)` already resolves it.
+  get "/hoojah/:slug/edit", to: "hujahs#edit", as: :edit_hujah
+  patch "/hoojah/:slug", to: "hujahs#update"
   # Profile (Task 3.2). Public view at /u/:username; owner-only edit/update.
   # `:username` (not id/slug) mirrors the legacy SPA `/api/v1/:username` shape.
   get "/u/:username", to: "users#show", as: :profile

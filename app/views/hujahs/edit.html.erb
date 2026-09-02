@@ -1,0 +1,5 @@
+<%# Slice 1 (editable hujah): the body-edit screen. Reuses the composer form in edit
+    mode — same textarea + (top-level) allow_debates toggle, PATCHing the body only.
+    The stance picker, visibility select, suggested tags and weigh-in preview are
+    hidden by the form's edit branch (stance/visibility are immutable here). %>
+<%= render "hujahs/compose_form", hujah: @hujah, parent: @parent, edit: true %>
