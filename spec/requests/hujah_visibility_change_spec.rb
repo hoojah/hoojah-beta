@@ -91,6 +91,21 @@ RSpec.describe "Change hoojah visibility", type: :request do
       expect(response).to have_http_status(:redirect)
     end
 
+    it "denies a non-owner PATCH even with the correct confirm word (no purge, no change)" do
+      # Pin the destructive verb's authorization directly: a stranger cannot tighten
+      # someone else's hoojah even holding the confirm word.
+      h = create(:hujah, user: owner, visibility: :visible_public)
+      h.cast_vote(by: stranger, choice: 1)
+      sign_in_fresh stranger
+      expect {
+        patch "/hoojah/#{h.slug}/visibility",
+          params: {hujah: {visibility: "private_only"}, confirm: HujahsController::VISIBILITY_CONFIRM_WORD}
+      }.not_to change(HujahArchive, :count)
+      expect(h.reload.visibility).to eq("visible_public")
+      expect(Vote.exists?(hujah_id: h.id, user_id: stranger.id)).to be(true)
+      expect(response).to have_http_status(:redirect)
+    end
+
     it "renders the entangled blockers on the confirmation screen without erroring" do
       # blockers are partial-select records (no body/slug); the controller reloads them
       # as @blocker_args so the view can render body/slug — this proves no
