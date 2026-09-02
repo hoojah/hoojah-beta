@@ -58,6 +58,9 @@ class VisibilityChange
   # The destructive purge, row-locked. Re-derives the affected set/blockers UNDER the
   # lock (fail closed on anything newly entangled between the confirmation GET and here)
   # and performs the ordered steps in one transaction. Returns the archive.
+  #
+  # The destructive steps are ORDER-SENSITIVE: the snapshot must be built from CURRENT
+  # state BEFORE the deletes, and the counters recounted AFTER them — do not reorder.
   def apply!
     raise NotTightening unless tightening?
 
@@ -93,6 +96,9 @@ class VisibilityChange
 
   private
 
+  # INVARIANT: must clear EVERY memoized ivar that feeds blockers/affected_participants.
+  # The under-lock re-check in apply! is only sound if this list is complete — add any
+  # new memo here, or a stale pre-lock read of the entanglement/affected set slips through.
   def reset_memos!
     @candidate_users = @candidate_ids = @subtree_hujahs = nil
     @affected_participants = @affected_arguments = @blockers = nil
@@ -113,23 +119,26 @@ class VisibilityChange
   end
 
   # Recount from scratch (design: safest). votes.vote is the legacy array column — the
-  # LAST element is the current stance. assign_attributes leaves the counters dirty for
-  # the single update! in #apply! that also writes visibility.
+  # LAST element is the current stance. Drives the stance→counter-column fill off
+  # Hujah::COUNTER_FOR (keyed by stance integer {1=>:agree_count,...}) so this cannot
+  # drift from cast_vote's incrementing side. conviction_count is a separate line — it is
+  # NOT in COUNTER_FOR. Bare assignment (not update!) leaves the counters dirty for the
+  # single update! in #apply! that also writes visibility.
   def recompute_counters!
     remaining = hujah.votes.reload.to_a
-    hujah.assign_attributes(
-      agree_count: remaining.count { |v| v.vote.last == 1 },
-      neutral_count: remaining.count { |v| v.vote.last == 2 },
-      disagree_count: remaining.count { |v| v.vote.last == 3 },
-      conviction_count: remaining.count(&:conviction?)
-    )
+    tally = remaining.group_by { |v| v.vote.last }
+    Hujah::COUNTER_FOR.each { |stance, column| hujah[column] = tally.fetch(stance, []).size }
+    hujah.conviction_count = remaining.count(&:conviction?)
   end
 
+  # Deliberately re-loads hujah.children (FULL records) rather than reusing the partial
+  # subtree_hujahs (select :id, :parent_id, :user_id) — the snapshot needs body/vote/
+  # counts, which the partials don't carry. Do not "optimize" it onto the partial set.
   def build_snapshot
     {
       "body" => hujah.body,
       "author" => hujah.user.username,
-      "author_name" => hujah.user.try(:full_name),
+      "author_name" => hujah.user.full_name,
       "created_at" => hujah.created_at.iso8601,
       "agree_count" => hujah.agree_count,
       "neutral_count" => hujah.neutral_count,
