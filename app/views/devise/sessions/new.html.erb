@@ -74,6 +74,17 @@
       Continue with Google
     <% end %>
 
+    <%# Usernameless passkey login. The Stimulus controller hides this block when the
+        browser has no WebAuthn, so JS-off / unsupported users simply never see it. %>
+    <div data-controller="passkey-authentication" class="mt-3">
+      <button type="button" data-action="passkey-authentication#authenticate"
+              class="w-full h-[52px] rounded-xl border border-field bg-card text-ink font-bold text-[14.5px] flex items-center justify-center gap-2.5 cursor-pointer">
+        <%= lucide_icon "key-round", class: "w-[19px] h-[19px]" %>
+        Sign in with a passkey
+      </button>
+      <p data-passkey-authentication-target="error" hidden class="mt-2 text-sm text-disagree text-center"></p>
+    </div>
+
     <%= render "devise/shared/links" %>
   </div>
 </div>
