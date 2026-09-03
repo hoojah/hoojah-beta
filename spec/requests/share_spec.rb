@@ -30,7 +30,8 @@ RSpec.describe "Share menu", type: :request do
   it "renders a hidden native-share button wired to the share controller" do
     get "/hoojah/#{hujah.slug}"
 
-    expect(response.body).to include('data-controller="share"')
+    # Two controllers now: "share" (this test) plus "dropdown" (dismiss-on-outside-tap).
+    expect(response.body).to include('data-controller="share dropdown"')
     expect(response.body).to include('data-action="share#share"')
     expect(response.body).to include('data-share-target="button"')
     expect(response.body).to include("hidden")

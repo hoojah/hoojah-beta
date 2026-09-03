@@ -18,11 +18,14 @@ RSpec.describe "Sharing a hoojah", type: :system, js: true do
 
     # The URL half now routes through the short link /s/:code (issue #31): the raw
     # short URL is on data-share-url-value; the social hrefs carry it CGI-escaped.
+    # `~=` (token match) rather than `=`: the <details> now carries TWO controllers
+    # ("share dropdown" — the second dismisses the menu on an outside tap), so an
+    # exact-value selector no longer matches.
     expect(page).to have_selector(
-      %([data-controller="share"][data-share-url-value*="/s/"])
+      %([data-controller~="share"][data-share-url-value*="/s/"])
     )
 
-    within('[data-controller="share"]') do
+    within('[data-controller~="share"]') do
       expect(page).to have_link("WhatsApp", href: /wa\.me/)
       expect(page).to have_link("X", href: /x\.com\/intent\/tweet/)
       expect(page).to have_link("Telegram", href: /t\.me\/share/)

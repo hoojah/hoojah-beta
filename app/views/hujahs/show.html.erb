@@ -21,7 +21,11 @@
 
 <% trending_ids = Rails.cache.read("trending:v1") %>
 <% first_tag = @hujah.hashtags.first %>
-<% header_label = (trending_ids&.include?(@hujah.id) && first_tag) ? "Trending in ##{first_tag.display} · #{total_votes} #{"vote".pluralize(total_votes)}" : "Hoojah" %>
+<%# The centre label carries CONTEXT only. When this hoojah is trending it names the tag
+    and tally; otherwise it stays empty — the plain "Hoojah" word was redundant with the
+    navbar logo directly above it, and left the bar shouting the app name twice. The empty
+    `flex-1` span is kept below so the back arrow and the share/actions still balance. %>
+<% header_label = (trending_ids&.include?(@hujah.id) && first_tag) ? "Trending in ##{first_tag.display} · #{total_votes} #{"vote".pluralize(total_votes)}" : nil %>
 
 <main class="max-w-xl mx-auto px-4 py-6">
   <%# Hoojah 2026 contextual header (mockup lines ~1-30): back · centre context label ·
@@ -29,14 +33,14 @@
       as before (share_spec / flag_spec click them by aria-label) — only their placement
       moved out of `_hujah_header` (which is still the feed byline and must not change)
       into this header. %>
-  <header class="flex items-center justify-between gap-2 mb-3">
+  <header class="flex items-center justify-between gap-2 mb-6">
     <%= link_to root_path, class: "text-ink no-underline shrink-0", aria: { label: "Back" } do %>
       <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
     <% end %>
     <span class="flex-1 min-w-0 truncate text-center text-sm font-bold text-ink"><%= header_label %></span>
-    <div class="flex items-center gap-1 shrink-0">
+    <div class="flex items-center gap-3 shrink-0">
       <%= render "hujahs/share_menu", hujah: @hujah %>
-      <details class="relative">
+      <details class="relative" data-controller="dropdown">
         <summary class="list-none cursor-pointer text-ink" aria-label="More actions">
           <%= lucide_icon("more-horizontal", class: "w-6 h-6") %>
         </summary>
@@ -46,20 +50,30 @@
                 already established by the enclosing branch; body_editable? adds the
                 15-min window + no-conviction gate). Links to the composer in edit mode. %>
             <% if @hujah.body_editable? %>
-              <%= link_to "Edit hoojah", edit_hujah_path(@hujah.slug), class: ds_menu_item_classes %>
+              <%# `flex items-center gap-2` overrides the helper's baked `block` (bundle
+                  emits `.block` before `.flex`, so it wins) so the Lucide glyph and the
+                  label sit on one row. The three owner rows carry icons together — a menu
+                  with icons on some rows and not others reads as unfinished. %>
+              <%= link_to edit_hujah_path(@hujah.slug), class: "#{ds_menu_item_classes} flex items-center gap-2" do %>
+                <%= lucide_icon("square-pen", class: "w-4 h-4") %> Edit hoojah
+              <% end %>
             <% end %>
             <%# Slice 2 (editable-hujah): visibility is a TOP-LEVEL-only affordance — a reply
                 inherits its parent's visibility. A link to the change form (which becomes
                 the destructive confirmation screen on a tighten). %>
             <% if @hujah.parent_id.nil? && !@hujah.moderation_removed? %>
-              <%= link_to "Change visibility", visibility_hujah_path(@hujah.slug), class: ds_menu_item_classes %>
+              <%= link_to visibility_hujah_path(@hujah.slug), class: "#{ds_menu_item_classes} flex items-center gap-2" do %>
+                <%= lucide_icon("eye", class: "w-4 h-4") %> Change visibility
+              <% end %>
             <% end %>
-            <%# `tone: "neutral"` is DropdownMenu.prompt.md's destructive row (neutral is
-                orange under the Spectrum palette — the same tone the report rows use; a
-                menu row has no dedicated danger tone). A real DELETE now — `button_to` carries the
+            <%# `tone: "danger"` paints this row the theme-aware red (`--color-red-700`) —
+                the ONE genuinely destructive action in the menu, set apart from the orange
+                `neutral` report rows. A real DELETE now — `button_to` carries the
                 CSRF token; `form: {class: "contents"}` collapses the wrapping <form> so the
                 button sits as a normal row in the menu's vertical stack instead of adding a
-                block box. `data-turbo-confirm` goes on the FORM (turbo-rails reads it there,
+                block box. `flex items-center gap-2` overrides the baked `block` for the
+                trash glyph + label (bundle emits `.block` before `.flex`, so it wins).
+                `data-turbo-confirm` goes on the FORM (turbo-rails reads it there,
                 per the moderation "Remove" button) → native confirm, no custom dialog. The
                 controller refuses when the hoojah has replies or a debate.
                 Issue #38: capture where the viewer came from BEFORE opening this hoojah
@@ -69,11 +83,13 @@
                 controller re-validates. Only pass it when present, so the hidden input is
                 absent (→ feed fallback) rather than empty when there's no safe origin. %>
             <% return_to = safe_return_path(request.referer, hujah_path(@hujah.slug)) %>
-            <%= button_to "Delete hoojah", hujah_path(@hujah.slug),
+            <%= button_to hujah_path(@hujah.slug),
                   method: :delete,
-                  class: ds_menu_item_classes(tone: "neutral"),
+                  class: "#{ds_menu_item_classes(tone: "danger")} flex items-center gap-2",
                   params: (return_to ? {return_to: return_to} : {}),
-                  form: {class: "contents", data: {turbo_confirm: "Delete this hoojah? This can't be undone."}} %>
+                  form: {class: "contents", data: {turbo_confirm: "Delete this hoojah? This can't be undone."}} do %>
+              <%= lucide_icon("trash-2", class: "w-4 h-4") %> Delete hoojah
+            <% end %>
           <% end %>
           <% if user_signed_in? %>
             <%= render "hujahs/flag_dialog", hujah: @hujah %>

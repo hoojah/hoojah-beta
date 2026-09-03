@@ -226,11 +226,12 @@ module DesignSystemHelper
   MENU_ITEM_HOVER = "hover:bg-gray-100".freeze
 
   # Narrower than TONES on purpose, and not a subset of it either. A menu row is ink by
-  # default; `grey` is the disabled row (`hujahs/show`'s "Delete hoojah (Slice 2)"); and
-  # `neutral` is DropdownMenu.prompt.md's rule that "destructive/report rows take
-  # tone=neutral (pink)". Nothing renders an agree-coloured or primary-coloured menu row,
-  # and offering one would invite a menu that looks like a stance.
-  MENU_ITEM_TONES = %w[ink grey neutral].freeze
+  # default; `grey` is the disabled row (`hujahs/show`'s "Delete hoojah (Slice 2)");
+  # `neutral` is DropdownMenu.prompt.md's rule that "report rows take tone=neutral (pink)";
+  # and `danger` is the theme-aware red (`--color-red-700`) reserved for a genuinely
+  # destructive row like "Delete hoojah". Nothing renders an agree-coloured or
+  # primary-coloured menu row, and offering one would invite a menu that looks like a stance.
+  MENU_ITEM_TONES = %w[ink grey neutral danger].freeze
 
   # Same contract as every helper above: nil is an unpassed local and takes the default,
   # anything else outside the set is a typo and says so.
@@ -250,7 +251,11 @@ module DesignSystemHelper
   # two tones is byte-identical to before the split.
   def ds_menu_item_classes(tone: "ink")
     tone = ds_option(tone&.to_s, "ink", MENU_ITEM_TONES, "tone")
-    [MENU_ITEM_BASE, (MENU_ITEM_HOVER unless tone == "grey"), "text-#{tone}"].compact.join(" ")
+    # `danger` is not a `text-<tone>` token — it maps to the shared theme-aware red
+    # (`--color-red-700`, the same one the error banners use). Written as a literal so
+    # Tailwind's Ruby-string extractor emits the rule.
+    text_class = (tone == "danger") ? "text-red-700" : "text-#{tone}"
+    [MENU_ITEM_BASE, (MENU_ITEM_HOVER unless tone == "grey"), text_class].compact.join(" ")
   end
 
   # The avatar's fallback when a user has no photo. Two letters, because three do not
