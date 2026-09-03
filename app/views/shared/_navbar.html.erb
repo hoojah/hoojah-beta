@@ -71,6 +71,12 @@
               <span role="img" aria-label="Unread notifications"
                     class="ml-1 inline-block w-2 h-2 rounded-full bg-neutral"></span>
             <% end %>
+            <%# L/XL only: the @handle beside the avatar (navbar spec — "Avatar + Username").
+                Hidden below lg, where the bar is tight and the avatar alone is the user menu.
+                `truncate`+`max-w` so a long username can't widen the left zone into the
+                centred brand. `pointer-events-none` so the whole summary stays the click
+                target (the text isn't a separate hit area that could feel like a link). %>
+            <span class="hidden lg:block ml-2 max-w-[9rem] truncate text-sm font-semibold text-ink pointer-events-none">@<%= current_user.username %></span>
           </summary>
           <%# align: "left-0" — the avatar is the LEFT-most nav item now, so its panel
               opens rightward (left edge under the trigger), not off the viewport left. %>
@@ -172,7 +178,9 @@
           trending is the one exception the 2026 mockup gives a button treatment. %>
       <%= link_to trending_path, class: "lg:hidden flex items-center justify-center gap-1 h-10 px-2 bg-card-2 text-neutral rounded-xl no-underline", aria: {label: "Trending"} do %>
         <%= lucide_icon("flame", class: "w-5 h-5") %>
-        <span class="text-sm hidden min-[420px]:inline">Trending</span>
+        <%# Label from md up only (XS/S are icon-only per the navbar spec). The button
+            itself is `lg:hidden`, so the label is effectively visible at md alone. %>
+        <span class="text-sm hidden md:inline">Trending</span>
       <% end %>
 
       <% if user_signed_in? %>
