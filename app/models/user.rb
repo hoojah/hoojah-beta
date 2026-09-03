@@ -7,6 +7,7 @@ class User < ApplicationRecord
   has_many :defended_debates, class_name: "Debate", foreign_key: :opponent_id, dependent: :destroy
   has_many :debate_turns, dependent: :destroy
   has_many :user_badges, dependent: :destroy
+  has_many :webauthn_credentials, dependent: :destroy
 
   # Follow graph. active_follows = follows I initiated (I am the follower);
   # passive_follows = follows pointed at me (I am the followed).
