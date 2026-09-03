@@ -28,38 +28,21 @@
   <%# Three-zone bar (owner-approved). The inner bar matches the page body's
       container exactly (`max-w-5xl mx-auto px-4`, same as feed index's <main>), so the
       left/right zones align with the body content edges instead of the viewport edges.
-      On <sm this is a flex row with `order-*` so the logo reads left; at >=sm it becomes
-      a 3-column grid whose CENTER column holds the logo, `justify-self-*` pinning each
-      zone (left / centre / right) so the logo is TRULY centred regardless of side widths.
-      LEFT  = user dropdown (signed-in only, order-1) + theme pill (always, order-2)
-      CENTER = logo
-      RIGHT = Trending (mobile/tablet only) + New Claim (signed-in) OR Login/Sign up (guest) %>
+      The logo is CENTRED at every width now: source order is already LEFT → logo → RIGHT,
+      so `justify-between` (<sm) spreads the three, and the 3-column grid (>=sm) with
+      `justify-self-*` pins each zone (left / centre / right) so the logo is TRULY centred
+      regardless of side widths. No `order-*` overrides — the DOM order IS the visual order.
+      LEFT  = user dropdown (signed-in only) + theme/scheme pill ("accessibility tools")
+      CENTER = brand (the "h" MARK below sm, the full wordmark at >=sm)
+      RIGHT = Login/Sign up (guest) · Trending (mobile/tablet only) · New Claim (signed-in) %>
   <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between sm:grid sm:grid-cols-3">
     <%# LEFT zone %>
-    <div class="order-2 sm:order-none sm:justify-self-start flex items-center gap-3">
-      <%# Theme + scheme control (Hoojah 2026). A compact pill, reachable on every
-          page since the navbar is shared. Both controls fail safe with JS off:
-          the server renders the light+spectrum defaults and the page is fully
-          usable; this only flips <html>'s data-theme / data-scheme and persists
-          to localStorage (the no-FOUC head script re-applies before paint).
-          Uses the theme-aware `bg-card` / `border-hairline` / `text-ink`
-          utilities so the pill itself retints with the active theme. %>
-      <div class="order-2 flex items-center rounded-full border border-hairline bg-card" data-controller="theme">
-        <button type="button" data-action="theme#toggleTheme" data-theme-target="toggle"
-                class="flex items-center justify-center w-8 h-8 text-ink" aria-label="Toggle dark mode">
-          <%= lucide_icon("sun-moon", class: "w-4 h-4") %>
-        </button>
-        <button type="button" data-action="theme#cycleScheme" data-theme-target="scheme"
-                class="flex items-center justify-center w-8 h-8 text-ink" aria-label="Change colour scheme">
-          <%= lucide_icon("palette", class: "w-4 h-4") %>
-        </button>
-      </div>
-
+    <div class="sm:justify-self-start flex items-center gap-3">
       <% if user_signed_in? %>
         <%# `<details>` IS the menu mechanism here — the design system documents it as such
             (components/navigation/DropdownMenu.prompt.md). No Stimulus controller, and it
             closes on an outside click for free. Do not "upgrade" it to JS. %>
-        <details class="order-1 relative">
+        <details class="relative">
           <summary class="list-none cursor-pointer flex items-center">
             <%# 36px, the design system's `nav` avatar box. Via the partial rather than
                 `image_tag current_user.photo`, which raises on a user whose photo is
@@ -141,16 +124,49 @@
           <% end %>
         </details>
       <% end %>
+
+      <%# Theme + scheme control ("accessibility tools", Hoojah 2026). A compact pill,
+          reachable on every page since the navbar is shared. Both controls fail safe with
+          JS off: the server renders the light+spectrum defaults and the page is fully
+          usable; this only flips <html>'s data-theme / data-scheme and persists to
+          localStorage (the no-FOUC head script re-applies before paint). Uses the
+          theme-aware `bg-card` / `border-hairline` / `text-ink` utilities so the pill
+          retints with the active theme. It sits AFTER the user menu so the left zone reads
+          "user menu · accessibility tools" left-to-right (a guest has only this pill). %>
+      <div class="flex items-center rounded-full border border-hairline bg-card" data-controller="theme">
+        <button type="button" data-action="theme#toggleTheme" data-theme-target="toggle"
+                class="flex items-center justify-center w-8 h-8 text-ink" aria-label="Toggle dark mode">
+          <%= lucide_icon("sun-moon", class: "w-4 h-4") %>
+        </button>
+        <button type="button" data-action="theme#cycleScheme" data-theme-target="scheme"
+                class="flex items-center justify-center w-8 h-8 text-ink" aria-label="Change colour scheme">
+          <%= lucide_icon("palette", class: "w-4 h-4") %>
+        </button>
+      </div>
     </div>
 
-    <%# CENTER zone — logo. `order-1` puts it first on mobile (logo-left); at >=sm
-        the grid centres it in the middle column via `justify-self-center`. %>
-    <%= link_to root_path, class: "order-1 sm:order-none sm:justify-self-center flex items-center no-underline", aria: { label: "Hoojah" } do %>
-      <%= image_tag "logo.svg", alt: "Hoojah", class: "h-7 w-auto" %>
+    <%# CENTER zone — brand, centred at every width (grid `justify-self-center` at >=sm;
+        `justify-between` spreads it to the middle below sm). Two glyphs, one visible per
+        breakpoint: the compact "h" MARK below sm (where the full wordmark would crowd the
+        user menu + actions on the narrowest phones), the full wordmark from sm up. Both are
+        `h-7 w-auto` and share the same 0..28 vertical box, so the "h" lands at the exact
+        height the wordmark's own "h" would. The link's aria-label names the brand, so the
+        images stay decorative (empty alt) rather than announcing "Hoojah" twice. %>
+    <%= link_to root_path, class: "sm:justify-self-center flex items-center no-underline", aria: { label: "Hoojah" } do %>
+      <%= image_tag "logo-mark.svg", alt: "", class: "h-7 w-auto sm:hidden" %>
+      <%= image_tag "logo.svg", alt: "", class: "h-7 w-auto hidden sm:block" %>
     <% end %>
 
-    <%# RIGHT zone %>
-    <div class="order-3 sm:justify-self-end flex items-center gap-3">
+    <%# RIGHT zone — reads Login/Sign up · Trending · New Claim left-to-right. The auth
+        links (guest) and New Claim (signed-in) are mutually exclusive, so the row is
+        auth-links → Trending → New: a guest sees "Login  Sign up  🔥", a signed-in user
+        sees "🔥  New". %>
+    <div class="sm:justify-self-end flex items-center gap-3">
+      <% unless user_signed_in? %>
+        <%= link_to "Login", new_user_session_path, class: "text-sm text-primary no-underline" %>
+        <%= link_to "Sign up", new_user_registration_path, class: "text-sm text-grey no-underline" %>
+      <% end %>
+
       <%# Hoojah 2026: a filled icon-button box (bg-card-2, ~38px), not a bare icon link —
           see the note above about why every OTHER navbar entry stays a plain anchor;
           trending is the one exception the 2026 mockup gives a button treatment. %>
@@ -164,9 +180,6 @@
           <%= lucide_icon("message-square-plus", class: "w-6 h-6") %>
           <span class="hidden lg:inline ml-1 text-sm">New Claim</span>
         <% end %>
-      <% else %>
-        <%= link_to "Login", new_user_session_path, class: "text-sm text-primary no-underline" %>
-        <%= link_to "Sign up", new_user_registration_path, class: "text-sm text-grey no-underline" %>
       <% end %>
     </div>
   </div>
