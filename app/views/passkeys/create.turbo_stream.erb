@@ -1,0 +1,5 @@
+<%# Append the new passkey and clear the empty-state placeholder if present. %>
+<%= turbo_stream.remove "passkeys-empty" %>
+<%= turbo_stream.append "passkeys-list" do %>
+  <%= render partial: "passkeys/credential", locals: {credential: @credential} %>
+<% end %>

@@ -130,6 +130,20 @@ Rails.application.routes.draw do
   delete "/u/:username/block", to: "blocks#destroy", as: :unblock_user
   # Current user's blocked-users list (no username in the URL — always own list).
   get "/blocks", to: "blocks#index", as: :blocks
+  # Passkey (WebAuthn) management — owner-only by construction like /blocks, so no
+  # username in the URL. MAIN routes (CSRF on): a new HTML write surface belongs on
+  # a main route, never under Api::V1 where CSRF is null_session. Hand-written, no
+  # `resources`, one path per line.
+  #   index   — list my passkeys
+  #   options — POST: mint a creation challenge (stored in session), lazily assign webauthn_id
+  #   create  — POST: verify the attestation and persist the credential
+  #   update  — PATCH: rename a passkey
+  #   destroy — DELETE: remove a passkey
+  get "/settings/passkeys", to: "passkeys#index", as: :passkeys
+  post "/settings/passkeys/options", to: "passkeys#options", as: :passkey_registration_options
+  post "/settings/passkeys", to: "passkeys#create"
+  patch "/settings/passkeys/:id", to: "passkeys#update", as: :passkey
+  delete "/settings/passkeys/:id", to: "passkeys#destroy"
   # Moderator review queue + actions (2026 moderation). Staff-only via the headless
   # ModerationPolicy; own-list style (no id in the index URL — the queue is global,
   # not user-scoped). HTML/Turbo WRITE actions, so they live on MAIN routes (CSRF
