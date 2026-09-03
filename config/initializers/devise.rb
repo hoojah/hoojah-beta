@@ -287,6 +287,12 @@ Devise.setup do |config|
   #   warden_config.default_strategies(scope: :user).unshift :some_external_strategy
   # end
 
+  # Passkey login is an explicit, opt-in strategy (invoked by name in the sessions
+  # controller), so we register it but do NOT add it to default_strategies.
+  config.warden do |manager|
+    manager.strategies.add(:passkey, PasskeyStrategy)
+  end
+
   # ==> Mountable engine configurations
   # When using Devise inside an engine, let's call it `MyEngine`, and this engine
   # is mountable, there are some extra configurations to be taken into account.
