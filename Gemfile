@@ -23,6 +23,8 @@ gem "aws-sdk-s3", require: false
 # Google OAuth2 sign-in via Devise/OmniAuth
 gem "omniauth-google-oauth2", "~> 1.1"
 gem "omniauth-rails_csrf_protection", "~> 1.0"
+# WebAuthn / passkeys — server-side Relying Party for passwordless login.
+gem "webauthn", "~> 3.4"
 gem "jsonapi-serializer"
 gem "friendly_id", "~> 5.7"
 gem "rails_autolink"
