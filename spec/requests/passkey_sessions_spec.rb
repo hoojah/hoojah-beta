@@ -9,7 +9,7 @@ RSpec.describe "Passkey login", type: :request do
     opts = WebAuthn::Credential.options_for_create(
       user: {id: user.webauthn_id, name: user.email, display_name: user.full_name}
     )
-    raw = fake_client.create(challenge: opts.challenge)
+    raw = fake_client.create(challenge: opts.challenge, user_verified: true)
     created = WebAuthn::Credential.from_create(raw)
     created.verify(opts.challenge)
     user.webauthn_credentials.create!(
@@ -35,7 +35,7 @@ RSpec.describe "Passkey login", type: :request do
 
       post "/login/passkey/options"
       challenge = JSON.parse(response.body).fetch("challenge")
-      assertion = fake_client.get(challenge: challenge)
+      assertion = fake_client.get(challenge: challenge, user_verified: true)
 
       post "/login/passkey", params: {credential: assertion.to_json}
       expect(response).to have_http_status(:ok)
@@ -50,7 +50,37 @@ RSpec.describe "Passkey login", type: :request do
       register!(user)
       post "/login/passkey/options"
       # Wrong challenge → signature won't verify.
-      assertion = fake_client.get(challenge: WebAuthn.generate_user_id)
+      assertion = fake_client.get(challenge: WebAuthn.generate_user_id, user_verified: true)
+      post "/login/passkey", params: {credential: assertion.to_json}
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "rejects an assertion made without user verification (biometric/PIN)" do
+      user = create(:user, webauthn_id: WebAuthn.generate_user_id)
+      register!(user)
+      post "/login/passkey/options"
+      challenge = JSON.parse(response.body).fetch("challenge")
+      # user_verified: false is the FakeClient default — a presence-only assertion.
+      # The strategy enforces UV, so this must be rejected, not signed in.
+      assertion = fake_client.get(challenge: challenge, user_verified: false)
+      post "/login/passkey", params: {credential: assertion.to_json}
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "rejects a replayed assertion (single-use challenge)" do
+      user = create(:user, webauthn_id: WebAuthn.generate_user_id)
+      register!(user)
+      post "/login/passkey/options"
+      challenge = JSON.parse(response.body).fetch("challenge")
+      assertion = fake_client.get(challenge: challenge, user_verified: true)
+
+      # First use succeeds.
+      post "/login/passkey", params: {credential: assertion.to_json}
+      expect(response).to have_http_status(:ok)
+
+      # Replaying the identical assertion in a fresh session fails: the challenge was
+      # read-and-deleted, so there is nothing to verify against → 401.
+      reset!
       post "/login/passkey", params: {credential: assertion.to_json}
       expect(response).to have_http_status(:unauthorized)
     end

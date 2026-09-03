@@ -18,6 +18,14 @@ RSpec.describe "Passkey management", type: :request do
       expect(response.body).to include("My laptop")
       expect(response.body).not_to include("Someone else")
     end
+
+    it "renders the passkeys-empty element when the user has none" do
+      # Couples index to create.turbo_stream.erb, which removes this exact id. If a
+      # rename drifts the id, this fails instead of the stream silently no-op-ing.
+      get "/settings/passkeys"
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('id="passkeys-empty"')
+    end
   end
 
   describe "POST /settings/passkeys/options" do
@@ -35,7 +43,7 @@ RSpec.describe "Passkey management", type: :request do
     it "verifies the attestation and stores the credential" do
       post "/settings/passkeys/options" # seeds session challenge + webauthn_id
       challenge = JSON.parse(response.body).fetch("challenge")
-      raw = fake_client.create(challenge: challenge)
+      raw = fake_client.create(challenge: challenge, user_verified: true)
 
       expect {
         post "/settings/passkeys",
@@ -51,13 +59,40 @@ RSpec.describe "Passkey management", type: :request do
       post "/settings/passkeys/options"
       # A valid-but-unrelated challenge: the attestation won't match the one the
       # options endpoint stored in the session, so verification fails.
-      raw = fake_client.create(challenge: WebAuthn.generate_user_id)
+      raw = fake_client.create(challenge: WebAuthn.generate_user_id, user_verified: true)
       expect {
         post "/settings/passkeys",
           params: {passkey: {credential: raw, nickname: "Laptop"}}.to_json,
           headers: {"CONTENT_TYPE" => "application/json"}
       }.not_to change(WebauthnCredential, :count)
       expect(response).to redirect_to("/settings/passkeys")
+    end
+
+    it "does not store a credential enrolled without user verification" do
+      post "/settings/passkeys/options"
+      challenge = JSON.parse(response.body).fetch("challenge")
+      # user_verified: false (the FakeClient default) → the UV flag is absent, so
+      # create's verify(user_verification: true) rejects it: no credential persisted.
+      raw = fake_client.create(challenge: challenge, user_verified: false)
+      expect {
+        post "/settings/passkeys",
+          params: {passkey: {credential: raw, nickname: "Laptop"}}.to_json,
+          headers: {"CONTENT_TYPE" => "application/json"}
+      }.not_to change(WebauthnCredential, :count)
+      expect(response).to redirect_to("/settings/passkeys")
+    end
+
+    it "redirects (no 500) on a structurally-malformed credential" do
+      post "/settings/passkeys/options"
+      # "{}" survives JSON transport but blows up inside from_create/verify. The local
+      # rescue around the untrusted parse must redirect with an alert, not 500.
+      expect {
+        post "/settings/passkeys",
+          params: {passkey: {credential: {}, nickname: "Laptop"}}.to_json,
+          headers: {"CONTENT_TYPE" => "application/json"}
+      }.not_to change(WebauthnCredential, :count)
+      expect(response).to redirect_to("/settings/passkeys")
+      expect(flash[:alert]).to be_present
     end
   end
 

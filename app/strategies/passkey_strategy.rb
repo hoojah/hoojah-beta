@@ -26,12 +26,20 @@ class PasskeyStrategy < Warden::Strategies::Base
     webauthn_credential.verify(
       challenge,
       public_key: stored.public_key,
-      sign_count: stored.sign_count
+      sign_count: stored.sign_count,
+      user_verification: true
     )
 
     stored.update!(sign_count: webauthn_credential.sign_count, last_used_at: Time.current)
     success!(stored.user)
-  rescue WebAuthn::Error, JSON::ParserError
+  rescue => e
+    # Fail CLOSED on any exception, not just WebAuthn::Error/JSON::ParserError:
+    # adversarial input reaches JSON.parse / from_get / verify and can raise
+    # NoMethodError, TypeError, ArgumentError (bad base64), CBOR::MalformedFormatError,
+    # etc. In an auth strategy any exception must mean "not authenticated"; the only
+    # post-verify side effect is the sign_count bump, where a 401 beats a 500. Log the
+    # class so genuine bugs stay visible.
+    Rails.logger.warn("[passkey] auth failed: #{e.class}")
     fail!("Passkey verification failed")
   end
 end
