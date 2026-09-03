@@ -25,6 +25,38 @@ them.
 Next up: **Project 3 (Hotwire Native)** — not started. (Slice 11, below, closed the last
 `Api::V1` security items that were meant to be frozen before native clients consume the API.)
 
+## Passkey / WebAuthn login — DONE ✅ (branch `passkey-webauthn-login`, not merged)
+
+_2026-09-03. Passwordless login via WebAuthn/FIDO2 passkeys (Face ID / fingerprint / security key),
+usernameless (discoverable) sign-in alongside the existing password login — password login always
+remains available (no lockout). Spec: `docs/superpowers/specs/2026-09-03-passkey-webauthn-login-design.md`;
+plan: `docs/superpowers/plans/2026-09-03-passkey-webauthn-login.md`._
+
+- `webauthn` gem `~> 3.4`. New `PasskeyStrategy` Warden strategy — registered but invoked
+  **explicitly by name**, not wired in as a default strategy, so the existing password Warden flow
+  is untouched.
+- `PasskeysController` at `/settings/passkeys` (index/options/create/update/destroy) — owner-only,
+  enforced via Pundit and every lookup scoped through `current_user`.
+- `Users::SessionsController` override adds `/login/passkey/options` (unauthenticated challenge
+  mint) + `/login/passkey` (assertion verify → sign-in).
+- `@github/webauthn-json` 0.5.7 vendored via importmap — no Node/build step, consistent with the
+  rest of the JS stack.
+- Login screen gains a "Sign in with a passkey" option (usernameless/discoverable), hidden
+  client-side when the browser lacks WebAuthn support; password and Google login are unchanged.
+
+**Deferred (this feature):**
+- Rate-limit both challenge-minting endpoints (`/login/passkey/options` and
+  `/settings/passkeys/options`) via Rack::Attack — tracked as an OPEN item in SECURITY-FINDINGS.
+- The end-to-end system spec (`spec/system/passkey_login_spec.rb`) is **skipped/pending**.
+  Revivable unchanged once (a) CDP virtual-authenticator user-verification stabilizes on
+  Chrome/Cuprite, AND (b) the pre-existing Devise 5.0.4/Warden `serialize_from_session` arity bug
+  (documented in `spec/support/devise.rb`) is resolved.
+- Optional `userHandle` cross-check in `PasskeyStrategy` (defense-in-depth).
+- Restore the empty-state placeholder after deleting the last passkey on `/settings/passkeys`.
+- `WEBAUTHN_ORIGIN` must be set in production — the initializer falls back to localhost otherwise;
+  consider a prod fail-fast.
+- **Not pushed.** Branch `passkey-webauthn-login` off `master`. Merge when ready.
+
 ## Editable Hujah — DONE ✅ (branch `editable-hujah`, not merged)
 
 _2026-09-03. Three independent slices letting an author edit their hujah. Spec:

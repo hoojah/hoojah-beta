@@ -70,6 +70,14 @@ the [README](../README.md); for full project status / history and the deferred b
   read endpoints all gate a private author; and you can't reply to a private parent you can't
   see. Flipping back to public **auto-accepts** all pending requests.
 
+- **Login** — password login (plus Google OAuth) with an optional **passkey** sign-in: "Sign in
+  with a passkey" (WebAuthn/FIDO2, usernameless/discoverable — Face ID, fingerprint, or a security
+  key), hidden when the browser lacks WebAuthn support. Password login is unchanged and always
+  available (no lockout).
+- **Manage passkeys** — an owner-only `/settings/passkeys`, linked from the account edit page
+  (`/edit`): lists your passkeys (nickname, added date, last-used), add a passkey with an optional
+  name, rename, and delete (with a confirm).
+
 Modals use native `<dialog>` plus a custom `close_dialog` Turbo Stream action.
 
 ## Privacy — secret ballot

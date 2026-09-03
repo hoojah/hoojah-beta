@@ -27,14 +27,20 @@ All above are production/tooling only; test+dev suite stays green (24/0/2).
 
 ## ⚠️ OPEN — the whole of it
 
-**One item open.** `2a`, the four Slice-11 low follow-ups (`vote?-block`, `notif-param-500`,
+**Two items open.** `2a`, the four Slice-11 low follow-ups (`vote?-block`, `notif-param-500`,
 `A7 counts`, `username-uniq-index`), and `verdict-k` are all **closed** (2026-08-26) — see the two
-"Closed" passes below. The **only** remaining open item is the deploy-gated master-key item. Read
-this table and stop.
+"Closed" passes below. The remaining open items are the deploy-gated master-key item and the
+passkey challenge-throttle gap below. Read this table and stop.
 
 | ID | Severity | Issue | Where it lands | State |
 |----|----------|-------|----------------|-------|
 | L4 | Low | `config.require_master_key` commented out in `production.rb:19` | Deploy track, **not a slice** | Open by design. Gated on the deploy providing `RAILS_MASTER_KEY`, not on any code change here. Enabling it before the key exists turns a boot into a crash. |
+| L5 | Low | Unauthenticated challenge minting is unthrottled — `POST /login/passkey/options` (and the authenticated `/settings/passkeys/options`) can be called repeatedly to mint WebAuthn challenges / grow session state | `passkey-webauthn-login` branch, not merged | Open by design. Rate-limiting was explicitly deferred in the design spec (`docs/superpowers/specs/2026-09-03-passkey-webauthn-login-design.md`). Follow-up: a Rack::Attack throttle on both endpoints. |
+
+**Passkey hardening nice-to-haves (not scheduled).** Two further defense-in-depth items from the
+same design spec, neither blocking: (1) an optional `userHandle` cross-check inside
+`PasskeyStrategy`; (2) a production fail-fast when `WEBAUTHN_ORIGIN` is unset — the initializer
+currently falls back to `localhost`.
 
 **Accepted residual risk (not a scheduled item).** The 2a k-anonymity rule is a pure count
 threshold. Because replying requires a prior vote and a child hoojah publicly carries its author's
