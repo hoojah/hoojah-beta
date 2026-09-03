@@ -27,6 +27,12 @@ RSpec.describe WebauthnCredential do
     expect(other_owner_ok).to be_valid
   end
 
+  it "rejects a negative sign_count (clone-detection guard)" do
+    credential = build(:webauthn_credential, sign_count: -1)
+    expect(credential).not_to be_valid
+    expect(credential.errors[:sign_count]).to be_present
+  end
+
   it "is destroyed when its user is destroyed" do
     credential = create(:webauthn_credential)
     expect { credential.user.destroy }.to change(described_class, :count).by(-1)

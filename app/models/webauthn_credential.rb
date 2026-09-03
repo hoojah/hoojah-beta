@@ -3,6 +3,7 @@ class WebauthnCredential < ApplicationRecord
 
   validates :external_id, presence: true, uniqueness: true
   validates :public_key, presence: true
+  # Case-sensitive on purpose: "Laptop" and "laptop" are distinct labels a user may keep.
   validates :nickname, presence: true, uniqueness: {scope: :user_id}
   validates :sign_count,
     presence: true,
