@@ -21,10 +21,22 @@ Rails.application.routes.draw do
   devise_for :users,
     controllers: {
       registrations: "users/registrations",
+      sessions: "users/sessions",
       omniauth_callbacks: "users/omniauth_callbacks"
     },
     path: "",
     path_names: {sign_in: "login", sign_out: "logout", sign_up: "signup"}
+
+  # Passkey (usernameless) login. Two POSTs, both inside devise_scope so path
+  # helpers resolve to the :user mapping:
+  #   passkey_options — mint an authentication challenge (stored in session)
+  #   passkey_session — verify the assertion via the Warden :passkey strategy
+  # These are MAIN routes (CSRF on). The verify endpoint receives the assertion
+  # form-encoded (see PasskeyStrategy for why it can't be JSON).
+  devise_scope :user do
+    post "/login/passkey/options", to: "users/sessions#passkey_options", as: :passkey_options
+    post "/login/passkey", to: "users/sessions#passkey", as: :passkey_session
+  end
 
   namespace :api do
     namespace :v1 do

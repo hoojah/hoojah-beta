@@ -41,7 +41,14 @@ RSpec.describe PasskeyStrategy, type: :request do
   end
 
   it "fails closed when the credential is unknown" do
-    create(:user, webauthn_id: WebAuthn.generate_user_id) # no credential stored
+    create(:user, webauthn_id: WebAuthn.generate_user_id)
+    # Register a credential in the fake authenticator ONLY (never in our DB), so it
+    # can produce a well-formed assertion whose external_id the strategy can't resolve.
+    create_options = WebAuthn::Credential.options_for_create(
+      user: {id: WebAuthn.generate_user_id, name: "ghost@example.com", display_name: "Ghost"}
+    )
+    fake_client.create(challenge: create_options.challenge)
+
     challenge = fetch_login_challenge
     assertion = fake_client.get(challenge: challenge)
     post "/login/passkey", params: {credential: assertion.to_json}
