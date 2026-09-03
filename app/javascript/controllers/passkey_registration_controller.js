@@ -17,6 +17,12 @@ export default class extends Controller {
 
   async add(event) {
     event.preventDefault()
+    // Guard against double-invocation: a second click mid-ceremony would fire a
+    // competing navigator.credentials.create() call.
+    if (this.inFlight) return
+    this.inFlight = true
+    const trigger = event.currentTarget
+    if (trigger) trigger.disabled = true
     this.clearError()
     try {
       const options = await this.postForOptions("/settings/passkeys/options")
@@ -37,6 +43,9 @@ export default class extends Controller {
       if (this.hasNicknameTarget) this.nicknameTarget.value = ""
     } catch (_e) {
       this.showError("We couldn't add that passkey. Please try again.")
+    } finally {
+      this.inFlight = false
+      if (trigger) trigger.disabled = false
     }
   }
 

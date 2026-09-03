@@ -14,6 +14,12 @@ export default class extends Controller {
 
   async authenticate(event) {
     event.preventDefault()
+    // Guard against double-invocation: a second click while the first ceremony is
+    // in flight would start a competing navigator.credentials.get() call.
+    if (this.inFlight) return
+    this.inFlight = true
+    const trigger = event.currentTarget
+    if (trigger) trigger.disabled = true
     this.clearError()
     try {
       const options = await this.postForOptions("/login/passkey/options")
@@ -29,8 +35,14 @@ export default class extends Controller {
       if (!response.ok) throw new Error("verify failed")
       const data = await response.json()
       window.location = data.redirect
-    } catch (_e) {
+    } catch (e) {
+      // The user dismissing the OS passkey sheet raises NotAllowedError — that's a
+      // deliberate cancel, not a failure, so stay silent rather than crying wolf.
+      if (e?.name === "NotAllowedError") return
       this.showError("We couldn't verify that passkey. Try again or use your password.")
+    } finally {
+      this.inFlight = false
+      if (trigger) trigger.disabled = false
     }
   }
 
