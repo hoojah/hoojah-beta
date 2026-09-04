@@ -1,72 +1,49 @@
-<%= render layout: "pages/legal_chrome", locals: {title: "Terms of Service", updated: "26 August 2026"} do %>
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">1. Acceptance of these terms</h2>
-    <p class="text-grey">These Terms of Service are an agreement between you and Hoojah governing your use of the Hoojah platform. By creating an account or using Hoojah, you accept these terms. If you do not agree to them, do not use the platform.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">2. Eligibility</h2>
-    <p class="text-grey">You must be at least 13 years old to use Hoojah. By creating an account you confirm that you meet this requirement and that you are able to enter into this agreement under the laws that apply to you.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">3. Your account</h2>
-    <p class="text-grey">You must provide accurate information when you register and keep it up to date. You are responsible for keeping your password confidential and for all activity that happens under your account. Tell us at <%= mail_to "hello@rudzainy.com", class: "text-primary" %> immediately if you believe your account has been accessed without your permission. One person, one account: do not create accounts for the purpose of evading blocks, bans, or vote limits.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">4. Acceptable use</h2>
-    <p class="text-grey">Hoojah exists for genuine, good-faith debate. You must not:</p>
-    <ul class="list-disc list-outside pl-5 mt-2 space-y-1 text-grey">
+<%= render layout: "pages/legal_chrome", locals: {title: "Terms of Service", updated: "26 August 2026", art: "terms", variant: :dividers} do %>
+  <%= render layout: "pages/section", locals: {heading: "1. Acceptance of these terms", variant: :dividers} do %>
+    <p>These Terms of Service are an agreement between you and Hoojah governing your use of the Hoojah platform. By creating an account or using Hoojah, you accept these terms. If you do not agree to them, do not use the platform.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "2. Eligibility", variant: :dividers} do %>
+    <p>You must be at least 13 years old to use Hoojah. By creating an account you confirm that you meet this requirement and that you are able to enter into this agreement under the laws that apply to you.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "3. Your account", variant: :dividers} do %>
+    <p>You must provide accurate information when you register and keep it up to date. You are responsible for keeping your password confidential and for all activity that happens under your account. Tell us at <%= mail_to "hello@rudzainy.com", class: "text-primary" %> immediately if you believe your account has been accessed without your permission. One person, one account: do not create accounts for the purpose of evading blocks, bans, or vote limits.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "4. Acceptable use", variant: :dividers} do %>
+    <p>Hoojah exists for genuine, good-faith debate. You must not:</p>
+    <ul class="list-disc list-outside pl-5 mt-2 space-y-1">
       <li>harass, threaten, or abuse other users, or encourage others to do so;</li>
       <li>post content that is illegal under Malaysian law or that infringes anyone's rights;</li>
-      <li>spam — including repetitive posting, vote manipulation, or unsolicited promotion;</li>
+      <li>spam, including repetitive posting, vote manipulation, or unsolicited promotion;</li>
       <li>impersonate any person or entity, or misrepresent your affiliation with anyone;</li>
       <li>circumvent a block, whether by using another account or any other means;</li>
-      <li>attempt to defeat vote privacy — probing, correlating, or otherwise trying to discover how any individual voted;</li>
+      <li>attempt to defeat vote privacy by probing, correlating, or otherwise trying to discover how any individual voted;</li>
       <li>scrape, harvest, or bulk-collect content or user data from the platform by automated means without our written permission;</li>
       <li>interfere with the operation or security of the platform.</li>
     </ul>
-    <p class="text-grey mt-2">We may remove content and restrict accounts that breach these rules.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">5. Your content and licence</h2>
-    <p class="text-grey">You own the content you post on Hoojah — your hoojahs, responses, debate turns, and profile content. By posting, you grant Hoojah a non-exclusive, worldwide, royalty-free licence to host, store, reproduce, and display that content as needed to operate and promote the platform, including showing it to other users according to your privacy settings. This licence ends for content you delete, except where it has already been shared with others through normal use of the platform or where retention is required by law. You are responsible for the content you post and must have the rights to post it.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">6. Debates and the spectator verdict</h2>
-    <p class="text-grey">Debates are a formal feature with their own etiquette. When you accept or issue a debate challenge, you agree to take your turns in good faith and within the structure of the rounds. Debates left idle for more than 7 days are automatically concluded. Debate outcomes are decided by spectator verdicts; verdicts reflect the opinions of the spectators who cast them, and Hoojah does not endorse the outcome of any debate. Attempting to manipulate verdicts — including through multiple accounts or coordinated inauthentic voting — is a breach of these terms.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">7. Moderation, suspension, and termination</h2>
-    <p class="text-grey">We may remove content, restrict features, suspend, or terminate accounts that breach these terms or that create risk or legal exposure for Hoojah or its users. Where practical we will tell you the reason. You may stop using Hoojah and delete your account at any time. Sections of these terms that by their nature should survive termination — including content licences for already-shared content, disclaimers, and limitation of liability — survive it.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">8. Disclaimers</h2>
-    <p class="text-grey">Hoojah is provided "as is" and "as available". We do not guarantee that the platform will be uninterrupted, error-free, or secure. Content on Hoojah is posted by users; the views expressed in hoojahs, responses, debates, and verdicts are those of their authors, and Hoojah does not endorse them or vouch for their accuracy.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">9. Limitation of liability</h2>
-    <p class="text-grey">To the fullest extent permitted by Malaysian law, Hoojah will not be liable for any indirect, incidental, special, or consequential loss, or for loss of profits, data, or goodwill, arising from your use of or inability to use the platform. Where liability cannot be excluded, it is limited to the maximum extent the law allows. Nothing in these terms excludes liability that cannot be excluded under applicable law.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">10. Governing law</h2>
-    <p class="text-grey">These terms are governed by the laws of Malaysia, and any dispute arising from them or from your use of Hoojah is subject to the exclusive jurisdiction of the courts of Malaysia.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">11. Changes to these terms</h2>
-    <p class="text-grey">We may revise these terms as the platform evolves. When we do, we will update the "Last updated" date above, and for material changes we will give notice on the platform. Continuing to use Hoojah after revised terms take effect means you accept them.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">12. Contact</h2>
-    <p class="text-grey">Questions about these terms: <%= mail_to "hello@rudzainy.com", class: "text-primary" %>.</p>
-  </section>
+    <p class="mt-2">We may remove content and restrict accounts that breach these rules.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "5. Your content and licence", variant: :dividers} do %>
+    <p>You own the content you post on Hoojah: your hoojahs, responses, debate turns, and profile content. By posting, you grant Hoojah a non-exclusive, worldwide, royalty-free licence to host, store, reproduce, and display that content as needed to operate and promote the platform, including showing it to other users according to your privacy settings. This licence ends for content you delete, except where it has already been shared with others through normal use of the platform or where retention is required by law. You are responsible for the content you post and must have the rights to post it.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "6. Debates and the spectator verdict", variant: :dividers} do %>
+    <p>Debates are a formal feature with their own etiquette. When you accept or issue a debate challenge, you agree to take your turns in good faith and within the structure of the rounds. Debates left idle for more than 7 days are automatically concluded. Debate outcomes are decided by spectator verdicts; verdicts reflect the opinions of the spectators who cast them, and Hoojah does not endorse the outcome of any debate. Attempting to manipulate verdicts (including through multiple accounts or coordinated inauthentic voting) is a breach of these terms.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "7. Moderation, suspension, and termination", variant: :dividers} do %>
+    <p>We may remove content, restrict features, suspend, or terminate accounts that breach these terms or that create risk or legal exposure for Hoojah or its users. Where practical we will tell you the reason. You may stop using Hoojah and delete your account at any time. Sections of these terms that by their nature should survive termination (including content licences for already-shared content, disclaimers, and limitation of liability) survive it.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "8. Disclaimers", variant: :dividers} do %>
+    <p>Hoojah is provided "as is" and "as available". We do not guarantee that the platform will be uninterrupted, error-free, or secure. Content on Hoojah is posted by users; the views expressed in hoojahs, responses, debates, and verdicts are those of their authors, and Hoojah does not endorse them or vouch for their accuracy.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "9. Limitation of liability", variant: :dividers} do %>
+    <p>To the fullest extent permitted by Malaysian law, Hoojah will not be liable for any indirect, incidental, special, or consequential loss, or for loss of profits, data, or goodwill, arising from your use of or inability to use the platform. Where liability cannot be excluded, it is limited to the maximum extent the law allows. Nothing in these terms excludes liability that cannot be excluded under applicable law.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "10. Governing law", variant: :dividers} do %>
+    <p>These terms are governed by the laws of Malaysia, and any dispute arising from them or from your use of Hoojah is subject to the exclusive jurisdiction of the courts of Malaysia.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "11. Changes to these terms", variant: :dividers} do %>
+    <p>We may revise these terms as the platform evolves. When we do, we will update the "Last updated" date above, and for material changes we will give notice on the platform. Continuing to use Hoojah after revised terms take effect means you accept them.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "12. Contact", variant: :dividers} do %>
+    <p>Questions about these terms: <%= mail_to "hello@rudzainy.com", class: "text-primary" %>.</p>
+  <% end %>
 <% end %>

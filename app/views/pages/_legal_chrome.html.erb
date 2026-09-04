@@ -1,16 +1,29 @@
-<%# Shared chrome for the public informational pages (FAQ / Privacy / Terms).
-    Same navbar + centred <main> as trending, wrapping a single design-system card.
-    Called as a LAYOUT partial (render layout: "pages/legal_chrome", locals: {title:,
-    updated:} do ... end) so the page body is captured and yielded inside the card.
-    `title:` becomes the h1; `updated:` fills the small "Last updated:" line. %>
+<%# Shared chrome for the public informational pages (About / Tutorials / FAQ / Privacy /
+    Terms). Centred single-column layout from the 2026 "Public Pages" redesign: the site
+    navbar, then a 576px column with an illustrated centred header (per-page art via
+    pages/_page_art), an eyebrow "Last updated <date>", the h1, an optional lede, the page's
+    sections (yielded), and a footer link row. Call as a LAYOUT partial:
+      render layout: "pages/legal_chrome",
+             locals: {title:, updated:, art:, variant:, lede: nil} do … sections … end
+    variant: :spots (About/Tutorials: 56px section spots, gap-10, no dividers) or
+             :dividers (FAQ/Privacy/Terms: single column, gap-7, hairline between sections). %>
 <%= render "shared/navbar" %>
 
-<main class="max-w-xl mx-auto px-4 py-6">
-  <%= render layout: "ui/card", locals: {as: "article", padded: true} do %>
-    <h1 class="text-2xl font-extrabold text-ink tracking-tight"><%= title %></h1>
-    <p class="mt-1 text-sm text-grey">Last updated: <%= updated %></p>
-    <div class="mt-4 space-y-4">
-      <%= yield %>
+<main class="max-w-xl mx-auto w-full px-6 pt-10">
+  <header class="pb-10 border-b border-hairline">
+    <div class="flex justify-center mb-8">
+      <%= render "pages/page_art", art: art %>
     </div>
-  <% end %>
+    <p class="mb-3 text-xs uppercase tracking-wide text-faint text-center">Last updated <%= updated %></p>
+    <h1 class="text-[32px] leading-[1.15] font-extrabold tracking-tight text-ink text-center text-balance"><%= title %></h1>
+    <% if local_assigns[:lede] %>
+      <p class="mt-5 mx-auto max-w-[480px] text-lg leading-snug text-ink-2 text-center text-pretty"><%= lede %></p>
+    <% end %>
+  </header>
+
+  <div class="flex flex-col <%= variant == :spots ? "gap-10" : "gap-7" %> pt-10">
+    <%= yield %>
+  </div>
+
+  <%= render "pages/public_footer", current: art %>
 </main>

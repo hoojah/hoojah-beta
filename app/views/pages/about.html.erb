@@ -1,20 +1,11 @@
-<%= render layout: "pages/legal_chrome", locals: {title: "About Hoojah", updated: "30 August 2026"} do %>
-  <section>
-    <p class="text-grey">Hoojah is a Malaysian social debate platform built around structured disagreement. Instead of an endless feed of opinions shouted past each other, Hoojah gives every claim a shape: you post it, others take a stance on it, and the strongest arguments can be settled in a proper one-on-one debate.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">What is Hoojah?</h2>
-    <p class="text-grey">Hoojah takes its name from the Malay word <em>hujah</em> — an argument you're prepared to defend. A hoojah is a claim you post for others to weigh in on. Once it's up, people can vote on it, respond to it with their own stance, or challenge an argument beneath it to a formal debate. Everything on the platform is organised around that single idea: making disagreement legible and productive rather than noisy.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">How it works</h2>
-    <p class="text-grey">Every hoojah can be voted on in three ways — agree, neutral, or disagree — and neutral is a real stance, not an abstention. Votes are a secret ballot: only the aggregate tallies are ever shown, and nobody can see how an individual voted. Readers add responses, each carrying its own stance tag, which thread into a tree of argument under the original claim. When two people want to settle a point directly, any argument can be escalated into a turn-based debate: a challenger and an opponent take alternating turns through opening, counter, response, and closing rounds while everyone else watches and, at the end, casts a verdict on who was more convincing.</p>
-  </section>
-
-  <section>
-    <h2 class="text-base font-semibold text-ink mb-1">Our mission</h2>
-    <p class="text-grey">We think online conversation is worse than it needs to be — not because people disagree, but because the tools give disagreement nowhere to go. Hoojah's goal is to make good-faith argument the default: to reward the person who makes the better case, to keep votes honest by keeping them anonymous, and to give a genuine debate a beginning, a middle, and an end. If you've ever wished a thread could actually resolve something, Hoojah is built for you.</p>
-  </section>
+<%= render layout: "pages/legal_chrome", locals: {title: "About Hoojah", updated: "30 August 2026", art: "about", variant: :spots, lede: "Hoojah is a Malaysian social debate platform built around structured disagreement. Instead of an endless feed of opinions shouted past each other, Hoojah gives every claim a shape: you post it, others take a stance on it, and the strongest arguments can be settled in a proper one-on-one debate."} do %>
+  <%= render layout: "pages/section", locals: {heading: "What is Hoojah?", variant: :spots, spot: "claim"} do %>
+    <p>Hoojah takes its name from the Malay word <em>hujah</em>, meaning an argument you're prepared to defend. A hoojah is a claim you post for others to weigh in on. Once it's up, people can vote on it, respond to it with their own stance, or challenge an argument beneath it to a formal debate. Everything on the platform is organised around that single idea: making disagreement legible and productive rather than noisy.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "How it works", variant: :spots, spot: "votes"} do %>
+    <p>Every hoojah can be voted on in three ways (agree, neutral, or disagree), and neutral is a real stance, not an abstention. Votes are a secret ballot: only the aggregate tallies are ever shown, and nobody can see how an individual voted. Readers add responses, each carrying its own stance tag, which thread into a tree of argument under the original claim. When two people want to settle a point directly, any argument can be escalated into a turn-based debate: a challenger and an opponent take alternating turns through opening, counter, response, and closing rounds while everyone else watches and, at the end, casts a verdict on who was more convincing.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "Our mission", variant: :spots, spot: "mission"} do %>
+    <p>We think online conversation is worse than it needs to be, not because people disagree but because the tools give disagreement nowhere to go. Hoojah's goal is to make good-faith argument the default: to reward the person who makes the better case, to keep votes honest by keeping them anonymous, and to give a genuine debate a beginning, a middle, and an end. If you've ever wished a thread could actually resolve something, Hoojah is built for you.</p>
+  <% end %>
 <% end %>
