@@ -183,12 +183,13 @@ RSpec.describe "debates/_verdict", type: :view do
       out = html(d)
       p = Capybara.string(out)
 
-      expect(out).to include('data-controller="share"')
+      expect(p).to have_css('details[data-controller~="share"]')
       # Issue #31 follow-up: the debate share URL now routes through the short link
       # (/s/:code) created by ShortLink.for(debate), mirroring hujahs/_share_menu —
       # not the raw debate_url. The data-share-url-value and the intent links both
-      # inherit that short URL.
-      share_url = p.find('[data-controller="share"]')["data-share-url-value"]
+      # inherit that short URL. (~= word-match: the details also carries the `dropdown`
+      # controller for outside-click dismissal.)
+      share_url = p.find('details[data-controller~="share"]')["data-share-url-value"]
       expect(share_url).to match(%r{/s/[A-Za-z0-9]{7}\z})
       expect(out).not_to include(debate_url(d.slug))
     end
