@@ -496,4 +496,11 @@ dialog[data-dialog-target="dialog"][open]::backdrop {
 @layer base {
   body { font-family: var(--font-sans); color: var(--fg-body); background: var(--surface-page); margin: 0; }
   a { color: var(--fg-link); text-decoration: none; }
+  /* Controls are not prose — text inside a button (label, count, the vote-hero
+     stance labels) should never be selectable or highlight-drag. Covers every
+     native <button> uniformly, including the hand-written vote-hero/_vote_bars
+     buttons that don't go through ds_button_classes; the helper's BASE adds the
+     same `select-none` for the <a>-styled pill buttons a bare `button` selector
+     can't reach. `[type="submit"]`/`[type="button"]` catch the <input> variants. */
+  button, [type="button"], [type="submit"], [type="reset"] { user-select: none; -webkit-user-select: none; }
 }
