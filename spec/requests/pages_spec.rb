@@ -21,7 +21,7 @@ RSpec.describe "Pages", type: :request do
         get path
         expect(response).to have_http_status(:ok)
         expect(response.body).to include(expected[:heading])
-        expect(response.body).to include("Last updated:")
+        expect(response.body).to include("Last updated ")
         expect(response.body).to include(expected[:marker])
       end
 
@@ -30,8 +30,13 @@ RSpec.describe "Pages", type: :request do
         get path
         expect(response).to have_http_status(:ok)
         expect(response.body).to include(expected[:heading])
-        expect(response.body).to include("Last updated:")
+        expect(response.body).to include("Last updated ")
         expect(response.body).to include(expected[:marker])
+      end
+
+      it "contains no em-dashes (copy policy)" do
+        get path
+        expect(response.body).not_to include("—")
       end
     end
   end
