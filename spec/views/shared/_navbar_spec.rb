@@ -58,11 +58,12 @@ RSpec.describe "shared/_navbar", type: :view do
     end
 
     it "places the avatar menu to the LEFT of the theme/scheme toggles" do
-      # The left zone is a flex row; CSS `order` renders the user dropdown (order-1)
-      # before the theme pill (order-2), so the avatar reads to the left of the
-      # light/dark + scheme toggles whenever it is shown (signed in).
-      expect(navbar).to have_css("details.order-1")
-      expect(navbar).to have_css("[data-controller='theme'].order-2")
+      # The left zone is a flex row with no `order-*` overrides — DOM order IS the visual
+      # order (see the navbar comment). The user dropdown is emitted before the theme/scheme
+      # pill, so the avatar reads to the left of the light/dark + scheme toggles when signed
+      # in. Assert that sibling order rather than the `order-*` classes the navbar dropped.
+      expect(navbar).to have_css("details[data-controller~='dropdown'] ~ [data-controller='theme']")
+      expect(navbar).to have_no_css("[data-controller='theme'] ~ details")
     end
 
     it "contains the bar to the body width and opens the avatar menu rightward" do
