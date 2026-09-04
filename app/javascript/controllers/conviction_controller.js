@@ -6,7 +6,12 @@ import { Controller } from "@hotwired/stimulus"
 // a COUNTDOWN (`countdown` ms) showing 5→1, one digit per second; holding to the end
 // commits conviction=1 (locked forever). Releasing OR leaving the button after the charge
 // has engaged (past the tap threshold, before the lock) CANCELS with no vote at all.
-// With JS off, each stance <form> is an ordinary POST casting a normal vote.
+//
+// The stance buttons are real <submit>s so the forms POST a normal vote with JS off. With
+// JS ON the controller is the SOLE submit path for pointer gestures (via requestSubmit):
+// `suppressClick` cancels the native pointer-driven click so a mid-hold release can't slip
+// a normal vote through the button's default submission. Keyboard activation (a click with
+// detail === 0) is left to submit natively — the accessible normal-vote path.
 //
 // ONE controller on the vote-hero wrapper, THREE <form>s inside (one per stance). The
 // shared ring/overlay targets live on the wrapper; the per-form conviction hidden field
@@ -24,7 +29,8 @@ export default class extends Controller {
   get totalMs() { return this.armDelayValue + this.countdownValue }
 
   start(event) {
-    if (this.lockedValue) return
+    if (this.lockedValue || this.charging) return // ignore re-entry (e.g. a second finger)
+    this.charging = true
     this.form = event.currentTarget.closest("form")
     this.held = false
     this.t0 = performance.now()
@@ -58,12 +64,23 @@ export default class extends Controller {
 
   leave() { if (!this.held) this.cancelCharge() } // pointer left the button -> cancel, no vote
 
+  // Cancel the native, pointer-driven click so the button's default form submission can't
+  // cast a normal vote on a mid-hold release (or duplicate the conviction submit). Keyboard
+  // clicks (detail === 0) are allowed through as the accessible normal-vote path.
+  suppressClick(event) { if (event.detail !== 0) event.preventDefault() }
+
   cancelCharge() {
+    this.charging = false
     clearTimeout(this.timer)
     cancelAnimationFrame(this.raf)
     if (this.hasOverlayTarget) this.overlayTarget.hidden = true
     if (this.hasRingTarget) this.ringTarget.style.setProperty("--charge", 0)
     if (this.hasChargeNumTarget) this.chargeNumTarget.textContent = ""
+  }
+
+  disconnect() {
+    clearTimeout(this.timer)
+    cancelAnimationFrame(this.raf)
   }
 
   noMenu(event) { event.preventDefault() } // suppress the long-press context menu
@@ -82,6 +99,7 @@ export default class extends Controller {
   }
 
   commit(conviction) {
+    this.charging = false
     clearTimeout(this.timer)
     cancelAnimationFrame(this.raf)
     if (!this.form) return

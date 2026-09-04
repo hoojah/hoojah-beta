@@ -56,7 +56,7 @@
           <button type="submit"
                   data-stance="<%= stance %>"
                   data-charge-color="var(--<%= stance %>)"
-                  data-action="pointerdown->conviction#start pointerup->conviction#end pointerleave->conviction#leave contextmenu->conviction#noMenu"
+                  data-action="pointerdown->conviction#start pointerup->conviction#end pointerleave->conviction#leave contextmenu->conviction#noMenu click->conviction#suppressClick"
                   aria-label="<%= stance_display_label(hujah, choice) %>"
                   class="relative h-[104px] rounded-[20px] border-2 border-<%= stance %> <%= voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card" %> flex flex-col items-center justify-center gap-2 cursor-pointer transition active:scale-95 overflow-hidden"
                   style="touch-action:none;">
@@ -127,7 +127,7 @@
         <span data-conviction-target="chargeLabel" class="text-xs font-bold uppercase tracking-wide text-agree mt-1">charging</span>
       </div>
     </div>
-    <div class="text-xs text-ink-2 font-semibold">Release to cancel · reaches 0 to lock it in</div>
+    <div class="text-xs text-ink-2 font-semibold">Release to cancel · keep holding to lock it in</div>
   </div>
 
   <%# BOOM overlay — the conviction celebration burst (mockup lines ~123-136). Kept
