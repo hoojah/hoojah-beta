@@ -7,6 +7,12 @@ import { Controller } from "@hotwired/stimulus"
 // commits conviction=1 (locked forever). Releasing OR leaving the button after the charge
 // has engaged (past the tap threshold, before the lock) CANCELS with no vote at all.
 //
+// The CHARGE overlay is NOT swapped in on pointerdown — it stays hidden for `swapDelay`
+// ms (< armDelay) so a tap/click to vote isn't disturbed by the overlay flashing in and
+// straight back out. The 2s arm-before-countdown budget is unchanged: the overlay just
+// appears partway into the silent arm phase (default 1s in), still empty ring, and the
+// 5→1 countdown starts at armDelay as before.
+//
 // The stance buttons are real <submit>s so the forms POST a normal vote with JS off. With
 // JS ON the controller is the SOLE submit path for pointer gestures (via requestSubmit):
 // `suppressClick` cancels the native pointer-driven click so a mid-hold release can't slip
@@ -22,6 +28,7 @@ export default class extends Controller {
   static values = {
     armDelay: { type: Number, default: 2000 },
     countdown: { type: Number, default: 5000 },
+    swapDelay: { type: Number, default: 1000 },
     tap: { type: Number, default: 200 },
     locked: Boolean
   }
@@ -39,7 +46,12 @@ export default class extends Controller {
     if (this.hasChargeNumTarget) this.chargeNumTarget.textContent = ""
     this.raf = requestAnimationFrame(this.tick.bind(this))
     this.timer = setTimeout(() => { this.held = true; this.commit(true) }, this.totalMs)
-    if (this.hasOverlayTarget) this.overlayTarget.hidden = false
+    // Defer the overlay swap so a quick tap/click to vote never flashes it. A tap
+    // (released well before swapDelay) cancels the swapTimer in cancelCharge/commit,
+    // so the widget stays put; only a genuine hold reveals the charge ring.
+    if (this.hasOverlayTarget) {
+      this.swapTimer = setTimeout(() => { this.overlayTarget.hidden = false }, this.swapDelayValue)
+    }
   }
 
   tick(now) {
@@ -72,6 +84,7 @@ export default class extends Controller {
   cancelCharge() {
     this.charging = false
     clearTimeout(this.timer)
+    clearTimeout(this.swapTimer)
     cancelAnimationFrame(this.raf)
     if (this.hasOverlayTarget) this.overlayTarget.hidden = true
     if (this.hasRingTarget) this.ringTarget.style.setProperty("--charge", 0)
@@ -80,6 +93,7 @@ export default class extends Controller {
 
   disconnect() {
     clearTimeout(this.timer)
+    clearTimeout(this.swapTimer)
     cancelAnimationFrame(this.raf)
   }
 
@@ -101,6 +115,7 @@ export default class extends Controller {
   commit(conviction) {
     this.charging = false
     clearTimeout(this.timer)
+    clearTimeout(this.swapTimer)
     cancelAnimationFrame(this.raf)
     if (!this.form) return
     // Per-form hidden field (three forms under one controller — one per stance — so

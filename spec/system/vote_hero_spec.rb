@@ -38,6 +38,40 @@ RSpec.describe "Vote hero", type: :system, js: true do
     expect(h.votes.last.conviction).to be true
   end
 
+  it "keeps the charge overlay hidden until the hold outlasts the swap delay" do
+    login_as_system(create(:user))
+    h = create(:hujah)
+    visit hujah_path(h.slug)
+    find('[data-stance="agree"]') # ensure the hero rendered
+    # arm=600ms, countdown=600ms (commit at 1200ms), tap=40ms, swap=300ms. The overlay
+    # must stay hidden through the first 300ms (so a tap/click to vote never flashes it)
+    # and only then swap in — comfortably before the 1200ms conviction commit.
+    page.execute_script(<<~JS)
+      const el = document.querySelector("[data-controller='conviction']")
+      el.setAttribute('data-conviction-arm-delay-value', '600')
+      el.setAttribute('data-conviction-countdown-value', '600')
+      el.setAttribute('data-conviction-tap-value', '40')
+      el.setAttribute('data-conviction-swap-delay-value', '300')
+    JS
+
+    el = find('[data-stance="agree"]')
+    rect = page.evaluate_script(<<~JS, el)
+      (function (node) {
+        const r = node.getBoundingClientRect()
+        return {x: r.x, y: r.y, width: r.width, height: r.height}
+      })(arguments[0])
+    JS
+    mouse = page.driver.browser.mouse
+    mouse.move(x: rect["x"] + rect["width"] / 2, y: rect["y"] + rect["height"] / 2)
+    mouse.down
+    # Right after pointerdown the overlay is still hidden — a quick release here would be a
+    # clean tap-to-vote with no overlay flicker.
+    expect(page).to have_css("[data-conviction-target='overlay'][hidden]", visible: :all)
+    # Once the hold outlasts the swap delay the overlay swaps in (still before commit).
+    expect(page).to have_css("[data-conviction-target='overlay']:not([hidden])", visible: :all)
+    mouse.up
+  end
+
   it "releasing mid-hold casts no vote (not even a normal one)" do
     login_as_system(create(:user))
     h = create(:hujah)
