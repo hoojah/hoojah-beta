@@ -250,6 +250,23 @@ git add spec/system/vote_hero_spec.rb
 git commit -m "Vote hero specs: fast timing, add release-cancels-no-vote case"
 ```
 
+### Task A4 (review correction): suppress the native click
+
+Review found a design bug in A1–A3: the stance buttons are `type="submit"`, so a pointer
+*release* fires a trusted native `click` → the form's default submission casts a NORMAL vote,
+defeating "release = cancel". Synthetic-PointerEvent specs can't see it (untrusted events don't
+trigger native submit). Fix:
+- Controller gains `suppressClick(event) { if (event.detail !== 0) event.preventDefault() }`,
+  wired via `click->conviction#suppressClick` on the button, making the controller the sole
+  submit path for pointer gestures (`requestSubmit`) while leaving keyboard clicks
+  (`detail === 0`) to submit natively (accessible normal-vote path, JS-off unchanged).
+- Also: re-entry guard (`this.charging`) so a second finger can't leak a timer; `disconnect()`
+  clears timer/RAF; overlay hint copy changed from "reaches 0 to lock it in" to "keep holding
+  to lock it in" (the digit counts 5→1, never 0).
+- `spec/support/pointer_helpers.rb` switches to a TRUSTED CDP-mouse `press_hold_release` helper
+  (fires the native click on release); `vote_hero_spec.rb`'s hold cases use it, and the
+  mid-hold case asserts **no vote at all**. Committed as one commit on top of A1–A3.
+
 ---
 
 ## TRACK B — Dismissible dropdowns everywhere
