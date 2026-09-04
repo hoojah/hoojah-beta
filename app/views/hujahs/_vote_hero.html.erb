@@ -32,7 +32,9 @@
 <div id="<%= dom_id(hujah, :vote_hero) %>"
      data-controller="conviction"
      data-conviction-locked-value="<%= current_vote_locked %>"
-     data-conviction-duration-value="900"
+     data-conviction-arm-delay-value="2000"
+     data-conviction-countdown-value="5000"
+     data-conviction-tap-value="200"
      class="relative overflow-hidden bg-card shadow-lg rounded-3xl mx-1 my-3 p-4">
 
   <div class="flex items-center justify-between mb-3">
@@ -109,7 +111,8 @@
   </div>
 
   <%# CHARGE overlay — driven by conviction_controller (--charge 0->1 fills the ring;
-      chargeNum counts 3->0). Hidden until a hold starts. %>
+      chargeNum stays blank for a 2s arm, then counts 5->1 (1s each)). Hidden until a
+      hold starts. %>
   <div data-conviction-target="overlay" hidden
        class="absolute inset-0 bg-card flex flex-col items-center justify-center gap-3.5 z-20 pointer-events-none">
     <div class="relative w-[172px] h-[172px] flex items-center justify-center">
@@ -120,7 +123,7 @@
                 style="--charge:0; stroke: var(--charge-color, var(--agree)); stroke-dashoffset: calc(478 * (1 - var(--charge, 0)));"></circle>
       </svg>
       <div class="flex flex-col items-center" style="animation:hbreathe 1s ease-in-out infinite;">
-        <span data-conviction-target="chargeNum" class="text-6xl font-black leading-none text-agree tabular-nums">3</span>
+        <span data-conviction-target="chargeNum" class="text-6xl font-black leading-none text-agree tabular-nums">5</span>
         <span data-conviction-target="chargeLabel" class="text-xs font-bold uppercase tracking-wide text-agree mt-1">charging</span>
       </div>
     </div>
