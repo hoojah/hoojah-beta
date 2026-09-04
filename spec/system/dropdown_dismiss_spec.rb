@@ -35,4 +35,27 @@ RSpec.describe "Dropdown dismissal", type: :system, js: true do
     find("h1.hujah-body").click
     expect(page).to have_no_css("details[data-controller='dropdown'][open]")
   end
+
+  it "closes the navbar user menu when tapping outside it" do
+    login_as_system(author)
+    visit "/"
+
+    find("details[data-controller='dropdown'] > summary", match: :first).click
+    expect(page).to have_css("nav details[data-controller='dropdown'][open]")
+
+    find("body").click
+    expect(page).to have_no_css("nav details[data-controller='dropdown'][open]")
+  end
+
+  it "closes a feed card menu when tapping outside it" do
+    login_as_system(author)
+    create(:hujah, user: author, body: "Feed card with a menu")
+    visit "/"
+
+    find("summary[aria-label='More options']", match: :first).click
+    expect(page).to have_css("details[data-controller~='dropdown'][open]")
+
+    find("body").click
+    expect(page).to have_no_css("details[data-controller~='dropdown'][open]")
+  end
 end
