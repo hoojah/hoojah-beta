@@ -1,0 +1,64 @@
+<%# Per-page hero illustration for the public informational pages. Lucide-style inline SVG
+    stroked with theme tokens (var(--ink)/--primary/--faint/--agree/--neutral/--disagree/
+    --primary-soft) so it retints in dark mode and every scheme. `art` selects the page. %>
+<% case art %>
+<% when "about" %>
+  <svg viewBox="0 0 320 160" width="360" class="max-w-full h-auto block" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path stroke="var(--ink)" d="M40 36h100a12 12 0 0 1 12 12v40a12 12 0 0 1-12 12H80l-22 18v-18H40a12 12 0 0 1-12-12V48a12 12 0 0 1 12-12z"></path>
+    <path stroke="var(--faint)" d="M52 58h60M52 72h76M52 86h44"></path>
+    <path stroke="var(--primary)" d="M180 56h100a12 12 0 0 1 12 12v40a12 12 0 0 1-12 12h-14v18l-22-18h-64a12 12 0 0 1-12-12V68a12 12 0 0 1 12-12z"></path>
+    <path stroke="var(--primary)" opacity=".5" d="M192 78h68M192 92h84M192 106h52"></path>
+    <circle cx="146" cy="142" r="5" fill="var(--agree)"></circle>
+    <circle cx="162" cy="142" r="5" fill="var(--neutral)"></circle>
+    <circle cx="178" cy="142" r="5" fill="var(--disagree)"></circle>
+  </svg>
+<% when "tutorials" %>
+  <svg viewBox="0 0 320 160" width="360" class="max-w-full h-auto block" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="56" y="30" width="200" height="104" rx="8" stroke="var(--ink)"></rect>
+    <path stroke="var(--faint)" d="M76 54h72M76 70h120M76 86h96"></path>
+    <circle cx="86" cy="114" r="10" stroke="var(--agree)"></circle>
+    <g transform="translate(80 108) scale(.5)" stroke="var(--agree)" stroke-width="3"><path d="M7 10v12"></path><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"></path></g>
+    <circle cx="114" cy="114" r="10" stroke="var(--neutral)"></circle>
+    <path stroke="var(--neutral)" d="M109 114h10"></path>
+    <circle cx="142" cy="114" r="10" stroke="var(--disagree)"></circle>
+    <g transform="translate(136 108) scale(.5)" stroke="var(--disagree)" stroke-width="3"><path d="M17 14V2"></path><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"></path></g>
+    <path stroke="var(--primary)" fill="var(--primary-soft)" d="M266 30l-76 76-16 4 4-16 76-76a8.5 8.5 0 0 1 12 12z"></path>
+    <path stroke="var(--primary)" d="M244 28l12 12M178 94l12 12"></path>
+  </svg>
+<% when "faq" %>
+  <svg viewBox="0 0 320 160" width="360" class="max-w-full h-auto block" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path stroke="var(--ink)" d="M110 26h100a14 14 0 0 1 14 14v56a14 14 0 0 1-14 14h-30l-20 18v-18h-50a14 14 0 0 1-14-14V40a14 14 0 0 1 14-14z"></path>
+    <path stroke="var(--primary)" stroke-width="2.5" d="M146 60a14 14 0 1 1 20 12.6c-4 2-6 4.4-6 9.4"></path>
+    <circle cx="160" cy="93" r="2" fill="var(--primary)"></circle>
+    <path stroke="var(--faint)" d="M38 96h40a8 8 0 0 1 8 8v20a8 8 0 0 1-8 8H54l-10 8v-8h-6a8 8 0 0 1-8-8v-20a8 8 0 0 1 8-8z"></path>
+    <path stroke="var(--faint)" d="M48 110h20M48 120h12"></path>
+    <path stroke="var(--faint)" d="M242 88h40a8 8 0 0 1 8 8v20a8 8 0 0 1-8 8h-6v8l-10-8h-24a8 8 0 0 1-8-8V96a8 8 0 0 1 8-8z"></path>
+    <path stroke="var(--faint)" d="M252 102h20M252 112h12"></path>
+  </svg>
+<% when "privacy" %>
+  <svg viewBox="0 0 320 160" width="360" class="max-w-full h-auto block" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path stroke="var(--primary)" fill="var(--primary-soft)" d="M136 24h42l8 8v40h-50z"></path>
+    <path stroke="var(--primary)" d="M148 42h20M148 52h26"></path>
+    <circle cx="148" cy="63" r="3" fill="var(--agree)" stroke="none"></circle>
+    <circle cx="160" cy="63" r="3" fill="var(--neutral)" stroke="none"></circle>
+    <circle cx="172" cy="63" r="3" fill="var(--disagree)" stroke="none"></circle>
+    <path stroke="var(--ink)" d="M70 72h180v10H70z"></path>
+    <path stroke="var(--ink)" stroke-width="3" d="M134 77h52"></path>
+    <path stroke="var(--ink)" d="M80 82h160v54a6 6 0 0 1-6 6H86a6 6 0 0 1-6-6z"></path>
+    <path stroke="var(--ink)" d="M212 98l12-4 12 4v10c0 8-6 12-12 14-6-2-12-6-12-14z"></path>
+    <path stroke="var(--agree)" stroke-width="2" d="M219 109l3 3 6-6"></path>
+    <path stroke="var(--faint)" d="M30 44c8-8 22-8 30 0-8 8-22 8-30 0z"></path>
+    <path stroke="var(--faint)" d="M32 54l26-20"></path>
+  </svg>
+<% when "terms" %>
+  <svg viewBox="0 0 320 160" width="360" class="max-w-full h-auto block" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path stroke="var(--ink)" d="M98 18h94l32 32v90a6 6 0 0 1-6 6H98a6 6 0 0 1-6-6V24a6 6 0 0 1 6-6z"></path>
+    <path stroke="var(--ink)" d="M192 18v32h32"></path>
+    <path stroke="var(--faint)" d="M112 66h80M112 82h96M112 98h64"></path>
+    <path stroke="var(--primary)" stroke-width="2" d="M112 128c6-12 12 2 20-6s8 10 16 0 6-4 12 0"></path>
+    <circle cx="192" cy="124" r="14" stroke="var(--primary)"></circle>
+    <path stroke="var(--primary)" stroke-width="2" d="M185 124l5 5 9-9"></path>
+    <path stroke="var(--faint)" d="M40 120h28M54 120v20M44 140h20"></path>
+    <path stroke="var(--faint)" d="M40 120l-8 12h16zM68 120l-8 12h16z"></path>
+  </svg>
+<% end %>
