@@ -39,10 +39,11 @@
     <%# LEFT zone %>
     <div class="sm:justify-self-start flex items-center gap-3">
       <% if user_signed_in? %>
-        <%# `<details>` IS the menu mechanism here — the design system documents it as such
-            (components/navigation/DropdownMenu.prompt.md). No Stimulus controller, and it
-            closes on an outside click for free. Do not "upgrade" it to JS. %>
-        <details class="relative">
+        <%# `<details>` is the menu mechanism (design system: components/navigation/
+            DropdownMenu.prompt.md). The `dropdown` controller adds dismiss-on-outside-click
+            + Escape to match every other menu in the app; the JS-off contract is unchanged
+            (the <summary> still toggles it natively). %>
+        <details class="relative" data-controller="dropdown">
           <summary class="list-none cursor-pointer flex items-center">
             <%# 36px, the design system's `nav` avatar box. Via the partial rather than
                 `image_tag current_user.photo`, which raises on a user whose photo is
