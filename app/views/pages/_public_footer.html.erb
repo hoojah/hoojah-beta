@@ -1,0 +1,13 @@
+<%# Footer link row for the public informational pages (matches the imported design):
+    the five site links centred, the current page in text-ink, the rest text-ink-2, then a
+    small copyright line. `current` is the active page key. %>
+<% links = [["about", "About", about_path], ["tutorials", "Tutorials", tutorials_path],
+            ["faq", "FAQ", faq_path], ["privacy", "Privacy", privacy_path], ["terms", "Terms", terms_path]] %>
+<footer class="mt-16 pt-8 pb-12 border-t border-hairline text-center">
+  <nav aria-label="Site links" class="flex justify-center flex-wrap gap-x-3.5 gap-y-1.5 text-sm">
+    <% links.each do |key, label, path| %>
+      <%= link_to label, path, class: "no-underline hover:underline #{key == current ? "text-ink" : "text-ink-2"}" %>
+    <% end %>
+  </nav>
+  <p class="mt-4 text-xs text-faint">© 2026 Hoojah</p>
+</footer>

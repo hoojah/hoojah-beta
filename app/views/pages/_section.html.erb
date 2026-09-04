@@ -1,0 +1,20 @@
+<%# One section of a public informational page. LAYOUT partial — call as
+    `render layout: "pages/section", locals: {heading:, variant:, spot: nil} do … body … end`.
+    :spots variant (About/Tutorials) = 56px icon box + content, no divider.
+    :dividers variant (FAQ/Privacy/Terms) = single column, hairline between sections. %>
+<% if variant == :spots %>
+  <section class="grid grid-cols-[56px_1fr] gap-5">
+    <div class="w-14 h-14 rounded-[14px] bg-card-2 flex items-center justify-center shrink-0">
+      <%= render "pages/spot", spot: spot %>
+    </div>
+    <div class="min-w-0">
+      <h2 class="mb-2.5 text-xl leading-tight font-semibold text-ink text-balance"><%= heading %></h2>
+      <div class="prose-public text-ink-2 text-base leading-[1.7] text-pretty"><%= yield %></div>
+    </div>
+  </section>
+<% else %>
+  <section class="pb-7 border-b border-hairline last:border-b-0 last:pb-0">
+    <h2 class="mb-2.5 text-lg leading-snug font-semibold text-ink text-balance"><%= heading %></h2>
+    <div class="prose-public text-ink-2 text-base leading-[1.7] text-pretty"><%= yield %></div>
+  </section>
+<% end %>
