@@ -24,7 +24,11 @@ module DesignSystemHelper
 
   SIZES = %i[md sm].freeze
 
-  BASE = "inline-flex items-center justify-center gap-1 no-underline cursor-pointer " \
+  # `select-none`: a button label is a control, not prose — it must not highlight
+  # under a click-drag. It rides in BASE (not the CSS `button` base rule) because
+  # `variant: :link` and card-as-button call sites render an <a>, which a bare
+  # `button` selector cannot reach; the two together cover every button idiom.
+  BASE = "inline-flex items-center justify-center gap-1 no-underline cursor-pointer select-none " \
          "transition active:scale-95 disabled:opacity-50 disabled:cursor-default".freeze
 
   # `nil` means "unset" and takes the default: views reach for
