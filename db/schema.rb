@@ -226,17 +226,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_232125) do
     t.index ["user_id"], name: "index_user_badges_on_user_id"
   end
 
-  create_table "user_identities", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "provider", null: false
-    t.string "uid", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.index ["provider", "uid"], name: "index_user_identities_on_provider_and_uid", unique: true
-    t.index ["user_id", "provider"], name: "index_user_identities_on_user_id_and_provider", unique: true
-    t.index ["user_id"], name: "index_user_identities_on_user_id"
-  end
-
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", default: ""
@@ -250,15 +239,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_232125) do
     t.string "location", default: ""
     t.string "photo", default: ""
     t.boolean "private", default: false, null: false
+    t.string "provider"
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
     t.integer "role", default: 0, null: false
+    t.string "uid"
     t.datetime "updated_at", null: false
     t.string "username"
     t.string "webauthn_id"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["private"], name: "index_users_on_private"
+    t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["username"], name: "index_users_on_username", unique: true
     t.index ["webauthn_id"], name: "index_users_on_webauthn_id", unique: true
@@ -309,7 +301,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_232125) do
   add_foreign_key "hujahs", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "user_badges", "users"
-  add_foreign_key "user_identities", "users"
   add_foreign_key "votes", "users"
   add_foreign_key "webauthn_credentials", "users"
 end

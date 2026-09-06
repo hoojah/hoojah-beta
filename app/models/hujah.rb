@@ -2,6 +2,17 @@ class Hujah < ApplicationRecord
   belongs_to :user
   has_many :votes, dependent: :destroy
   has_many :flags, dependent: :destroy
+  has_many :children, class_name: "Hujah", foreign_key: "parent_id", dependent: :destroy
+  has_many :debates, dependent: :destroy
+  has_many :hashtag_hujahs, dependent: :destroy
+  has_many :hashtags, through: :hashtag_hujahs
+  # Notifications carry a nullable `hujah_id` with NO DB foreign key (schema:
+  # NB: notifications are deliberately NOT cascaded. `Notification belongs_to :hujah,
+  # optional: true` and the serializer/views are nil-safe (Slice 11 Task 9), so a
+  # notification whose hoojah was deleted SURVIVES and renders without the hoojah block —
+  # a `dependent: :destroy` here would erase still-meaningful "someone mentioned you"
+  # rows and break spec/requests/api/v1/notifications_spec's no-500 guarantee.
+  belongs_to :parent, class_name: "Hujah", optional: true
 
   # One image per top-level claim, shown 16:9 below the body. Mirrors User#avatar:
   # same allowed types, same 5 MB cap, same "skip if not attached" validation guard.
@@ -24,21 +35,12 @@ class Hujah < ApplicationRecord
   end
 
   # Soft-hidden while an image report is pending review. Not stored — derived so it
-  # clears automatically when the flag is resolved.
+  # clears automatically when the flag is resolved. Short-circuits on the common
+  # imageless card so it never issues the flags EXISTS query.
   def image_held?
+    return false unless image.attached?
     flags.pending.where(subject: IMAGE_FLAG_SUBJECTS).exists?
   end
-  has_many :children, class_name: "Hujah", foreign_key: "parent_id", dependent: :destroy
-  has_many :debates, dependent: :destroy
-  has_many :hashtag_hujahs, dependent: :destroy
-  has_many :hashtags, through: :hashtag_hujahs
-  # Notifications carry a nullable `hujah_id` with NO DB foreign key (schema:
-  # NB: notifications are deliberately NOT cascaded. `Notification belongs_to :hujah,
-  # optional: true` and the serializer/views are nil-safe (Slice 11 Task 9), so a
-  # notification whose hoojah was deleted SURVIVES and renders without the hoojah block —
-  # a `dependent: :destroy` here would erase still-meaningful "someone mentioned you"
-  # rows and break spec/requests/api/v1/notifications_spec's no-500 guarantee.
-  belongs_to :parent, class_name: "Hujah", optional: true
 
   # Slice 3: custom stance labels are IMMUTABLE after create. Under the Rails 8.1 default
   # (raise_on_assign_to_attr_readonly), assigning one on a persisted record raises

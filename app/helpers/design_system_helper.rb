@@ -291,6 +291,7 @@ module DesignSystemHelper
   # as ds_avatar_url above (the proxy path is stable, non-expiring, and works against a
   # private bucket with no anonymous-read policy).
   def ds_hujah_image_url(hujah)
+    return nil unless hujah.image.attached?
     rails_storage_proxy_path(hujah.image)
   end
 
