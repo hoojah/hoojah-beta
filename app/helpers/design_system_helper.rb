@@ -286,6 +286,14 @@ module DesignSystemHelper
     user.photo.presence
   end
 
+  # Serve a hujah's attached image through the Active Storage PROXY, never blob.url —
+  # a presigned S3/Garage URL expires in 5 min and rots in cached HTML. Same rationale
+  # as ds_avatar_url above (the proxy path is stable, non-expiring, and works against a
+  # private bucket with no anonymous-read policy).
+  def ds_hujah_image_url(hujah)
+    rails_storage_proxy_path(hujah.image)
+  end
+
   private
 
   # Unset takes the default; a typo is loud. `tone: "aggree"` is the dangerous case —

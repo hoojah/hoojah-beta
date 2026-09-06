@@ -575,6 +575,24 @@ RSpec.describe DesignSystemHelper, type: :helper do
       expect(helper.ds_avatar_url(user)).to be_nil
     end
   end
+
+  describe "#ds_hujah_image_url" do
+    around do |ex|
+      old = ActiveStorage::Current.url_options
+      ActiveStorage::Current.url_options = {host: "http://test.host"}
+      ex.run
+      ActiveStorage::Current.url_options = old
+    end
+
+    it "returns the stable Active Storage PROXY path for an attached image" do
+      hujah = create(:hujah)
+      hujah.image.attach(io: StringIO.new("img"), filename: "a.png", content_type: "image/png")
+      # NOT blob.url: a presigned S3/Garage URL expires in 5 min and rots in cached
+      # HTML. Same rule as ds_avatar_url — the proxy path is stable and non-expiring.
+      expect(helper.ds_hujah_image_url(hujah)).to eq(helper.rails_storage_proxy_path(hujah.image))
+      expect(helper.ds_hujah_image_url(hujah)).to start_with("/rails/active_storage/blobs/proxy/")
+    end
+  end
 end
 
 # `ds_button_classes` interpolates the tone into `bg-` / `text-` / `border-`,
