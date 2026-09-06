@@ -1,12 +1,42 @@
-<%# Interstitial after a MyDigital ID sign-in whose subject isn't linked yet.
-    Three branches (design system: ds_* helpers, token colours, no hex):
-    - signed in, already linked  → "already linked" notice, no action
-    - signed in, not yet linked  → confirm linking to the CURRENT account (L1)
-    - signed out                 → the anonymous link-or-create forms %>
+<%# Interstitial after a MyDigital ID sign-in whose subject can't be signed in
+    automatically. Branches (design system: ds_* helpers, token colours, no hex).
+    SIGNED-IN state machine, in order:
+      (c) sub linked to a DIFFERENT account → confirm SWITCH
+      (b) sub linked to THIS account        → already linked to this MyDigital ID
+      (a) current_user already has a MyID    → already linked (to a different MyID)
+          otherwise                          → confirm LINK to the current account
+    SIGNED-OUT: the anonymous link-or-create forms (unchanged). %>
 <div class="min-h-screen flex items-center justify-center px-4 py-10">
   <div class="<%= ds_card_classes %> w-full max-w-md p-6 sm:p-8">
-    <% if @signed_in && @already_linked %>
-      <%# Signed in, already linked: nothing to do. %>
+    <% if @signed_in && @switch_target && @switch_target != current_user %>
+      <%# (c) The pending sub belongs to another account: confirm switching into it.
+          Never an automatic switch — the callback routed here on purpose. %>
+      <h1 class="text-xl font-bold text-ink">Switch accounts?</h1>
+      <p class="mt-2 text-sm text-faint">
+        This MyDigital ID is registered to
+        <span class="font-semibold text-ink">@<%= @switch_target.username %></span>.
+        You're signed in as
+        <span class="font-semibold text-ink">@<%= current_user.username %></span>.
+        Switch to @<%= @switch_target.username %>?
+      </p>
+
+      <%= button_to "Switch to @#{@switch_target.username}", mydigital_id_switch_path, method: :post,
+            class: "#{ds_button_classes(tone: :primary)} w-full h-[52px] mt-6" %>
+      <%= link_to "Stay signed in as @#{current_user.username}", root_path,
+            class: "#{ds_button_classes(tone: :neutral)} w-full h-[52px] mt-2" %>
+
+    <% elsif @signed_in && @switch_target == current_user %>
+      <%# (b) The pending sub is already linked to THIS account. %>
+      <h1 class="text-xl font-bold text-ink">Already linked</h1>
+      <p class="mt-2 text-sm text-faint">
+        Your account (<span class="font-semibold text-ink">@<%= current_user.username %></span>)
+        is already linked to this MyDigital ID.
+      </p>
+      <%= link_to "Back to Hoojah", root_path,
+            class: "#{ds_button_classes(tone: :primary)} w-full h-[52px] mt-6" %>
+
+    <% elsif @signed_in && @already_linked %>
+      <%# (a) Signed in, already linked to a (different) MyDigital ID: nothing to do. %>
       <h1 class="text-xl font-bold text-ink">Already linked</h1>
       <p class="mt-2 text-sm text-faint">
         Your account (<span class="font-semibold text-ink">@<%= current_user.username %></span>)
@@ -16,7 +46,7 @@
             class: "#{ds_button_classes(tone: :primary)} w-full h-[52px] mt-6" %>
 
     <% elsif @signed_in %>
-      <%# Signed in, not yet linked: confirm linking to the CURRENT account. L1 —
+      <%# (a) Signed in, unlinked sub: confirm linking to the CURRENT account. L1 —
           never a silent new-account switch. %>
       <h1 class="text-xl font-bold text-ink">Link your MyDigital ID</h1>
       <p class="mt-2 text-sm text-faint">

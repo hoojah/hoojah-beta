@@ -12,15 +12,19 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     end
   end
 
-  # MyDigital ID has no email, so we cannot auto-link. Known subject → sign in.
-  # Unknown subject → stash the opaque `sub` (+ display name) in a short-lived session
-  # value and send the user to the link-or-create interstitial. We never store the NRIC.
+  # MyDigital ID has no email, so we cannot auto-link. A known subject signs in only
+  # when the visitor is signed OUT, or is already that same account — never a silent
+  # switch of a signed-in user into a DIFFERENT account (that must be confirmed). An
+  # unknown subject, or a known one belonging to another account while signed in, is
+  # stashed (opaque `sub` + display name, never the NRIC) and sent to the interstitial
+  # to confirm link / switch / create.
   def my_digital_id
     auth = request.env["omniauth.auth"]
+    linked_user = User.from_my_digital_id(auth)
 
-    if (user = User.from_my_digital_id(auth))
+    if linked_user && (!user_signed_in? || current_user == linked_user)
       session.delete(:pending_mydid)
-      sign_in_and_redirect user, event: :authentication
+      sign_in_and_redirect linked_user, event: :authentication
       set_flash_message(:notice, :success, kind: "MyDigital ID") if is_navigational_format?
     else
       session[:pending_mydid] = {

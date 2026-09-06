@@ -150,6 +150,66 @@ RSpec.describe "MyDigital ID SSO", type: :request do
     end
   end
 
+  describe "a signed-in user completes a handshake for a sub linked to a DIFFERENT account" do
+    # The MyDigital ID `sub-b` belongs to account B. A is signed in. We must NOT
+    # silently switch A into B — A confirms the switch on the interstitial first.
+    it "routes to a switch-confirmation, not a silent switch" do
+      account_a = create(:user, username: "account_a")
+      create(:user, username: "account_b").identities.create!(provider: "my_digital_id", uid: "sub-b")
+      sign_in account_a
+      mock_mydigital_id_auth(sub: "sub-b")
+
+      post "/auth/my_digital_id"
+      follow_redirect! # callback → interstitial redirect (NOT a sign-in-and-redirect)
+      expect(response).to redirect_to(mydigital_id_continue_path)
+
+      follow_redirect! # → interstitial page
+      expect(response).to have_http_status(:ok)
+      # Offers to SWITCH to @account_b, naming both accounts…
+      expect(response.body).to include("Switch")
+      expect(response.body).to include("account_b")
+      # …names the CURRENT account (still signed in as A, not switched)…
+      expect(response.body).to include("account_a")
+      # …and does NOT render the link-current / anonymous create forms.
+      expect(response.body).not_to include(mydigital_id_register_path)
+      expect(response.body).not_to include(mydigital_id_link_current_path)
+    end
+
+    it "POST /mydigital-id/switch signs in as B, creating no user, clearing the stash" do
+      account_a = create(:user, username: "account_a")
+      create(:user, username: "account_b").identities.create!(provider: "my_digital_id", uid: "sub-b")
+      sign_in account_a
+      mock_mydigital_id_auth(sub: "sub-b")
+      post "/auth/my_digital_id"
+      follow_redirect!
+
+      expect {
+        post mydigital_id_switch_path
+      }.not_to change(User, :count)
+      expect(response).to redirect_to(root_path).or redirect_to(dashboard_path)
+      expect(session[:pending_mydid]).to be_nil
+
+      # Now authenticated as B, not A — the feed navbar renders the current @handle.
+      get root_path
+      expect(response.body).to include("account_b")
+      expect(response.body).not_to include("@account_a")
+    end
+  end
+
+  it "signs in a signed-in user for their OWN sub without the interstitial" do
+    user = create(:user, username: "sameaccount")
+    user.identities.create!(provider: "my_digital_id", uid: "sub-own")
+    sign_in user
+    mock_mydigital_id_auth(sub: "sub-own")
+
+    post "/auth/my_digital_id"
+    follow_redirect!
+    # Same account → normal sign-in-and-redirect to the landing, never the interstitial.
+    expect(response).not_to redirect_to(mydigital_id_continue_path)
+    expect(response).to redirect_to(root_path).or redirect_to(dashboard_path)
+    expect(session[:pending_mydid]).to be_nil
+  end
+
   it "fails closed when the interstitial is hit with no pending stash" do
     get "/mydigital-id/continue"
     expect(response).to redirect_to(new_user_session_path)

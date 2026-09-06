@@ -1,8 +1,10 @@
-# Link-or-create interstitial for a MyDigital ID subject that is not yet linked to a
-# hoojah account. Two paths: link to an existing account (email + password), or create
-# a new account (username only; secure random password). Guarded by a short-lived
-# session[:pending_mydid] carrying only the opaque `sub` and display name — never the
-# NRIC. Fails closed to the login page when that value is missing or stale.
+# Interstitial after a MyDigital ID handshake that can't sign the visitor in
+# automatically. Signed OUT: link to an existing account (email + password) or create a
+# new one (username only; secure random password). Signed IN, it confirms rather than
+# switches silently — link the sub to the CURRENT account (#link_current), or, when the
+# sub already belongs to a DIFFERENT account, switch into it (#switch). Guarded by a
+# short-lived session[:pending_mydid] carrying only the opaque `sub` and display name —
+# never the NRIC. Fails closed to the login page when that value is missing or stale.
 class MydigitalIdLinksController < ApplicationController
   PENDING_TTL = 15.minutes
 
@@ -41,6 +43,23 @@ class MydigitalIdLinksController < ApplicationController
     # This sub was linked to another account concurrently.
     flash.now[:alert] = "This MyDigital ID is already linked to another account."
     render :new, status: :unprocessable_entity
+  end
+
+  # Confirm SWITCHING into the account the pending MyDigital ID is already linked to.
+  # The target is resolved from the server-side stashed `sub` (proven through the
+  # handshake), NEVER from params — so this can only switch into the account whose
+  # MyDigital ID the visitor actually controls. No account is ever created here.
+  def switch
+    skip_authorization
+    target = pending_sub && User.user_for_mydigital_id_sub(pending_sub)
+    # Nothing to switch to (unlinked sub) or already this account → fall back to the
+    # interstitial, which routes to the correct branch (link / already-linked).
+    return redirect_to mydigital_id_continue_path if target.nil? || target == current_user
+
+    session.delete(:pending_mydid)
+    sign_in(target, event: :authentication)
+    redirect_to after_sign_in_path_for(target), status: :see_other,
+      notice: "Signed in as @#{target.username} with MyDigital ID."
   end
 
   # Link the pending MyDigital ID to an existing account after re-auth.
@@ -90,6 +109,9 @@ class MydigitalIdLinksController < ApplicationController
     @signed_in = user_signed_in?
     @already_linked = @signed_in &&
       current_user.identities.exists?(provider: User::MYDIGITAL_ID_PROVIDER)
+    # The account the pending sub is already linked to (or nil). Drives the "switch
+    # accounts" confirmation branch. Resolved from the stashed sub only.
+    @switch_target = pending_sub && User.user_for_mydigital_id_sub(pending_sub)
   end
 
   # L1: bounce a signed-in user off the anonymous link/create actions to the

@@ -48,6 +48,10 @@ Rails.application.routes.draw do
   # L1: a signed-in user confirms linking the pending MyDigital ID to their CURRENT
   # account here — never a silent new-account switch through the anonymous create path.
   post "/mydigital-id/link-current", to: "mydigital_id_links#link_current", as: :mydigital_id_link_current
+  # Signed-in user confirms SWITCHING into the account the pending sub is already linked
+  # to — never an automatic switch in the callback. Target comes from the stashed sub
+  # only (proven via the handshake), never from params.
+  post "/mydigital-id/switch", to: "mydigital_id_links#switch", as: :mydigital_id_switch
 
   # Public notice (action + view land in Task 14). Route is drawn here so the login/
   # interstitial views in Task 13 can resolve mydigital_id_info_path.
