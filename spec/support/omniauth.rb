@@ -12,6 +12,7 @@ Rails.application.reload_routes!
 RSpec.configure do |config|
   config.before(:each) do
     OmniAuth.config.mock_auth[:google_oauth2] = nil
+    OmniAuth.config.mock_auth[:my_digital_id] = nil
   end
 end
 
@@ -20,6 +21,14 @@ module OmniauthSpecHelpers
     OmniAuth.config.mock_auth[:google_oauth2] = OmniAuth::AuthHash.new(
       provider: "google_oauth2", uid: uid,
       info: {email: email, name: name}
+    )
+  end
+
+  def mock_mydigital_id_auth(sub:, name: "Ali bin Abu")
+    OmniAuth.config.mock_auth[:my_digital_id] = OmniAuth::AuthHash.new(
+      provider: "my_digital_id", uid: sub,
+      info: {name: name},
+      extra: {raw_info: {"sub" => sub, "nama" => name, "nric" => "900101015511"}}
     )
   end
 end
