@@ -2,6 +2,16 @@ class Hujah < ApplicationRecord
   belongs_to :user
   has_many :votes, dependent: :destroy
   has_many :flags, dependent: :destroy
+
+  # One image per top-level claim, shown 16:9 below the body. Mirrors User#avatar:
+  # same allowed types, same 5 MB cap, same "skip if not attached" validation guard.
+  has_one_attached :image
+
+  MAX_IMAGE_BYTES = 5.megabytes
+  ALLOWED_IMAGE_TYPES = %w[image/png image/jpeg image/gif image/webp].freeze
+
+  validates :image_alt, length: {maximum: 200}
+  validate :image_is_valid_image
   has_many :children, class_name: "Hujah", foreign_key: "parent_id", dependent: :destroy
   has_many :debates, dependent: :destroy
   has_many :hashtag_hujahs, dependent: :destroy
@@ -461,6 +471,18 @@ class Hujah < ApplicationRecord
   end
 
   private
+
+  # Mirrors User#avatar_is_valid_image: a direct `image.attach` on a persisted record
+  # writes without validation by design, so this gates the controller create/update path.
+  def image_is_valid_image
+    return unless image.attached?
+    unless ALLOWED_IMAGE_TYPES.include?(image.blob.content_type)
+      errors.add(:image, "must be a PNG, JPEG, GIF, or WebP image")
+    end
+    if image.blob.byte_size > MAX_IMAGE_BYTES
+      errors.add(:image, "must be smaller than 5 MB")
+    end
+  end
 
   def bust_trending_cache = Rails.cache.delete("trending:v1")
 

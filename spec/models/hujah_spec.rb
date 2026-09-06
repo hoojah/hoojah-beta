@@ -1,6 +1,42 @@
 require "rails_helper"
 
 RSpec.describe Hujah, type: :model do
+  # Mirrors User#avatar test setup: attach an in-memory blob of a known type/size so
+  # the type/size validation can be exercised without a real file on disk.
+  def attach_image(hujah, filename: "photo.png", type: "image/png", bytes: 1.kilobyte)
+    hujah.image.attach(
+      io: StringIO.new("x" * bytes), filename: filename, content_type: type
+    )
+    hujah
+  end
+
+  describe "image attachment" do
+    let(:hujah) { build(:hujah) }
+
+    it "accepts a PNG under 5 MB" do
+      attach_image(hujah, type: "image/png", bytes: 1.megabyte)
+      expect(hujah).to be_valid
+    end
+
+    it "rejects an unsupported content type" do
+      attach_image(hujah, filename: "x.heic", type: "image/heic")
+      expect(hujah).not_to be_valid
+      expect(hujah.errors[:image]).to include("must be a PNG, JPEG, GIF, or WebP image")
+    end
+
+    it "rejects an image over 5 MB" do
+      attach_image(hujah, bytes: 6.megabytes)
+      expect(hujah).not_to be_valid
+      expect(hujah.errors[:image]).to include("must be smaller than 5 MB")
+    end
+
+    it "limits image_alt to 200 characters" do
+      hujah.image_alt = "a" * 201
+      expect(hujah).not_to be_valid
+      expect(hujah.errors[:image_alt]).to be_present
+    end
+  end
+
   describe "new-record defaults" do
     it "defaults to visible_public, allow_debates true, conviction_count 0" do
       h = Hujah.new
