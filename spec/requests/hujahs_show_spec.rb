@@ -69,4 +69,17 @@ RSpec.describe "Hujah show", type: :request do
     expect(response.body).to include(dom_id(reply, :flag_dialog))
     expect(response.body).to include("Flag this hoojah")
   end
+
+  # The argument composer renders for the author on their OWN claim too — an author is
+  # allowed to respond to their own hoojah (HujahPolicy#create? already permits it; only
+  # the view previously suppressed the composer for the author).
+  it "renders the argument composer for the author on their own hujah" do
+    author = create(:user)
+    hujah = create(:hujah, user: author, body: "a claim its author may respond to")
+    sign_in author
+    get "/hoojah/#{hujah.slug}"
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(dom_id(hujah, :argument_composer))
+  end
 end

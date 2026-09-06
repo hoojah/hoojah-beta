@@ -149,10 +149,11 @@
 
   <%# Hoojah 2026 argument composer — replaces the old "Add hoojah" link. Locked until
       the viewer votes (mirrors HujahPolicy#create?), then a real POST /hoojah reply form.
-      respond_hujah_path stays reachable inside it as the JS-off fallback. Only shown to a
-      signed-in viewer who is not the author (an author replying to their own claim is not
-      a use case here). %>
-  <% if user_signed_in? && current_user.id != @hujah.user_id %>
+      respond_hujah_path stays reachable inside it as the JS-off fallback. Shown to any
+      signed-in viewer — INCLUDING the author, who may respond to their own claim (the
+      author must still vote first to unlock it, same as anyone; HujahPolicy#create?
+      already permits an author's self-reply). %>
+  <% if user_signed_in? %>
     <%= render "hujahs/argument_composer", hujah: @hujah, voted: @hujah.voted_by?(current_user) %>
   <% end %>
 
