@@ -29,7 +29,7 @@ class MydigitalIdLinksController < ApplicationController
 
     user.identities.create!(provider: User::MYDIGITAL_ID_PROVIDER, uid: pending_sub)
     finish_linked(user)
-  rescue ActiveRecord::RecordNotUnique
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
     flash.now[:alert] = "This MyDigital ID is already linked to another account."
     render :new, status: :unprocessable_entity
   end

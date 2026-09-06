@@ -19,6 +19,7 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     auth = request.env["omniauth.auth"]
 
     if (user = User.from_my_digital_id(auth))
+      session.delete(:pending_mydid)
       sign_in_and_redirect user, event: :authentication
       set_flash_message(:notice, :success, kind: "MyDigital ID") if is_navigational_format?
     else

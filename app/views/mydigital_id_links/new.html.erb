@@ -10,10 +10,6 @@
       Link it to your Hoojah account, or create a new one.
     </p>
 
-    <% if flash.now[:alert].present? || flash[:alert].present? %>
-      <p class="mt-4 text-sm text-disagree"><%= flash.now[:alert] || flash[:alert] %></p>
-    <% end %>
-
     <%# Path 1: link an existing account %>
     <%= form_with url: mydigital_id_link_path, method: :post, class: "mt-6 space-y-3" do |f| %>
       <label class="block text-sm font-semibold text-ink">Link my existing Hoojah account</label>
