@@ -56,6 +56,8 @@ class User < ApplicationRecord
   RESERVED_USERNAMES = %w[login signup logout password edit cancel new hoojah hoojahs u users
     notifications rails api admin].freeze
 
+  MYDIGITAL_ID_PROVIDER = "my_digital_id"
+
   MAX_AVATAR_BYTES = 5.megabytes
   ALLOWED_AVATAR_TYPES = %w[image/png image/jpeg image/gif image/webp].freeze
 
@@ -126,6 +128,35 @@ class User < ApplicationRecord
     # Concurrent first sign-in: the other request won the unique [provider, uid]
     # index. Return the now-existing record.
     UserIdentity.find_by(provider: auth.provider, uid: auth.uid)&.user
+  end
+
+  # MyDigital ID has NO verified email, so it never auto-links by email the way Google
+  # does. A known subject returns its user; an unknown subject returns nil, which the
+  # callback controller turns into the link-or-create interstitial. The NRIC (from
+  # userinfo) is never read here — identity is keyed on the opaque OIDC `sub`.
+  def self.from_my_digital_id(auth)
+    UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: auth.uid)&.user
+  end
+
+  # Escape hatch: create a fresh hoojah account for a MyDigital ID subject. Username is
+  # user-chosen (validated by the model); password is a secure random token the user
+  # never uses (recovery is moderator-assisted — see /mydigital-id). Email is synthesised
+  # from the opaque `sub` to satisfy Devise :validatable without inventing PII (the value
+  # is non-deliverable, never shown, never emailed). One-account-per-MyID is enforced by
+  # the unique [provider, uid] index.
+  def self.create_with_my_digital_id(username:, sub:, full_name: nil)
+    user = new(
+      username: username.to_s.strip,
+      full_name: full_name.presence || "New User",
+      email: "#{sub}@myid.invalid",
+      password: Devise.friendly_token[0, 32]
+    )
+    if user.save
+      user.identities.create!(provider: MYDIGITAL_ID_PROVIDER, uid: sub)
+    end
+    user
+  rescue ActiveRecord::RecordNotUnique
+    UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user || user
   end
 
   # Derive a valid, unique username from a seed (email local-part or name). Strips to the
