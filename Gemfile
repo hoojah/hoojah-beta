@@ -23,6 +23,8 @@ gem "aws-sdk-s3", require: false
 # Google OAuth2 sign-in via Devise/OmniAuth
 gem "omniauth-google-oauth2", "~> 1.1"
 gem "omniauth-rails_csrf_protection", "~> 1.0"
+# MyDigital ID SSO (Keycloak OIDC) — reusable OmniAuth strategy, path gem during dev.
+gem "omniauth-mydigital-id-ruby", path: "vendor/gems/omniauth-mydigital-id-ruby"
 # WebAuthn / passkeys — server-side Relying Party for passwordless login.
 gem "webauthn", "~> 3.4"
 gem "jsonapi-serializer"

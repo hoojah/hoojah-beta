@@ -278,6 +278,15 @@ Devise.setup do |config|
   config.omniauth :google_oauth2, ENV["GOOGLE_CLIENT_ID"], ENV["GOOGLE_CLIENT_SECRET"],
     {scope: "email,profile", prompt: "select_account"}
 
+  # MyDigital ID (Malaysia national digital identity) — Keycloak OIDC. Credentials are
+  # ENV-driven; when absent the provider is simply unavailable (the login button is
+  # hidden), never a boot crash. NRIC is never persisted — see User.from_my_digital_id.
+  config.omniauth :my_digital_id,
+    ENV["MYID_CLIENT_ID"],
+    ENV["MYID_CLIENT_SECRET"],
+    base_url: ENV["MYID_BASE_URL"],
+    realm: ENV.fetch("MYID_REALM", "mydid")
+
   # ==> Warden configuration
   # If you want to use other strategies, that are not supported by Devise, or
   # change the failure app, you can configure them inside the config.warden block.

@@ -61,6 +61,26 @@ RSpec.describe "Rate limiting", type: :request do
     expect(response).to have_http_status(:too_many_requests)
   end
 
+  # POST /mydigital-id/link runs `user&.valid_password?(params[:password])` against
+  # an attacker-chosen `email` param — an unthrottled password-guessing oracle
+  # against any account unless capped. Mirrors the login throttles: per IP and per
+  # email. Requests are counted at the rack before the controller's
+  # `require_pending_mydid` redirect, so this holds without a pending session.
+  it "throttles MyDigital ID link attempts from one IP beyond the limit" do
+    11.times { post "/mydigital-id/link", params: {email: "x@x.com", password: "nope"} }
+    expect(response).to have_http_status(:too_many_requests)
+  end
+
+  it "throttles MyDigital ID link attempts per email beyond the limit" do
+    # Vary the IP so the per-IP throttle (10/min) can't be what trips first; the
+    # per-email throttle is 5/min, so the 6th same-email attempt is the 429.
+    6.times do |i|
+      post "/mydigital-id/link", params: {email: "victim@x.com", password: "nope"},
+        headers: {"REMOTE_ADDR" => "10.0.0.#{i}"}
+    end
+    expect(response).to have_http_status(:too_many_requests)
+  end
+
   # Rails appends an optional `(.:format)` to EVERY route, and Rack::Request#path
   # returns the raw path with the suffix attached. A matcher anchored on the bare
   # path therefore misses `/…/extend.turbo_stream` — which routes to the very same

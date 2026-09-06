@@ -73,6 +73,7 @@
  */
 @source not "../../../.github";
 @source not "../../../bin";
+@source not "../../../vendor";
 
 /*
  * TOMBSTONE, Slice 9 — there is no `fill-<tone>` utility anywhere in `app/` any

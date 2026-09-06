@@ -250,8 +250,7 @@ RSpec.describe User, type: :model do
       }.to change(User, :count).by(1)
       expect(@user).to be_persisted
       expect(@user.username).to eq("newperson")
-      expect(@user.provider).to eq("google_oauth2")
-      expect(@user.uid).to eq("123")
+      expect(@user.identities.pluck(:provider, :uid)).to eq([["google_oauth2", "123"]])
     end
 
     it "auto-links to an existing account by email" do
@@ -260,7 +259,7 @@ RSpec.describe User, type: :model do
         found = User.from_omniauth(auth(email: "TAKEN@gmail.com", uid: "999"))
         expect(found.id).to eq(existing.id)
       }.not_to change(User, :count)
-      expect(existing.reload.uid).to eq("999")
+      expect(existing.identities.find_by(provider: "google_oauth2")&.uid).to eq("999")
     end
 
     it "returns the same user on repeat login by provider+uid" do
@@ -279,10 +278,10 @@ RSpec.describe User, type: :model do
 
     it "refuses to transfer an email already linked to a different Google account" do
       existing = create(:user, email: "linked@gmail.com")
-      existing.update_columns(provider: "google_oauth2", uid: "original")
+      existing.identities.create!(provider: "google_oauth2", uid: "original")
       result = User.from_omniauth(OmniAuth::AuthHash.new(provider: "google_oauth2", uid: "attacker", info: {email: "linked@gmail.com", name: "X"}))
       expect(result.errors[:base].join).to match(/already linked/i)
-      expect(existing.reload.uid).to eq("original")
+      expect(existing.identities.find_by(provider: "google_oauth2").uid).to eq("original")
     end
   end
 

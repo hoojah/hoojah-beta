@@ -22,4 +22,8 @@ class PagesController < ApplicationController
   def terms
     skip_authorization
   end
+
+  def mydigital_id
+    skip_authorization
+  end
 end

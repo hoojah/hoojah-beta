@@ -74,6 +74,8 @@
       Continue with Google
     <% end %>
 
+    <%= render "devise/shared/mydigital_id_button" %>
+
     <%# Usernameless passkey login. The Stimulus controller hides this block when the
         browser has no WebAuthn, so JS-off / unsupported users simply never see it. %>
     <div data-controller="passkey-authentication" class="mt-3">

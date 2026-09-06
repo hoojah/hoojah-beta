@@ -1,4 +1,8 @@
 class User < ApplicationRecord
+  # Legacy single-provider columns, superseded by user_identities. Ignored so the app
+  # tolerates the pre-drop schema, then removed in the migration below.
+  self.ignored_columns += %w[provider uid]
+
   has_many :hujahs, dependent: :destroy
   has_many :votes, dependent: :destroy
   has_many :notifications, dependent: :destroy
@@ -8,6 +12,7 @@ class User < ApplicationRecord
   has_many :debate_turns, dependent: :destroy
   has_many :user_badges, dependent: :destroy
   has_many :webauthn_credentials, dependent: :destroy
+  has_many :identities, class_name: "UserIdentity", dependent: :destroy
 
   # Follow graph. active_follows = follows I initiated (I am the follower);
   # passive_follows = follows pointed at me (I am the followed).
@@ -29,7 +34,7 @@ class User < ApplicationRecord
 
   devise :database_authenticatable, :registerable,
     :recoverable, :rememberable, :validatable,
-    :omniauthable, omniauth_providers: [:google_oauth2]
+    :omniauthable, omniauth_providers: [:google_oauth2, :my_digital_id]
 
   has_one_attached :avatar
 
@@ -55,6 +60,12 @@ class User < ApplicationRecord
   RESERVED_USERNAMES = %w[login signup logout password edit cancel new hoojah hoojahs u users
     notifications rails api admin].freeze
 
+  MYDIGITAL_ID_PROVIDER = "my_digital_id"
+
+  # Set true by create_with_my_digital_id so the internal MyID path may persist a
+  # synthetic `<sub>@myid.invalid` email; ordinary public signup cannot (below).
+  attr_accessor :via_my_digital_id
+
   MAX_AVATAR_BYTES = 5.megabytes
   ALLOWED_AVATAR_TYPES = %w[image/png image/jpeg image/gif image/webp].freeze
 
@@ -66,6 +77,13 @@ class User < ApplicationRecord
   # newline-injection (a `\n` after a valid prefix) that an unanchored regex would
   # allow — closing the M7 link-XSS finding brakeman flags as Format Validation.
   validates :link, format: {with: %r{\Ahttps?://\S+\z}i}, allow_blank: true
+  # Defence-in-depth: `@myid.invalid` is the reserved synthetic-email space for
+  # MyDigital ID accounts (see create_with_my_digital_id). Block a public signup
+  # from claiming that space — a low-probability account-creation DoS. `on: :create`
+  # so it never blocks a later profile update of an existing MyID account, and the
+  # internal MyID create path is exempt via `via_my_digital_id`.
+  validates :email, format: {without: /@myid\.invalid\z/i, message: "domain is not allowed"},
+    on: :create, unless: :via_my_digital_id
   validate :photo_from_cloudinary
   validate :avatar_is_valid_image
 
@@ -88,10 +106,11 @@ class User < ApplicationRecord
 
   # Auto-linking by email is safe ONLY because omniauth-google-oauth2 populates
   # info.email from Google's verified_email (nil unless the address is verified).
-  # Do not reuse this method for a provider without that guarantee.
+  # Do not reuse this method for a provider without that guarantee — MyDigital ID
+  # has no email and uses from_my_digital_id instead.
   def self.from_omniauth(auth)
-    if (user = find_by(provider: auth.provider, uid: auth.uid))
-      return user
+    if (identity = UserIdentity.find_by(provider: auth.provider, uid: auth.uid))
+      return identity.user
     end
 
     email = auth.info.email.to_s.downcase.strip
@@ -102,27 +121,85 @@ class User < ApplicationRecord
     end
 
     if (user = find_by(email: email))
-      if user.provider.present? && user.uid != auth.uid
+      existing = user.identities.find_by(provider: auth.provider)
+      if existing && existing.uid != auth.uid
         user.errors.add(:base, "This email is already linked to a different Google account.")
         return user
       end
-      user.update_columns(provider: auth.provider, uid: auth.uid)
+      user.identities.create!(provider: auth.provider, uid: auth.uid) unless existing
       return user
     end
 
     seed = email.split("@").first.presence || auth.info.name
-    create(
-      provider: auth.provider,
-      uid: auth.uid,
+    user = create(
       email: email,
       full_name: auth.info.name.presence || email.split("@").first,
       username: generate_username(seed),
       password: Devise.friendly_token[0, 20]
     )
+    user.identities.create!(provider: auth.provider, uid: auth.uid) if user.persisted?
+    user
   rescue ActiveRecord::RecordNotUnique
     # Concurrent first sign-in: the other request won the unique [provider, uid]
     # index. Return the now-existing record.
-    find_by(provider: auth.provider, uid: auth.uid)
+    UserIdentity.find_by(provider: auth.provider, uid: auth.uid)&.user
+  end
+
+  # MyDigital ID has NO verified email, so it never auto-links by email the way Google
+  # does. A known subject returns its user; an unknown subject returns nil, which the
+  # callback controller turns into the link-or-create interstitial. The NRIC (from
+  # userinfo) is never read here — identity is keyed on the opaque OIDC `sub`.
+  def self.from_my_digital_id(auth)
+    user_for_mydigital_id_sub(auth.uid)
+  end
+
+  # The one place the [provider, uid] → user lookup lives for MyDigital ID: the
+  # callback resolver above and both idempotency checks in create_with_my_digital_id
+  # all go through here.
+  def self.user_for_mydigital_id_sub(sub)
+    UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user
+  end
+
+  # Escape hatch: create a fresh hoojah account for a MyDigital ID subject. Username is
+  # user-chosen (validated by the model); password is a secure random token the user
+  # never uses (recovery is moderator-assisted — see /mydigital-id). Email is synthesised
+  # from the opaque `sub` to satisfy Devise :validatable without inventing PII (the value
+  # is non-deliverable, never shown, never emailed). One-account-per-MyID is enforced by
+  # the unique [provider, uid] index.
+  def self.create_with_my_digital_id(username:, sub:, full_name: nil)
+    # Idempotent: if this subject is already linked (a concurrent request or retry got
+    # here first), return that account rather than creating a duplicate.
+    if (existing = user_for_mydigital_id_sub(sub))
+      return existing
+    end
+
+    user = new(
+      username: username.to_s.strip,
+      full_name: full_name.presence || "New User",
+      email: "#{sub}@myid.invalid",
+      password: Devise.friendly_token[0, 32]
+    )
+    # Exempt this internal path from the public @myid.invalid signup ban (above).
+    user.via_my_digital_id = true
+    # save! + identity insert in ONE transaction so a failure NEVER leaves an orphaned
+    # user row with an unusable @myid.invalid email. A taken username raises RecordInvalid
+    # (ordinary, non-race); a concurrent link/create of the same sub raises RecordInvalid
+    # (email/uid uniqueness) or RecordNotUnique — all handled below, and the transaction
+    # rolls back our half-created row.
+    transaction do
+      user.save!
+      user.identities.create!(provider: MYDIGITAL_ID_PROVIDER, uid: sub)
+    end
+    user
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+    # If the subject was linked concurrently, return the winning account. Otherwise this
+    # is an ordinary validation failure (e.g. taken username) — return the unsaved user
+    # carrying its errors for the interstitial to render.
+    if (winner = user_for_mydigital_id_sub(sub))
+      return winner
+    end
+    user.errors.add(:base, "Could not create your account. Please try again.") if user.errors.empty?
+    user
   end
 
   # Derive a valid, unique username from a seed (email local-part or name). Strips to the

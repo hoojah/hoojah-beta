@@ -10,7 +10,7 @@ RSpec.describe "Sign in with Google", type: :system, js: true do
     click_on "Continue with Google"
 
     expect(page).to have_current_path(root_path).or have_current_path(dashboard_path)
-    expect(User.find_by(uid: "sys1")).to be_present
+    expect(UserIdentity.find_by(provider: "google_oauth2", uid: "sys1")).to be_present
   end
 
   it "shows the button on signup" do
