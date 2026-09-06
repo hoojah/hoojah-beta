@@ -78,6 +78,11 @@
   <div class="flex gap-2 mt-3">
     <% rows.each do |stance, choice, _count| %>
       <% voted = current_user_vote == stance %>
+      <%# Once the viewer has voted, fade the two unpicked stances (opacity-40) so the
+          chosen one stands out; the button stays a live form (dimmed, not disabled) so
+          another stance re-votes. `opacity-40` is a literal in the class string below, so
+          Tailwind's ERB text scan still emits it. %>
+      <% dim = current_user_vote.present? && !voted %>
       <%# button_to wraps each button in a <form>, so THAT form is the flex child — it
           needs `flex-1` to claim an equal third of the row; the button then fills it with
           `w-full`. (Putting flex-1 on the button alone left the forms content-sized and the
@@ -87,7 +92,7 @@
             form: { class: "flex-1" },
             aria: { label: stance_display_label(hujah, choice), pressed: voted.to_s },
             class: "w-full h-10 rounded-xl border-[1.5px] border-#{stance} text-#{stance} " \
-                   "#{voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card"} " \
+                   "#{voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card"} #{"opacity-40" if dim} " \
                    "flex items-center justify-center gap-1.5 text-xs font-bold transition active:scale-95" do %>
         <%= lucide_icon("check", class: "w-3.5 h-3.5") if voted %>
         <%= stance_icon(stance, class: "w-4 h-4") %>

@@ -95,6 +95,33 @@ RSpec.describe "Hujah show", type: :request do
     expect(response.body).not_to include("Replying to @")
   end
 
+  # Once the viewer has voted, the vote hero fades the two stances they did NOT pick
+  # (opacity-40) so the chosen one stands out; the picked one is not dimmed.
+  it "dims the two unvoted stance buttons in the vote hero after the viewer votes" do
+    hujah = create(:hujah, user: create(:user), body: "a claim to stand on")
+    voter = create(:user)
+    hujah.cast_vote(by: voter, choice: 2) # neutral
+    sign_in voter
+    get "/hoojah/#{hujah.slug}"
+
+    doc = Nokogiri::HTML(response.body)
+    buttons = doc.css("#vote_hero_hujah_#{hujah.id} button[data-stance]")
+      .to_h { |b| [b["data-stance"], b["class"]] }
+    expect(buttons["neutral"]).not_to include("opacity-40")
+    expect(buttons["agree"]).to include("opacity-40")
+    expect(buttons["disagree"]).to include("opacity-40")
+  end
+
+  it "does not dim any vote hero button before the viewer votes" do
+    hujah = create(:hujah, user: create(:user), body: "an unvoted claim")
+    sign_in create(:user)
+    get "/hoojah/#{hujah.slug}"
+
+    doc = Nokogiri::HTML(response.body)
+    classes = doc.css("#vote_hero_hujah_#{hujah.id} button[data-stance]").map { |b| b["class"] }
+    expect(classes.join(" ")).not_to include("opacity-40")
+  end
+
   # The argument composer renders for the author on their OWN claim too — an author is
   # allowed to respond to their own hoojah (HujahPolicy#create? already permits it; only
   # the view previously suppressed the composer for the author).

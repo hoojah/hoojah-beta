@@ -37,6 +37,25 @@ RSpec.describe "Hujahs index", type: :request do
     expect(response.body).to include("MY OWN private note here")
   end
 
+  # Voted-state emphasis: on a feed card's vote bars, once the viewer has voted the two
+  # unpicked stance buttons fade (opacity-40) while the picked one stays full-strength.
+  # aria-pressed marks the voted button; both stay live forms (dimmed, not disabled).
+  it "dims the two unvoted vote-bar buttons on a feed card after the viewer votes" do
+    hujah = create(:hujah, user: create(:user), parent_id: nil, body: "a feed claim to vote on")
+    voter = create(:user)
+    hujah.cast_vote(by: voter, choice: 1) # agree
+    sign_in voter
+    get "/"
+
+    doc = Nokogiri::HTML(response.body)
+    bars = doc.at_css("#vote_bars_hujah_#{hujah.id}")
+    voted = bars.css("button[aria-pressed='true']")
+    unvoted = bars.css("button[aria-pressed='false']")
+    expect(voted.map { |b| b["class"] }.join(" ")).not_to include("opacity-40")
+    expect(unvoted.map { |b| b["class"] }).to all(include("opacity-40"))
+    expect(unvoted.size).to eq(2)
+  end
+
   # Slice B (hovercard byline): the feed card byline used to link avatar + name to dead
   # `"#"` placeholders. They must now be real anchors to the author's profile that also
   # carry the hovercard Stimulus triggers, and no `"#"` placeholder may remain in the card.

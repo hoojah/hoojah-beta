@@ -50,6 +50,10 @@
     <% stances.each do |stance, choice, count, icon| %>
       <% pct = total.zero? ? 0 : (count * 100.0 / total).round %>
       <% voted = current_user_vote == stance %>
+      <%# Once the viewer has voted, fade the two stances they DIDN'T pick so the chosen
+          one stands out. Still a live <form> — dimmed, not disabled — so tapping another
+          stance re-votes. `opacity-40` is a literal here so Tailwind's ERB text scan emits it. %>
+      <% dim = current_user_vote.present? && !voted %>
       <div class="flex-1 flex flex-col gap-2">
         <%= form_with url: hujah_votes_path(hujah.slug), method: :post, class: "contents" do %>
           <%= hidden_field_tag :vote, choice %>
@@ -59,7 +63,7 @@
                   data-charge-color="var(--<%= stance %>)"
                   data-action="pointerdown->conviction#start pointerup->conviction#end pointerleave->conviction#leave contextmenu->conviction#noMenu click->conviction#suppressClick"
                   aria-label="<%= stance_display_label(hujah, choice) %>"
-                  class="relative h-[104px] rounded-[20px] border-2 border-<%= stance %> <%= voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card" %> flex flex-col items-center justify-center gap-2 cursor-pointer transition active:scale-95 overflow-hidden"
+                  class="relative h-[104px] rounded-[20px] border-2 border-<%= stance %> <%= voted ? "bg-#{stance}-soft ring-2 ring-#{stance}" : "bg-card" %> <%= "opacity-40" if dim %> flex flex-col items-center justify-center gap-2 cursor-pointer transition active:scale-95 overflow-hidden"
                   style="touch-action:none;">
             <% if voted %>
               <span class="absolute inset-0 bg-<%= stance %>-soft" style="animation:hpop .4s ease;"></span>
