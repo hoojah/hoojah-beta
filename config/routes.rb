@@ -38,6 +38,18 @@ Rails.application.routes.draw do
     post "/login/passkey", to: "users/sessions#passkey", as: :passkey_session
   end
 
+  # MyDigital ID link-or-create interstitial (2026). Reached only after a successful
+  # MyDigital ID auth whose `sub` is not yet linked (see OmniauthCallbacksController).
+  # MAIN routes — CSRF on — because they create sessions/accounts. Guarded by a
+  # short-lived session[:pending_mydid]; no username in the URL (pre-auth surface).
+  get "/mydigital-id/continue", to: "mydigital_id_links#new", as: :mydigital_id_continue
+  post "/mydigital-id/link", to: "mydigital_id_links#create", as: :mydigital_id_link
+  post "/mydigital-id/register", to: "mydigital_id_links#create_account", as: :mydigital_id_register
+
+  # Public notice (action + view land in Task 14). Route is drawn here so the login/
+  # interstitial views in Task 13 can resolve mydigital_id_info_path.
+  get "/mydigital-id", to: "pages#mydigital_id", as: :mydigital_id_info
+
   namespace :api do
     namespace :v1 do
       get "hoojah/index", to: "hujahs#index"
