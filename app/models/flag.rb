@@ -8,7 +8,9 @@ class Flag < ApplicationRecord
   enum :subject, {
     spam: 0,
     abusive: 1,
-    irrelevant: 2
+    irrelevant: 2,
+    image_graphic: 3,
+    image_not_theirs: 4
   }
 
   # Moderation (2026): the review lifecycle. `pending` is the enum-generated scope

@@ -11,8 +11,15 @@ RSpec.describe Flag, type: :model do
   describe "the subject enum" do
     # The integer values are the contract: `subject` is a plain integer column, so
     # renumbering these silently reinterprets every row already in the table.
-    it "maps the three report reasons to stable integers" do
-      expect(Flag.subjects).to eq("spam" => 0, "abusive" => 1, "irrelevant" => 2)
+    it "maps every report reason to stable integers" do
+      expect(Flag.subjects).to eq(
+        "spam" => 0, "abusive" => 1, "irrelevant" => 2,
+        "image_graphic" => 3, "image_not_theirs" => 4
+      )
+    end
+
+    it "supports image subjects" do
+      expect(Flag.subjects.keys).to include("image_graphic", "image_not_theirs")
     end
 
     it "exposes each reason as a predicate and a scope" do
