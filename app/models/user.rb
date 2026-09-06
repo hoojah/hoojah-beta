@@ -145,18 +145,37 @@ class User < ApplicationRecord
   # is non-deliverable, never shown, never emailed). One-account-per-MyID is enforced by
   # the unique [provider, uid] index.
   def self.create_with_my_digital_id(username:, sub:, full_name: nil)
+    # Idempotent: if this subject is already linked (a concurrent request or retry got
+    # here first), return that account rather than creating a duplicate.
+    if (existing = UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user)
+      return existing
+    end
+
     user = new(
       username: username.to_s.strip,
       full_name: full_name.presence || "New User",
       email: "#{sub}@myid.invalid",
       password: Devise.friendly_token[0, 32]
     )
-    if user.save
+    # save! + identity insert in ONE transaction so a failure NEVER leaves an orphaned
+    # user row with an unusable @myid.invalid email. A taken username raises RecordInvalid
+    # (ordinary, non-race); a concurrent link/create of the same sub raises RecordInvalid
+    # (email/uid uniqueness) or RecordNotUnique — all handled below, and the transaction
+    # rolls back our half-created row.
+    transaction do
+      user.save!
       user.identities.create!(provider: MYDIGITAL_ID_PROVIDER, uid: sub)
     end
     user
-  rescue ActiveRecord::RecordNotUnique
-    UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user || user
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+    # If the subject was linked concurrently, return the winning account. Otherwise this
+    # is an ordinary validation failure (e.g. taken username) — return the unsaved user
+    # carrying its errors for the interstitial to render.
+    if (winner = UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user)
+      return winner
+    end
+    user.errors.add(:base, "Could not create your account. Please try again.") if user.errors.empty?
+    user
   end
 
   # Derive a valid, unique username from a seed (email local-part or name). Strips to the

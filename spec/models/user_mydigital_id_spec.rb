@@ -40,5 +40,14 @@ RSpec.describe "User MyDigital ID linking", type: :model do
       expect(UserIdentity.where(provider: "my_digital_id", uid: "sub-race").count).to eq(1)
       expect(again.identities).to be_empty.or eq(User.find_by(username: "firstperson").identities)
     end
+
+    it "is idempotent when the sub is already linked — returns the existing account, no orphan user" do
+      first = User.create_with_my_digital_id(username: "firstperson", sub: "sub-idem", full_name: "A")
+      expect {
+        again = User.create_with_my_digital_id(username: "secondperson", sub: "sub-idem", full_name: "B")
+        expect(again).to eq(first)
+      }.not_to change(User, :count)
+      expect(UserIdentity.where(provider: "my_digital_id", uid: "sub-idem").count).to eq(1)
+    end
   end
 end

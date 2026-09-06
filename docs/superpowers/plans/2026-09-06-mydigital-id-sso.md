@@ -1110,6 +1110,15 @@ RSpec.describe "User MyDigital ID linking", type: :model do
       expect(UserIdentity.where(provider: "my_digital_id", uid: "sub-race").count).to eq(1)
       expect(again.identities).to be_empty.or eq(User.find_by(username: "firstperson").identities)
     end
+
+    it "is idempotent when the sub is already linked — returns the existing account, no orphan user" do
+      first = User.create_with_my_digital_id(username: "firstperson", sub: "sub-idem", full_name: "A")
+      expect {
+        again = User.create_with_my_digital_id(username: "secondperson", sub: "sub-idem", full_name: "B")
+        expect(again).to eq(first)
+      }.not_to change(User, :count)
+      expect(UserIdentity.where(provider: "my_digital_id", uid: "sub-idem").count).to eq(1)
+    end
   end
 end
 ```
@@ -1143,20 +1152,42 @@ Methods:
   # never uses (recovery is moderator-assisted — see /mydigital-id). Email is synthesised
   # from the opaque `sub` to satisfy Devise :validatable without inventing PII (the value
   # is non-deliverable, never shown, never emailed). One-account-per-MyID is enforced by
-  # the unique [provider, uid] index.
+  # the unique [provider, uid] index. The method is transactional (user + identity insert
+  # commit together, so a failure never orphans an unusable @myid.invalid user row) and
+  # idempotent (a subject already linked by a concurrent request or retry short-circuits
+  # to the existing account instead of creating a duplicate).
   def self.create_with_my_digital_id(username:, sub:, full_name: nil)
+    # Idempotent: if this subject is already linked (a concurrent request or retry got
+    # here first), return that account rather than creating a duplicate.
+    if (existing = UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user)
+      return existing
+    end
+
     user = new(
       username: username.to_s.strip,
       full_name: full_name.presence || "New User",
       email: "#{sub}@myid.invalid",
       password: Devise.friendly_token[0, 32]
     )
-    if user.save
+    # save! + identity insert in ONE transaction so a failure NEVER leaves an orphaned
+    # user row with an unusable @myid.invalid email. A taken username raises RecordInvalid
+    # (ordinary, non-race); a concurrent link/create of the same sub raises RecordInvalid
+    # (email/uid uniqueness) or RecordNotUnique — all handled below, and the transaction
+    # rolls back our half-created row.
+    transaction do
+      user.save!
       user.identities.create!(provider: MYDIGITAL_ID_PROVIDER, uid: sub)
     end
     user
-  rescue ActiveRecord::RecordNotUnique
-    UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user || user
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+    # If the subject was linked concurrently, return the winning account. Otherwise this
+    # is an ordinary validation failure (e.g. taken username) — return the unsaved user
+    # carrying its errors for the interstitial to render.
+    if (winner = UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user)
+      return winner
+    end
+    user.errors.add(:base, "Could not create your account. Please try again.") if user.errors.empty?
+    user
   end
 ```
 
@@ -1165,7 +1196,7 @@ Methods:
 ```bash
 RAILS_ENV=test RUBYOPT='-W0' bundle exec rspec spec/models/user_mydigital_id_spec.rb
 ```
-Expected: 5 examples, 0 failures.
+Expected: 6 examples, 0 failures.
 
 - [ ] **Step 5: Commit**
 
