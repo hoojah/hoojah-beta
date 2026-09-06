@@ -150,7 +150,14 @@ class User < ApplicationRecord
   # callback controller turns into the link-or-create interstitial. The NRIC (from
   # userinfo) is never read here — identity is keyed on the opaque OIDC `sub`.
   def self.from_my_digital_id(auth)
-    UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: auth.uid)&.user
+    user_for_mydigital_id_sub(auth.uid)
+  end
+
+  # The one place the [provider, uid] → user lookup lives for MyDigital ID: the
+  # callback resolver above and both idempotency checks in create_with_my_digital_id
+  # all go through here.
+  def self.user_for_mydigital_id_sub(sub)
+    UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user
   end
 
   # Escape hatch: create a fresh hoojah account for a MyDigital ID subject. Username is
@@ -162,7 +169,7 @@ class User < ApplicationRecord
   def self.create_with_my_digital_id(username:, sub:, full_name: nil)
     # Idempotent: if this subject is already linked (a concurrent request or retry got
     # here first), return that account rather than creating a duplicate.
-    if (existing = UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user)
+    if (existing = user_for_mydigital_id_sub(sub))
       return existing
     end
 
@@ -188,7 +195,7 @@ class User < ApplicationRecord
     # If the subject was linked concurrently, return the winning account. Otherwise this
     # is an ordinary validation failure (e.g. taken username) — return the unsaved user
     # carrying its errors for the interstitial to render.
-    if (winner = UserIdentity.find_by(provider: MYDIGITAL_ID_PROVIDER, uid: sub)&.user)
+    if (winner = user_for_mydigital_id_sub(sub))
       return winner
     end
     user.errors.add(:base, "Could not create your account. Please try again.") if user.errors.empty?

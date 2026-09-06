@@ -7,6 +7,10 @@ class MydigitalIdLinksController < ApplicationController
   PENDING_TTL = 15.minutes
 
   before_action :require_pending_mydid
+  # Exposed to the interstitial view as @name so it never reaches into session
+  # internals. Set for every action, because `create`/`create_account` both
+  # `render :new` on failure and the greeting must still show the pending name.
+  before_action { @name = pending_name }
 
   def new
     skip_authorization

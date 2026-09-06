@@ -5,8 +5,8 @@
   <div class="<%= ds_card_classes %> w-full max-w-md p-6 sm:p-8">
     <h1 class="text-xl font-bold text-ink">Welcome via MyDigital ID</h1>
     <p class="mt-2 text-sm text-faint">
-      We verified your MyDigital ID<% if session.dig(:pending_mydid, "name").present? %>,
-      <span class="font-semibold text-ink"><%= session.dig(:pending_mydid, "name") %></span><% end %>.
+      We verified your MyDigital ID<% if @name.present? %>,
+      <span class="font-semibold text-ink"><%= @name %></span><% end %>.
       Link it to your Hoojah account, or create a new one.
     </p>
 
