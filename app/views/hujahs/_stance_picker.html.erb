@@ -51,7 +51,11 @@
     "neutral" => {value: 2, colours: "border-neutral text-neutral peer-checked:bg-neutral"},
     "disagree" => {value: 3, colours: "border-disagree text-disagree peer-checked:bg-disagree"}
   }
-  default_value = stances.dig(parent.current_user_vote(logged_in: true, current_user_id: current_user.id), :value)
+  # Prefer a stance carried over from the inline/argument composer draft (form.object.vote,
+  # seeded from ?vote= in HujahsController#new); otherwise default to the replier's existing
+  # vote on the parent.
+  default_value = form.object.vote.presence&.to_i ||
+    stances.dig(parent.current_user_vote(logged_in: true, current_user_id: current_user.id), :value)
 %>
 <div class="bg-card mt-2 pt-1 pb-3">
   <small class="text-grey">Post this response hoojah as:</small>

@@ -73,6 +73,7 @@
       <div class="flex items-center justify-between mb-2">
         <span class="text-xs font-bold text-ink-2">Post this response as</span>
         <%= link_to respond_hujah_path(hujah.slug),
+              data: {action: "argument-composer#openFull"},
               aria: {label: "Open the full-page composer"},
               class: "w-8 h-8 rounded-lg bg-card flex items-center justify-center text-ink-2 no-underline" do %>
           <%= lucide_icon("maximize-2", class: "w-4 h-4") %>
@@ -83,6 +84,8 @@
         <% stance_meta.each do |stance, icon, num| %>
           <button type="button"
                   data-action="argument-composer#pickStance"
+                  data-argument-composer-target="stanceBtn"
+                  data-stance="<%= stance %>"
                   data-value="<%= num %>"
                   aria-label="<%= stance.capitalize %>"
                   class="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-<%= stance %> text-<%= stance %> bg-card text-xs font-bold active:scale-95">

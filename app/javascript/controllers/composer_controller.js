@@ -36,6 +36,16 @@ export default class extends Controller {
     this.sync(); this.autogrow()
   }
 
+  // The maximize link opens the full-page composer; carry the typed body over as ?body=
+  // so the full form rehydrates instead of opening blank.
+  openFull(event) {
+    if (!this.hasBodyTarget) return
+    event.preventDefault()
+    const url = new URL(event.currentTarget.getAttribute("href"), window.location.origin)
+    if (this.bodyTarget.value.trim()) url.searchParams.set("body", this.bodyTarget.value)
+    window.location.assign(url.toString())
+  }
+
   expand() {
     if (!this.hasCollapsedTarget) return
     this.collapsedTarget.hidden = true

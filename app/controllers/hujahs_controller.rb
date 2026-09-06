@@ -70,7 +70,13 @@ class HujahsController < ApplicationController
     # has no parent, so it stays skip_authorization to satisfy verify_authorized.
     @parent = params[:slug] && Hujah.friendly.find(params[:slug])
     @parent ? authorize(@parent, :show?) : skip_authorization
-    @hujah = Hujah.new
+    # Draft carry-over: the inline/argument composers hand off to this full-page form via
+    # the maximize link, passing whatever the viewer already typed/picked as ?body= (+ ?vote=
+    # for a reply's stance). Seed the instance so the textarea and stance picker rehydrate
+    # instead of the draft being silently dropped on the way to the full composer. Body is
+    # display-only here (escaped by the textarea); the real write is the POST that follows.
+    @hujah = Hujah.new(body: params[:body].presence)
+    @hujah.vote = params[:vote] if @parent && params[:vote].to_s.in?(%w[1 2 3])
     @suggested_tags = Hashtag.order(hujahs_count: :desc).limit(6) # trending, for chips
   end
 

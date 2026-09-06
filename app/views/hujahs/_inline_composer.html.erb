@@ -39,7 +39,7 @@
         </div>
       </div>
       <div class="flex items-center gap-3 px-4 py-3 border-t border-hairline">
-        <%= link_to new_hujah_path, aria: {label: "Open full composer"},
+        <%= link_to new_hujah_path, data: {action: "composer#openFull"}, aria: {label: "Open full composer"},
               class: "w-9 h-9 rounded-xl bg-card-2 flex items-center justify-center text-ink-2 no-underline" do %>
           <%= lucide_icon("maximize-2", class: "w-4 h-4") %>
         <% end %>

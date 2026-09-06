@@ -33,11 +33,23 @@
       as before (share_spec / flag_spec click them by aria-label) — only their placement
       moved out of `_hujah_header` (which is still the feed byline and must not change)
       into this header. %>
+  <%# On a REPLY, "back" returns to the parent claim (not the feed) and the header carries
+      the parent as a tappable context strip — so you can see what this responds to and jump
+      up the thread. Guarded by visible_to?: if the parent isn't viewable (privacy), fall
+      back to the feed and show no strip. Top-level claims keep the trending-context label. %>
+  <% parent = @hujah.parent if @hujah.parent&.visible_to?(current_user) %>
   <header class="flex items-center justify-between gap-2 mb-6">
-    <%= link_to root_path, class: "text-ink no-underline shrink-0", aria: { label: "Back" } do %>
+    <%= link_to (parent ? hujah_path(parent.slug) : root_path), class: "text-ink no-underline shrink-0", aria: { label: parent ? "Back to parent hoojah" : "Back" } do %>
       <%= lucide_icon("arrow-left", class: "w-6 h-6") %>
     <% end %>
-    <span class="flex-1 min-w-0 truncate text-center text-sm font-bold text-ink"><%= header_label %></span>
+    <% if parent %>
+      <%= link_to hujah_path(parent.slug), class: "flex-1 min-w-0 no-underline", aria: { label: "Go to parent hoojah" } do %>
+        <div class="text-[11px] font-bold uppercase tracking-wide text-faint leading-tight">Replying to @<%= parent.user.username %></div>
+        <div class="text-xs text-ink-2 truncate">"<%= parent.body %>"</div>
+      <% end %>
+    <% else %>
+      <span class="flex-1 min-w-0 truncate text-center text-sm font-bold text-ink"><%= header_label %></span>
+    <% end %>
     <div class="flex items-center gap-3 shrink-0">
       <%= render "hujahs/share_menu", hujah: @hujah %>
       <details class="relative" data-controller="dropdown">

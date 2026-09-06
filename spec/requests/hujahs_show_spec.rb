@@ -70,6 +70,31 @@ RSpec.describe "Hujah show", type: :request do
     expect(response.body).to include("Flag this hoojah")
   end
 
+  # On a reply's show page, "back" targets the PARENT claim (not the feed) and the header
+  # carries the parent as a tappable "Replying to @author" context strip.
+  it "points back at the parent and shows a parent context strip on a reply" do
+    author = create(:user, username: "parentauthor")
+    parent = create(:hujah, user: author, body: "the parent claim body here")
+    reply = create(:hujah, user: create(:user), parent: parent, body: "a threaded reply")
+    get "/hoojah/#{reply.slug}"
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    # The back arrow links to the parent, and there is a "Replying to @parentauthor" strip.
+    expect(doc.css("header a[href='/hoojah/#{parent.slug}']").size).to be >= 1
+    expect(response.body).to include("Replying to @parentauthor")
+  end
+
+  # A top-level claim's back arrow still goes to the feed (no parent strip).
+  it "points back at the feed on a top-level claim" do
+    hujah = create(:hujah, user: create(:user), body: "a top-level claim body")
+    get "/hoojah/#{hujah.slug}"
+
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.css("header a[href='/'][aria-label='Back']").size).to eq(1)
+    expect(response.body).not_to include("Replying to @")
+  end
+
   # The argument composer renders for the author on their OWN claim too — an author is
   # allowed to respond to their own hoojah (HujahPolicy#create? already permits it; only
   # the view previously suppressed the composer for the author).

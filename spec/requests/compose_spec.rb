@@ -8,6 +8,26 @@ RSpec.describe "Compose", type: :request do
     expect(response).to redirect_to(new_user_session_path)
   end
 
+  # Draft carry-over: the inline/argument composers hand off to the full-page form via a
+  # maximize link that appends ?body= (and ?vote= on a reply). The full form must rehydrate
+  # from those params instead of opening blank.
+  it "seeds the top-level composer body from ?body=" do
+    sign_in user
+    get new_hujah_path(body: "A carried-over draft body")
+    expect(response.body).to include("A carried-over draft body")
+  end
+
+  it "seeds the respond composer body and stance from ?body= and ?vote=" do
+    sign_in user
+    parent = create(:hujah, user: create(:user), body: "a claim to respond to")
+    get respond_hujah_path(parent.slug, body: "My carried-over reply", vote: "3")
+    expect(response.body).to include("My carried-over reply")
+    # vote=3 (disagree) radio is the checked one in the seeded stance picker.
+    doc = Nokogiri::HTML(response.body)
+    checked = doc.css('input[name="hujah[vote]"][checked]')
+    expect(checked.map { |n| n["value"] }).to eq(["3"])
+  end
+
   it "creates a top-level hoojah and redirects to it" do
     sign_in user
     expect { post "/hoojah", params: {hujah: {body: "My take on this"}} }
