@@ -1,0 +1,11 @@
+<%= render layout: "pages/legal_chrome", locals: {title: "MyDigital ID login", updated: "6 September 2026", art: "about", variant: :spots, lede: "Hoojah lets Malaysians sign in with MyDigital ID, the national digital identity. This page explains what that means for your account."} do %>
+  <%= render layout: "pages/section", locals: {heading: "One identity, one account", variant: :spots, spot: "claim"} do %>
+    <p>MyDigital ID identifies a single registered individual in Malaysia. Signing in with MyDigital ID is bound by Malaysian laws and policies governing the national digital identity. Because of that, <strong>only one Hoojah account is allowed per MyDigital ID</strong>. If your MyDigital ID is already linked to a Hoojah account, signing in will always take you to that same account.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "What we store", variant: :spots, spot: "votes"} do %>
+    <p>When you sign in, MyDigital ID confirms your identity to Hoojah. We store only a stable, anonymous reference to that identity so we can recognise you next time. We do <strong>not</strong> store your MyKad / IC number.</p>
+  <% end %>
+  <%= render layout: "pages/section", locals: {heading: "Account recovery", variant: :spots, spot: "mission"} do %>
+    <p>If you created your Hoojah account through MyDigital ID, there is no password for us to reset. To recover access, please contact a Hoojah moderator, who will help you re-establish your account.</p>
+  <% end %>
+<% end %>
