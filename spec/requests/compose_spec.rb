@@ -46,6 +46,21 @@ RSpec.describe "Compose", type: :request do
     expect(Hujah.last.vote).to eq([1]).or eq(1) # matches the model's vote column shape
   end
 
+  # Slice 2 (image attachments): the composer direct-uploads a blob in the background and
+  # submits only its signed_id in hujah[image]. ActiveStorage assigns the blob from the
+  # signed_id on current_user.hujahs.new(compose_params), so the controller only needs to
+  # permit :image and :image_alt.
+  it "attaches an image supplied as a blob signed_id" do
+    sign_in user
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: file_fixture("test_image.png").open, filename: "photo.png", content_type: "image/png"
+    )
+    post "/hoojah", params: {hujah: {body: "A claim long enough to pass", image: blob.signed_id, image_alt: "a train"}}
+    hujah = Hujah.order(:created_at).last
+    expect(hujah.image).to be_attached
+    expect(hujah.image_alt).to eq("a train")
+  end
+
   it "rejects a spoofed missing parent_id" do
     # Task 8: the controller no longer rescues RecordNotFound into a blank
     # head :not_found — it propagates to the branded 404 (config.exceptions_app

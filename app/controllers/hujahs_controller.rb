@@ -295,7 +295,7 @@ class HujahsController < ApplicationController
   # here is safe — the gate is enforced in the model, not by withholding the param.
   def compose_params
     params.require(:hujah).permit(:body, :parent_id, :vote, :visibility, :allow_debates,
-      :agree_label, :neutral_label, :disagree_label)
+      :agree_label, :neutral_label, :disagree_label, :image, :image_alt)
   end
 
   # Slice 1 body edit: permit ONLY the body — never stance/visibility/custom labels

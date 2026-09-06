@@ -19,9 +19,16 @@
 <%# turbo: false — the full-page composer navigates on success (create redirects to the
     new hoojah). Without it the Turbo form would consume create.turbo_stream.erb, which
     prepends to the (absent) feed, leaving the user stranded on the composer. %>
+<%# multipart: true — Slice 2 mounts the image_upload controller alongside composer on the
+    top-level composer. The image itself rides a background DirectUpload and the form only
+    carries the blob signed_id (hujah[image]); multipart keeps the form honest regardless.
+    image_upload_direct_url_value points the controller at the ActiveStorage endpoint. %>
 <%= form_with model: hujah,
       url: (edit_mode ? hujah_path(hujah.slug) : "/hoojah"), method: (edit_mode ? :patch : :post), local: true,
-      data: {turbo: false, controller: "composer", composer_require_min_value: parent.nil?},
+      multipart: true,
+      data: {turbo: false, controller: "composer image-upload",
+             composer_require_min_value: parent.nil?,
+             image_upload_direct_url_value: rails_direct_uploads_path},
       class: "min-h-screen flex flex-col bg-surface" do |f| %>
   <% if parent.present? %>
     <%= f.hidden_field :parent_id, value: parent.id %>
