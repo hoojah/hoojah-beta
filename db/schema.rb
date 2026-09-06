@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_03_012515) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_06_060620) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -224,6 +224,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_012515) do
     t.index ["user_id"], name: "index_user_badges_on_user_id"
   end
 
+  create_table "user_identities", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "provider", null: false
+    t.string "uid", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["provider", "uid"], name: "index_user_identities_on_provider_and_uid", unique: true
+    t.index ["user_id", "provider"], name: "index_user_identities_on_user_id_and_provider", unique: true
+    t.index ["user_id"], name: "index_user_identities_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", default: ""
@@ -299,6 +310,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_012515) do
   add_foreign_key "hujahs", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "user_badges", "users"
+  add_foreign_key "user_identities", "users"
   add_foreign_key "votes", "users"
   add_foreign_key "webauthn_credentials", "users"
 end
