@@ -62,6 +62,10 @@ class User < ApplicationRecord
 
   MYDIGITAL_ID_PROVIDER = "my_digital_id"
 
+  # Set true by create_with_my_digital_id so the internal MyID path may persist a
+  # synthetic `<sub>@myid.invalid` email; ordinary public signup cannot (below).
+  attr_accessor :via_my_digital_id
+
   MAX_AVATAR_BYTES = 5.megabytes
   ALLOWED_AVATAR_TYPES = %w[image/png image/jpeg image/gif image/webp].freeze
 
@@ -73,6 +77,13 @@ class User < ApplicationRecord
   # newline-injection (a `\n` after a valid prefix) that an unanchored regex would
   # allow — closing the M7 link-XSS finding brakeman flags as Format Validation.
   validates :link, format: {with: %r{\Ahttps?://\S+\z}i}, allow_blank: true
+  # Defence-in-depth: `@myid.invalid` is the reserved synthetic-email space for
+  # MyDigital ID accounts (see create_with_my_digital_id). Block a public signup
+  # from claiming that space — a low-probability account-creation DoS. `on: :create`
+  # so it never blocks a later profile update of an existing MyID account, and the
+  # internal MyID create path is exempt via `via_my_digital_id`.
+  validates :email, format: {without: /@myid\.invalid\z/i, message: "domain is not allowed"},
+    on: :create, unless: :via_my_digital_id
   validate :photo_from_cloudinary
   validate :avatar_is_valid_image
 
@@ -161,6 +172,8 @@ class User < ApplicationRecord
       email: "#{sub}@myid.invalid",
       password: Devise.friendly_token[0, 32]
     )
+    # Exempt this internal path from the public @myid.invalid signup ban (above).
+    user.via_my_digital_id = true
     # save! + identity insert in ONE transaction so a failure NEVER leaves an orphaned
     # user row with an unusable @myid.invalid email. A taken username raises RecordInvalid
     # (ordinary, non-race); a concurrent link/create of the same sub raises RecordInvalid

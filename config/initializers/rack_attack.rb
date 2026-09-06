@@ -53,6 +53,7 @@ class Rack::Attack
   VERDICTS_PATH = throttled_path("debates", ANY_SEGMENT, "verdicts")
   EXTEND_PATH = throttled_path("debates", ANY_SEGMENT, "extend")
   SEARCH_PATH = throttled_path("search")
+  MYDIGITAL_ID_LINK_PATH = throttled_path("mydigital-id", "link")
 
   # --- Throttles -------------------------------------------------------------
 
@@ -115,5 +116,19 @@ class Rack::Attack
   # per-user throttle would leave an anonymous scraper entirely uncapped.
   throttle("search/ip", limit: 30, period: 1.minute) do |req|
     req.ip if req.get? && req.path.match?(SEARCH_PATH)
+  end
+  # POST /mydigital-id/link runs `user&.valid_password?(params[:password])` against
+  # an attacker-chosen `email` param — a password-guessing oracle against any
+  # account. The login throttles only match `POST /login`, so this endpoint was
+  # uncapped. Mirror the login pair: per IP and per attacked email. The link form
+  # POSTs `email` at the top level (params["email"]), NOT nested under `user[...]`
+  # the way the Devise login form does.
+  throttle("mydigital_id_link/ip", limit: 10, period: 1.minute) do |req|
+    req.ip if req.post? && req.path.match?(MYDIGITAL_ID_LINK_PATH)
+  end
+  throttle("mydigital_id_link/email", limit: 5, period: 1.minute) do |req|
+    if req.post? && req.path.match?(MYDIGITAL_ID_LINK_PATH)
+      req.params["email"].to_s.downcase.presence
+    end
   end
 end

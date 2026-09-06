@@ -18,6 +18,23 @@ RSpec.describe "User MyDigital ID linking", type: :model do
     end
   end
 
+  describe "reserved @myid.invalid email domain" do
+    # Defence-in-depth: the reserved synthetic domain must not be claimable via
+    # ordinary public signup (a low-probability account-creation DoS), but the
+    # internal MyID create path (which sets via_my_digital_id) stays exempt.
+    it "rejects a public signup into the reserved @myid.invalid domain" do
+      user = build(:user, email: "attacker@myid.invalid")
+      user.validate
+      expect(user.errors[:email]).to be_present
+    end
+
+    it "still lets the internal MyID create path persist an @myid.invalid account" do
+      user = User.create_with_my_digital_id(username: "myidperson", sub: "sub-reserved", full_name: "R")
+      expect(user).to be_persisted
+      expect(user.email).to eq("sub-reserved@myid.invalid")
+    end
+  end
+
   describe ".create_with_my_digital_id" do
     it "creates a usable account + identity, no NRIC anywhere" do
       user = User.create_with_my_digital_id(username: "newperson", sub: "sub-new", full_name: "Ali bin Abu")
