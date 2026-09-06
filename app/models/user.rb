@@ -1,4 +1,8 @@
 class User < ApplicationRecord
+  # Legacy single-provider columns, superseded by user_identities. Ignored so the app
+  # tolerates the pre-drop schema, then removed in the migration below.
+  self.ignored_columns += %w[provider uid]
+
   has_many :hujahs, dependent: :destroy
   has_many :votes, dependent: :destroy
   has_many :notifications, dependent: :destroy
