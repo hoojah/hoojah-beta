@@ -37,6 +37,31 @@ RSpec.describe Hujah, type: :model do
     end
   end
 
+  describe "#image_display_state" do
+    it "is :none without an attachment" do
+      expect(build(:hujah).image_display_state).to eq(:none)
+    end
+
+    it "is :none when the image was removed by a moderator" do
+      hujah = attach_image(create(:hujah))
+      hujah.update!(image_removed_at: Time.current)
+      expect(hujah.image_display_state).to eq(:none)
+    end
+
+    it "is :held when a pending image-subject flag exists" do
+      hujah = attach_image(create(:hujah))
+      hujah.save!
+      create(:flag, hujah: hujah, subject: :image_graphic) # status defaults to pending
+      expect(hujah.reload.image_display_state).to eq(:held)
+    end
+
+    it "is :shown for an attached image with no image flags" do
+      hujah = attach_image(create(:hujah))
+      hujah.save!
+      expect(hujah.image_display_state).to eq(:shown)
+    end
+  end
+
   describe "new-record defaults" do
     it "defaults to visible_public, allow_debates true, conviction_count 0" do
       h = Hujah.new

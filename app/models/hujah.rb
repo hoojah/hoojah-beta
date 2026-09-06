@@ -12,6 +12,22 @@ class Hujah < ApplicationRecord
 
   validates :image_alt, length: {maximum: 200}
   validate :image_is_valid_image
+
+  # The two Flag#subject reasons that target the image rather than the claim. A pending
+  # flag of either soft-holds the image (see #image_held?).
+  IMAGE_FLAG_SUBJECTS = %i[image_graphic image_not_theirs].freeze
+
+  # Derived, viewer-independent visual state for the attached image.
+  def image_display_state
+    return :none unless image.attached? && image_removed_at.nil?
+    image_held? ? :held : :shown
+  end
+
+  # Soft-hidden while an image report is pending review. Not stored — derived so it
+  # clears automatically when the flag is resolved.
+  def image_held?
+    flags.pending.where(subject: IMAGE_FLAG_SUBJECTS).exists?
+  end
   has_many :children, class_name: "Hujah", foreign_key: "parent_id", dependent: :destroy
   has_many :debates, dependent: :destroy
   has_many :hashtag_hujahs, dependent: :destroy
