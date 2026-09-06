@@ -102,6 +102,32 @@
             class: "w-full mt-2 border-0 p-0 bg-transparent resize-none focus:ring-0 text-xl font-semibold leading-snug text-ink" %>
     </div>
 
+    <%# Slice 2: attached-image state (top-level only). Hidden until the image_upload
+        controller reveals it on a successful DirectUpload. The signed_id hidden field is
+        what actually rides the POST; the file itself was uploaded in the background. The
+        alt field is a progressive char-counter — maxlength is the real cap; validation
+        (≤200) also lives on the model. %>
+    <% if parent.nil? %>
+      <%= f.hidden_field :image, data: {image_upload_target: "signedId"} %>
+      <div data-image-upload-target="attached" hidden class="mt-4">
+        <div class="relative rounded-2xl overflow-hidden aspect-video bg-card-2">
+          <img data-image-upload-target="attachedPreview" alt="" class="w-full h-full object-cover">
+          <button type="button" data-action="image-upload#remove" aria-label="Remove image"
+                  class="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"><%= lucide_icon("x", class: "w-4 h-4") %></button>
+          <span class="absolute left-2 bottom-2 px-2 py-1 rounded-full bg-black/60 text-white text-[11px] font-extrabold tracking-wide">ALT</span>
+          <span data-image-upload-target="attachedMeta" class="absolute right-2 bottom-2 px-2 py-1 rounded-full bg-black/60 text-white text-[11px] font-bold"></span>
+        </div>
+        <div class="mt-2 flex items-start gap-2 bg-card border border-hairline rounded-xl px-3 py-2.5"
+             data-controller="char-counter">
+          <%= f.text_field :image_alt, placeholder: "Describe the image…", maxlength: 200,
+              data: {"char-counter-target": "input", action: "input->char-counter#update"},
+              class: "flex-1 text-sm leading-snug text-ink bg-transparent border-0 outline-none focus:ring-0 p-0" %>
+          <span data-char-counter-target="count" class="flex-none text-xs text-faint font-semibold">0 / 200</span>
+        </div>
+        <div class="mt-1.5 text-[11px] leading-snug text-faint">Optional — describe the image for people who can't see it.</div>
+      </div>
+    <% end %>
+
     <%# Suggested hashtags + the weigh-in preview are compose-only affordances — the body
         edit hides them (stance/vote mechanics are immutable here). %>
     <% if parent.nil? && !edit_mode %>
@@ -165,7 +191,8 @@
 
   <% if parent.nil? %>
     <footer class="flex items-center gap-3.5 px-4 py-3 bg-card backdrop-blur border-t border-hairline">
-      <button type="button" aria-label="Add image"
+      <button type="button" aria-label="Add image" data-action="image-upload#openDialog"
+        data-image-upload-target="triggerButton"
         class="w-10 h-10 rounded-xl bg-card-2 flex items-center justify-center text-ink-2">
         <%= lucide_icon("image", class: "w-5 h-5") %>
       </button>
@@ -179,5 +206,9 @@
       </label>
       <span class="ml-auto text-[12.5px] font-bold text-faint">Draft</span>
     </footer>
+
+    <%# The add-image dialog lives inside the form so the image_upload controller (mounted
+        on the form) can reach it as a target. Top-level compose only. %>
+    <%= render "hujahs/add_image_dialog" %>
   <% end %>
 <% end %>

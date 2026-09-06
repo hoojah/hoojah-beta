@@ -1,0 +1,87 @@
+<%# "Add an image" dialog — opened by the composer footer image button. Shell/copy
+    mirrors _flag_dialog (rounded-lg, shadow-lg, backdrop:bg-black/40, hairline header
+    + grey X, divider rows, bare grey Cancel). Upload states (chooser/error/progress/
+    failed) are toggled by image_upload_controller via data-image-upload-target.
+
+    The dialog is driven ENTIRELY by the image_upload controller: it calls
+    dialogTarget.showModal()/.close() directly, so there is no separate `dialog`
+    controller here. Native <dialog> already closes on Esc; backdrop clicks route to
+    image-upload#backdropClose. %>
+<dialog data-image-upload-target="dialog"
+        data-action="click->image-upload#backdropClose"
+        aria-labelledby="dialog-title-image"
+        class="rounded-lg shadow-lg p-0 w-full max-w-md backdrop:bg-black/40">
+  <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+    <h5 id="dialog-title-image" data-image-upload-target="title" class="text-lg font-medium m-0">Add an image</h5>
+    <button type="button" data-action="image-upload#closeDialog" aria-label="Close" class="<%= ds_button_classes(variant: :link, tone: "grey") %>">
+      <%= lucide_icon("x", class: "w-5 h-5") %>
+    </button>
+  </div>
+
+  <div class="p-4">
+    <%# error banner (hidden by default; controller fills message + reveals) %>
+    <div data-image-upload-target="error" hidden
+         class="flex items-start gap-3 px-3.5 py-3 rounded-lg bg-red-50 mb-3">
+      <span class="text-red-700 flex-none"><%= lucide_icon("circle-alert", class: "w-5 h-5") %></span>
+      <div class="min-w-0">
+        <div data-image-upload-target="errorTitle" class="text-sm font-semibold text-red-700"></div>
+        <div data-image-upload-target="errorBody" class="mt-0.5 text-xs leading-snug text-red-700/85"></div>
+      </div>
+    </div>
+
+    <%# IDLE: helper + two choice rows %>
+    <div data-image-upload-target="chooser">
+      <p class="m-0 mb-3 text-sm text-grey">JPG, PNG, WebP or GIF · up to 5 MB · one image</p>
+      <div class="flex flex-col">
+        <button type="button" data-action="image-upload#pickFile"
+                class="flex items-center gap-3 px-4 py-3 bg-card cursor-pointer text-left border-0">
+          <span class="w-10 h-10 rounded-xl bg-card-2 text-ink-2 flex items-center justify-center flex-none"><%= lucide_icon("upload", class: "w-5 h-5") %></span>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink">Upload from device</span><span class="block mt-0.5 text-xs text-ink-2">Photos, files or a screenshot</span></span>
+          <%= lucide_icon("chevron-right", class: "w-4 h-4 text-faint") %>
+        </button>
+        <%= render "ui/divider" %>
+        <button type="button" data-action="image-upload#pickCamera"
+                class="flex items-center gap-3 px-4 py-3 bg-card cursor-pointer text-left border-0">
+          <span class="w-10 h-10 rounded-xl bg-card-2 text-ink-2 flex items-center justify-center flex-none"><%= lucide_icon("camera", class: "w-5 h-5") %></span>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink">Take a photo</span><span class="block mt-0.5 text-xs text-ink-2">Opens your camera</span></span>
+          <%= lucide_icon("chevron-right", class: "w-4 h-4 text-faint") %>
+        </button>
+      </div>
+      <div class="mt-3 text-[11px] leading-snug text-faint">By attaching an image you confirm you have the right to share it. See our <a href="#" class="text-primary font-semibold">Terms</a> and <a href="#" class="text-primary font-semibold">Privacy</a>.</div>
+    </div>
+
+    <%# UPLOADING: progress %>
+    <div data-image-upload-target="progress" hidden>
+      <div class="relative rounded-xl overflow-hidden aspect-video bg-card-2">
+        <img data-image-upload-target="progressPreview" alt="" class="w-full h-full object-cover">
+        <span class="absolute inset-0 bg-white/35 pointer-events-none"></span>
+      </div>
+      <div class="mt-3">
+        <div class="flex justify-between text-xs font-bold text-ink-2"><span data-image-upload-target="progressName"></span><span data-image-upload-target="progressPct">0%</span></div>
+        <div class="mt-1.5 h-2 rounded-full bg-field overflow-hidden"><div data-image-upload-target="progressBar" class="h-full rounded-full bg-primary" style="width:0%"></div></div>
+      </div>
+      <div class="mt-2.5 text-[11px] leading-snug text-faint">The image is attached when this finishes — you can keep typing your hoojah meanwhile.</div>
+      <div class="text-right mt-4"><button type="button" data-action="image-upload#cancelUpload" class="text-sm text-grey cursor-pointer border-0 bg-transparent">Cancel upload</button></div>
+    </div>
+
+    <%# FAILED (network) %>
+    <div data-image-upload-target="failed" hidden>
+      <div class="relative rounded-xl border border-dashed border-red-700 aspect-video bg-card flex flex-col items-center justify-center gap-2.5">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-700 text-xs font-bold"><%= lucide_icon("circle-alert", class: "w-3.5 h-3.5") %> Upload didn't finish</span>
+        <div data-image-upload-target="failedName" class="text-xs text-faint"></div>
+      </div>
+      <div class="flex gap-2 mt-3">
+        <button type="button" data-action="image-upload#retry" class="<%= ds_button_classes(tone: "primary", size: :sm) %>">Retry</button>
+        <button type="button" data-action="image-upload#pickFile" class="<%= ds_button_classes(tone: "grey", size: :sm) %>">Choose another</button>
+      </div>
+    </div>
+
+    <div class="text-right mt-4"><button type="button" data-action="image-upload#closeDialog" class="text-sm text-grey cursor-pointer border-0 bg-transparent">Cancel</button></div>
+  </div>
+
+  <%# hidden file inputs (device + camera) %>
+  <input type="file" data-image-upload-target="fileInput" data-action="image-upload#fileChosen"
+         accept="image/png,image/jpeg,image/gif,image/webp" class="hidden">
+  <input type="file" data-image-upload-target="cameraInput" data-action="image-upload#fileChosen"
+         accept="image/*" capture="environment" class="hidden">
+</dialog>
