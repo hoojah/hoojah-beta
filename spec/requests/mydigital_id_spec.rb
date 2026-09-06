@@ -74,6 +74,82 @@ RSpec.describe "MyDigital ID SSO", type: :request do
     end
   end
 
+  describe "an already-signed-in user completes a handshake for an unknown subject" do
+    # L1: a signed-in user must never be silently switched into a NEW account.
+    # They get a confirmation step to link the MyDigital ID to their CURRENT account.
+    it "routes to the confirmation step, not a silent create/switch" do
+      user = create(:user, username: "existinguser")
+      sign_in user
+      mock_mydigital_id_auth(sub: "sub-si")
+
+      post "/auth/my_digital_id"
+      follow_redirect! # callback → interstitial redirect
+      expect(response).to redirect_to(mydigital_id_continue_path)
+
+      follow_redirect! # → interstitial page
+      expect(response).to have_http_status(:ok)
+      # Prompts to link to the CURRENT account…
+      expect(response.body).to include("Link your MyDigital ID")
+      expect(response.body).to include("existinguser")
+      # …and does NOT offer the anonymous create-account form.
+      expect(response.body).not_to include(mydigital_id_register_path)
+      expect(response.body).not_to include("Create account and continue")
+    end
+
+    it "POST link-current links to the current account and creates no new user" do
+      user = create(:user, username: "existinguser")
+      sign_in user
+      mock_mydigital_id_auth(sub: "sub-si")
+      post "/auth/my_digital_id"
+      follow_redirect!
+
+      expect {
+        post mydigital_id_link_current_path
+      }.not_to change(User, :count)
+
+      expect(user.reload.identities.where(provider: "my_digital_id", uid: "sub-si")).to be_present
+      expect(response).to redirect_to(root_path).or redirect_to(dashboard_path)
+    end
+
+    it "refuses link-current when the current account is already linked (422, no duplicate)" do
+      user = create(:user, username: "existinguser")
+      user.identities.create!(provider: "my_digital_id", uid: "sub-already")
+      sign_in user
+      mock_mydigital_id_auth(sub: "sub-si")
+      post "/auth/my_digital_id"
+      follow_redirect!
+
+      expect {
+        post mydigital_id_link_current_path
+      }.not_to change { user.reload.identities.count }
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it "redirects a signed-in POST to /register back to continue, creating no account" do
+      user = create(:user, username: "existinguser")
+      sign_in user
+      mock_mydigital_id_auth(sub: "sub-si")
+      post "/auth/my_digital_id"
+      follow_redirect!
+
+      expect {
+        post "/mydigital-id/register", params: {username: "brandnew"}
+      }.not_to change(User, :count)
+      expect(response).to redirect_to(mydigital_id_continue_path)
+    end
+
+    it "redirects a signed-in POST to /link back to continue" do
+      user = create(:user, username: "existinguser")
+      sign_in user
+      mock_mydigital_id_auth(sub: "sub-si")
+      post "/auth/my_digital_id"
+      follow_redirect!
+
+      post "/mydigital-id/link", params: {email: "x@y.com", password: "whatever"}
+      expect(response).to redirect_to(mydigital_id_continue_path)
+    end
+  end
+
   it "fails closed when the interstitial is hit with no pending stash" do
     get "/mydigital-id/continue"
     expect(response).to redirect_to(new_user_session_path)

@@ -45,6 +45,9 @@ Rails.application.routes.draw do
   get "/mydigital-id/continue", to: "mydigital_id_links#new", as: :mydigital_id_continue
   post "/mydigital-id/link", to: "mydigital_id_links#create", as: :mydigital_id_link
   post "/mydigital-id/register", to: "mydigital_id_links#create_account", as: :mydigital_id_register
+  # L1: a signed-in user confirms linking the pending MyDigital ID to their CURRENT
+  # account here — never a silent new-account switch through the anonymous create path.
+  post "/mydigital-id/link-current", to: "mydigital_id_links#link_current", as: :mydigital_id_link_current
 
   # Public notice (action + view land in Task 14). Route is drawn here so the login/
   # interstitial views in Task 13 can resolve mydigital_id_info_path.
