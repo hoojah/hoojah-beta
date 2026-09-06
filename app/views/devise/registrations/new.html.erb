@@ -100,6 +100,23 @@
       Continue with Google
     <% end %>
 
+    <%# MyDigital ID — POST to the OmniAuth request phase (POST /auth/my_digital_id).
+        Turbo disabled so the request-phase 302 is a real navigation; CSRF token carried
+        by button_to and verified by omniauth-rails_csrf_protection. Shown only when the
+        provider is configured (MYID_BASE_URL present). %>
+    <% if ENV["MYID_BASE_URL"].present? %>
+      <%= button_to user_my_digital_id_omniauth_authorize_path,
+            method: :post,
+            form: {data: {turbo: false}},
+            class: "w-full h-[52px] mt-3 rounded-xl border border-field bg-card text-ink font-bold text-[14.5px] flex items-center justify-center gap-2.5" do %>
+        <%= lucide_icon "shield-check", class: "w-[19px] h-[19px]" %>
+        Continue with MyDigital ID
+      <% end %>
+      <p class="mt-2 text-xs text-faint text-center">
+        <%= link_to "What is MyDigital ID login?", mydigital_id_info_path, class: "underline" %>
+      </p>
+    <% end %>
+
     <%= render "devise/shared/links" %>
   </div>
 </div>
