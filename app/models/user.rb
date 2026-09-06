@@ -89,10 +89,11 @@ class User < ApplicationRecord
 
   # Auto-linking by email is safe ONLY because omniauth-google-oauth2 populates
   # info.email from Google's verified_email (nil unless the address is verified).
-  # Do not reuse this method for a provider without that guarantee.
+  # Do not reuse this method for a provider without that guarantee — MyDigital ID
+  # has no email and uses from_my_digital_id instead.
   def self.from_omniauth(auth)
-    if (user = find_by(provider: auth.provider, uid: auth.uid))
-      return user
+    if (identity = UserIdentity.find_by(provider: auth.provider, uid: auth.uid))
+      return identity.user
     end
 
     email = auth.info.email.to_s.downcase.strip
@@ -103,27 +104,28 @@ class User < ApplicationRecord
     end
 
     if (user = find_by(email: email))
-      if user.provider.present? && user.uid != auth.uid
+      existing = user.identities.find_by(provider: auth.provider)
+      if existing && existing.uid != auth.uid
         user.errors.add(:base, "This email is already linked to a different Google account.")
         return user
       end
-      user.update_columns(provider: auth.provider, uid: auth.uid)
+      user.identities.create!(provider: auth.provider, uid: auth.uid) unless existing
       return user
     end
 
     seed = email.split("@").first.presence || auth.info.name
-    create(
-      provider: auth.provider,
-      uid: auth.uid,
+    user = create(
       email: email,
       full_name: auth.info.name.presence || email.split("@").first,
       username: generate_username(seed),
       password: Devise.friendly_token[0, 20]
     )
+    user.identities.create!(provider: auth.provider, uid: auth.uid) if user.persisted?
+    user
   rescue ActiveRecord::RecordNotUnique
     # Concurrent first sign-in: the other request won the unique [provider, uid]
     # index. Return the now-existing record.
-    find_by(provider: auth.provider, uid: auth.uid)
+    UserIdentity.find_by(provider: auth.provider, uid: auth.uid)&.user
   end
 
   # Derive a valid, unique username from a seed (email local-part or name). Strips to the

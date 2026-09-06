@@ -6,7 +6,9 @@ RSpec.describe "Google OmniAuth callbacks", type: :request do
     post "/auth/google_oauth2"          # request phase (POST, CSRF-protected)
     follow_redirect!                     # → /auth/google_oauth2/callback
     expect(response).to redirect_to(root_path).or redirect_to(dashboard_path)
-    expect(User.find_by(uid: "u1")).to be_present
+    identity = UserIdentity.find_by(provider: "google_oauth2", uid: "u1")
+    expect(identity).to be_present
+    expect(identity.user.email).to eq("oauth.new@gmail.com")
   end
 
   it "redirects to login on failure" do
