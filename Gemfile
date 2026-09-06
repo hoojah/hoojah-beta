@@ -24,7 +24,7 @@ gem "aws-sdk-s3", require: false
 gem "omniauth-google-oauth2", "~> 1.1"
 gem "omniauth-rails_csrf_protection", "~> 1.0"
 # MyDigital ID SSO (Keycloak OIDC) — reusable OmniAuth strategy, path gem during dev.
-gem "omniauth-mydigital-id-ruby", path: "../omniauth-mydigital-id-ruby"
+gem "omniauth-mydigital-id-ruby", path: "vendor/gems/omniauth-mydigital-id-ruby"
 # WebAuthn / passkeys — server-side Relying Party for passwordless login.
 gem "webauthn", "~> 3.4"
 gem "jsonapi-serializer"

@@ -8,3 +8,4 @@ ignore:
   - 'db/queue_migrate/**/*'
   - 'db/cable_migrate/**/*'
   - 'bin/**/*'
+  - 'vendor/**/*'

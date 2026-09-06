@@ -1,5 +1,5 @@
 PATH
-  remote: ../omniauth-mydigital-id-ruby
+  remote: vendor/gems/omniauth-mydigital-id-ruby
   specs:
     omniauth-mydigital-id-ruby (0.1.0)
       jwt (~> 2.7)
