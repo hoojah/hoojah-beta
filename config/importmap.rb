@@ -7,3 +7,4 @@ pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 pin_all_from "app/javascript/controllers", under: "controllers"
 pin "local-time" # @3.0.3
 pin "@github/webauthn-json", to: "@github--webauthn-json.js" # @0.5.7
+pin "@rails/activestorage", to: "@rails--activestorage.js" # @7.2.302
