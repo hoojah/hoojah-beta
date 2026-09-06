@@ -56,7 +56,7 @@ class MydigitalIdLinksController < ApplicationController
   def finish_linked(user)
     session.delete(:pending_mydid)
     sign_in(user, event: :authentication)
-    redirect_to after_sign_in_path_for(user), notice: "Signed in with MyDigital ID."
+    redirect_to after_sign_in_path_for(user), status: :see_other, notice: "Signed in with MyDigital ID."
   end
 
   def require_pending_mydid
