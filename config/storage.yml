@@ -38,11 +38,13 @@ local:
 # Browser DIRECT UPLOADS PUT straight to this endpoint cross-origin, so the bucket
 # MUST carry a CORS policy or the browser preflight fails ("Response to preflight
 # request doesn't pass access control check") even after CSP allows the host. Apply
-# once per bucket, e.g.:
+# once per bucket (serving is same-origin via the Active Storage proxy, so only the
+# upload PUT needs CORS):
+#   bin/rails garage:cors      # uses the GARAGE_* env + bundled aws-sdk-s3 (no aws CLI)
+# or, with the aws CLI if you have it:
 #   aws --endpoint-url "$GARAGE_ENDPOINT" s3api put-bucket-cors --bucket "$GARAGE_BUCKET" \
 #     --cors-configuration '{"CORSRules":[{"AllowedOrigins":["https://hoojah.rudzainy.com"],
 #     "AllowedMethods":["PUT"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag"],"MaxAgeSeconds":3600}]}'
-# (Serving is same-origin via the Active Storage proxy, so only the upload PUT needs CORS.)
 garage:
   service: S3
   endpoint: <%= ENV.fetch("GARAGE_ENDPOINT", "https://s3-grg.novas.my") %>
