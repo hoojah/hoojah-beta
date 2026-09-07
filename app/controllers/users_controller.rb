@@ -104,7 +104,15 @@ class UsersController < ApplicationController
 
   # Email stays API-only (the HTML edit form omits it, matching the legacy SPA).
   def user_params
-    params.require(:user).permit(:full_name, :username, :location, :link, :headline, :photo, :private, :avatar, :email_notifications)
+    permitted = params.require(:user).permit(:full_name, :username, :location, :link, :headline, :photo, :private, :avatar, :email_notifications)
+    # The avatar input submits a direct-upload signed_id, but its hidden field is
+    # present on EVERY profile save — so an ordinary edit (no new photo picked)
+    # sends a blank :avatar. Assigning "" to a has_one_attached PURGES it, which
+    # would silently delete the user's photo whenever they change anything else (and
+    # is also what the inline "Remove" button clears the pending pick to). Drop the
+    # key when blank so only a real new upload ever touches the stored avatar.
+    permitted.delete(:avatar) if permitted[:avatar].blank?
+    permitted
   end
 
   # Hoojah 2026 (redesign Phase 4, Task 4.5). The list for whichever tab is active.

@@ -146,6 +146,12 @@ export default class extends Controller {
       this.triggerButtonTarget.classList.remove("bg-primary-soft", "text-primary")
       this.triggerButtonTarget.classList.add("bg-card-2", "text-ink-2")
     }
+    // Return to the chooser. On the composer this is redundant (the dialog is
+    // already closed and openDialog() re-resets on next open), but on the inline
+    // avatar mount chooser/progress/failed/attached are co-located mutually
+    // exclusive views — without this, Remove would hide `attached` and strand the
+    // user in a blank area with no way back to "Change photo".
+    this.resetToChooser()
   }
 
   // --- view state helpers ---

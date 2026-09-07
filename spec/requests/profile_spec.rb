@@ -93,6 +93,19 @@ RSpec.describe "Profile", type: :request do
     expect(user.reload.avatar).to be_attached
   end
 
+  it "does not purge an existing avatar when the profile is saved with a blank avatar field" do
+    user = create(:user)
+    user.avatar.attach(io: StringIO.new("\x89PNG\r\n\x1a\n".b + ("0".b * 50)), filename: "me.png", content_type: "image/png")
+    sign_in user
+    # The inline avatar uploader ships a hidden :avatar field on EVERY save; with no
+    # new photo picked it is blank. Assigning "" to a has_one_attached PURGES it, so a
+    # plain bio edit would silently delete the photo — user_params drops the blank key.
+    patch "/u/#{user.username}", params: {user: {headline: "just editing my bio", avatar: ""}},
+      headers: {"Accept" => "text/vnd.turbo-stream.html"}
+    expect(user.reload.avatar).to be_attached
+    expect(user.headline).to eq("just editing my bio")
+  end
+
   it "renders the attached avatar image on the profile page" do
     user = create(:user)
     # A photo-variant avatar renders on the hoojah rows (the hero uses the initials
