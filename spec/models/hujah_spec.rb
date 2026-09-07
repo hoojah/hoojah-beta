@@ -140,6 +140,16 @@ RSpec.describe Hujah, type: :model do
         hujah.remove_image!(by: moderator)
       }.not_to change(Notification, :count)
     end
+
+    it "is a no-op on an imageless hujah (no stamp, no false notification)" do
+      hujah = create(:hujah) # never had an image
+
+      expect {
+        hujah.remove_image!(by: moderator)
+      }.not_to change(Notification, :count)
+
+      expect(hujah.reload.image_removed_at).to be_nil
+    end
   end
 
   describe "new-record defaults" do

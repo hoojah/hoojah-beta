@@ -2,8 +2,15 @@
     always pulls the row), the claim stays active — so the row LEAVES the queue only when
     the image reports were its ONLY pending flags. If a non-image report is still pending,
     the row is REPLACED in place (its image button is gone now that image_removed_at is set,
-    but the remaining reports keep it under review). The pending-count chip always refreshes. %>
-<% if @hujah.flags.pending.where.not(subject: Hujah::IMAGE_FLAG_SUBJECTS).exists? %>
+    but the remaining reports keep it under review). The pending-count chip always refreshes.
+
+    B4: a legacy nil-subject pending flag (subject is nullable; Slice 5 scoped the presence
+    validation to :create, so pre-Slice-5 rows can still carry nil) is a REMAINING non-image
+    report. `where.not(subject: IMAGE_FLAG_SUBJECTS)` compiles to NOT IN, which excludes
+    NULLs — so the nil row must be OR'd back in, or its hujah's row would be dropped from the
+    queue while the pending-count chip (which counts it) still shows it. %>
+<% if @hujah.flags.pending.where.not(subject: Hujah::IMAGE_FLAG_SUBJECTS)
+      .or(@hujah.flags.pending.where(subject: nil)).exists? %>
   <%= turbo_stream.replace dom_id(@hujah, :moderation_item) do %>
     <%= render "moderation/flagged_hujah", hujah: @hujah %>
   <% end %>

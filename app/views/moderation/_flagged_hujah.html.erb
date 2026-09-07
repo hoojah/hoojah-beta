@@ -4,9 +4,11 @@
     preloaded :flags association (see ModerationController#index), so no extra query fires. %>
 <% pending = hujah.flags.select(&:pending?)
    by_reason = pending.group_by(&:subject)
-   # Slice 6 (image attachments): the "Remove image only" affordance. Computed from the
-   # already-preloaded :flags (no extra query) so the queue stays N+1-free. Only shown when
-   # a live image is still present AND at least one pending report targets the image.
+   # Slice 6 (image attachments): the "Remove image only" affordance. The report count is
+   # computed from the already-preloaded :flags (no extra query); the image_attachment/blob
+   # it reads via `image.attached?` + `ds_hujah_image_url` are preloaded in
+   # ModerationController#index, so the queue stays N+1-free. Only shown when a live image is
+   # still present AND at least one pending report targets the image.
    image_reports = pending.count { |f| f.image_graphic? || f.image_not_theirs? }
    image_actionable = hujah.image.attached? && hujah.image_removed_at.nil? && image_reports.positive? %>
 <%= render layout: "ui/card", locals: {id: dom_id(hujah, :moderation_item), padded: true, class: "mb-3"} do %>

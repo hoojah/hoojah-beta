@@ -256,21 +256,32 @@ class Hujah < ApplicationRecord
   end
 
   # Moderation (2026, Slice 6): the "Remove image only" outcome. Unlike remove!, the
-  # claim STAYS active/votable — only the attached image is taken down. One transaction so
-  # a half-applied takedown (stamped but image still present, or image gone but flags still
-  # pending) can never exist. Resolves ONLY the pending image-subject reports as actioned
-  # (a non-image report on the same hoojah stays pending and keeps the row in the queue);
-  # the notification carries NO subject_user_id, the same secret-ballot anonymity remove!
-  # follows. Idempotent: the image_removed_at early return makes a second call a no-op, so
-  # the author is never re-notified and the already-purged blob is never re-purged.
+  # claim STAYS active/votable — only the attached image is taken down. The state changes
+  # (stamp, flag resolution, notification) run in ONE transaction so a half-applied takedown
+  # (stamped but flags still pending, or the reverse) can never exist. Resolves ONLY the
+  # pending image-subject reports as actioned (a non-image report on the same hoojah stays
+  # pending and keeps the row in the queue); the notification carries NO subject_user_id,
+  # the same secret-ballot anonymity remove! follows.
+  #
+  # Idempotent AND imageless-safe: the guard no-ops a second call (already stamped) and a
+  # crafted DELETE against a hoojah that never had an image (would otherwise stamp and send
+  # a false "removed the image" notification).
+  #
+  # B1: image.purge_later runs AFTER the transaction commits, never inside it. ActiveJob
+  # 8.1 defaults enqueue_after_transaction_commit to false and prod Solid Queue writes on a
+  # separate connection, so a job enqueued inside the transaction can run BEFORE the outer
+  # commit — the attachment-delete isn't visible yet, Blob#before_destroy sees a still-present
+  # attachment, and the purge silently no-ops, retaining the graphic file forever at its
+  # non-expiring proxy URL. The image_removed_at stamp (committed above) already hides it
+  # from every display path, so deferring the physical purge to post-commit is safe.
   def remove_image!(by:)
-    return if image_removed_at.present?
+    return if image_removed_at.present? || !image.attached?
     transaction do
       update!(image_removed_at: Time.current)
       flags.pending.where(subject: IMAGE_FLAG_SUBJECTS).find_each { |flag| flag.resolve!(by:, as: :actioned) }
-      image.purge_later
       Notification.create!(user_id:, category: :image_removed, hujah_id: id)
     end
+    image.purge_later
   end
 
   # Content untouched; author notified (anonymously); reports closed as actioned.

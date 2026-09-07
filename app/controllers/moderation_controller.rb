@@ -9,10 +9,12 @@ class ModerationController < ApplicationController
   before_action :set_hujah, except: :index
 
   # The staff review queue: hujahs with >= 1 pending flag, oldest pending report first,
-  # one row per hujah. GROUP BY collapses many flags into one row; preload(:user, :flags)
-  # loads them via SEPARATE queries so the grouping is undisturbed. (`includes` here
-  # promotes to an eager LEFT JOIN whose users.id then violates GROUP BY; `preload` never
-  # joins.) The view recomputes count/breakdown/earliest in Ruby from the preloaded
+  # one row per hujah. GROUP BY collapses many flags into one row; preload(:user, :flags,
+  # image_attachment: :blob) loads them via SEPARATE queries so the grouping is undisturbed.
+  # (`includes` here promotes to an eager LEFT JOIN whose users.id then violates GROUP BY;
+  # `preload` never joins.) The image blob is preloaded because _flagged_hujah reads
+  # `hujah.image.attached?` + `ds_hujah_image_url` per row (Slice 6). The view recomputes
+  # count/breakdown/earliest in Ruby from the preloaded
   # :flags, so no aggregate SELECT columns are needed — only `hujahs.*` plus the
   # MIN(flags.created_at) ORDER BY, which stands alone without an alias. pagy(:countless).
   #
@@ -24,7 +26,7 @@ class ModerationController < ApplicationController
       .group("hujahs.id")
       .select("hujahs.*")
       .order(Arel.sql("MIN(flags.created_at) ASC"))
-      .preload(:user, :flags)
+      .preload(:user, :flags, image_attachment: :blob)
     @pagy, @hujahs = pagy(:countless, base)
   end
 

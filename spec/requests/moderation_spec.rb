@@ -251,6 +251,22 @@ RSpec.describe "Moderation queue", type: :request do
       expect(response.body).to include(ActionView::RecordIdentifier.dom_id(hujah, :moderation_item))
     end
 
+    # B4: a legacy nil-subject pending flag (subject is nullable pre-Slice-5) is a remaining
+    # non-image report — NOT IN excludes NULLs, so the OR(subject: nil) branch must keep the
+    # row rather than dropping it while the count chip still counts the nil row.
+    it "keeps the row (replace) when the only other pending flag is a legacy nil-subject one" do
+      hujah = imaged_flagged_hujah
+      legacy = build(:flag, hujah: hujah, user: create(:user), subject: nil)
+      legacy.save!(validate: false)
+      sign_in moderator
+
+      delete "/moderation/#{hujah.slug}/image",
+        headers: {"Accept" => "text/vnd.turbo-stream.html"}
+
+      expect(response.body).to include("turbo-stream action=\"replace\"")
+      expect(response.body).to include(ActionView::RecordIdentifier.dom_id(hujah, :moderation_item))
+    end
+
     it "is idempotent — a second image removal does not re-notify" do
       hujah = imaged_flagged_hujah
       sign_in moderator
