@@ -24,6 +24,23 @@ RSpec.describe "Hujah image display", :js do
     expect(page).to have_css('img[alt="Image attached to this hoojah"]')
   end
 
+  # Slice 4: tapping the shown image opens a full-screen native <dialog> viewer
+  # (lightbox_controller), Esc closes it. The dialog is built into <body> on first
+  # open and shown with showModal(); closing leaves it in the DOM but non-visible
+  # (a native <dialog> toggles `open`, not `hidden`), so the close is asserted on
+  # visibility rather than a `hidden` attribute.
+  it "opens the lightbox on tap and closes it on Esc" do
+    visit hujah_path(hujah)
+    find('img[alt="a train"]').click
+
+    expect(page).to have_css('[data-lightbox-target="root"]')
+    expect(page).to have_text("Pinch to zoom")
+
+    find('[data-lightbox-target="root"]').send_keys(:escape)
+    expect(page).to have_css('[data-lightbox-target="root"]', visible: :hidden, wait: 5)
+    expect(page).to have_no_text("Pinch to zoom")
+  end
+
   it "holds the image behind a veil when a pending image flag exists" do
     create(:flag, hujah: hujah, subject: :image_graphic) # status defaults to pending
     visit hujah_path(hujah)

@@ -124,6 +124,13 @@
    rather than trusted to the JS source scan. Positioning is inline style, not utilities. */
 @source inline("fixed z-50 w-72 opacity-0 opacity-100 pointer-events-none transition-opacity duration-150");
 
+/* Lightbox (Slice 4) full-screen <dialog> chrome. Every one of these classes lives
+   ONLY inside the template string in lightbox_controller.js, so the ERB scanner never
+   sees them — they must be safelisted or the viewer renders unstyled. The `backdrop:`
+   variant needs its own entry: the safelist covers the bare utility only. */
+@source inline("w-screen h-screen max-w-none max-h-none bg-black/90 object-contain overflow-auto text-white/70 text-white/90");
+@source inline("backdrop:bg-black/90");
+
 /* Global reduced-motion guard: when the user asks the OS to minimise motion, near-
    instant every animation, transition and smooth scroll app-wide. The two targeted
    `prefers-reduced-motion` blocks lower in this file refine specific effects (keeping
