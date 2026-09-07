@@ -28,7 +28,7 @@
       multipart: true,
       data: {turbo: false, controller: "composer image-upload",
              composer_require_min_value: parent.nil?,
-             image_upload_direct_url_value: rails_direct_uploads_path},
+             image_upload_direct_url_value: authenticated_direct_uploads_path},
       class: "min-h-screen flex flex-col bg-surface" do |f| %>
   <% if parent.present? %>
     <%= f.hidden_field :parent_id, value: parent.id %>
@@ -102,13 +102,19 @@
             class: "w-full mt-2 border-0 p-0 bg-transparent resize-none focus:ring-0 text-xl font-semibold leading-snug text-ink" %>
     </div>
 
-    <%# Slice 2: attached-image state (top-level only). Hidden until the image_upload
-        controller reveals it on a successful DirectUpload. The signed_id hidden field is
-        what actually rides the POST; the file itself was uploaded in the background. The
-        alt field is a progressive char-counter — maxlength is the real cap; validation
-        (≤200) also lives on the model. %>
-    <% if parent.nil? %>
-      <%= f.hidden_field :image, data: {image_upload_target: "signedId"} %>
+    <%# Slice 2: attached-image state (top-level CREATE only — never on edit, whose
+        edit_params drop :image/:image_alt, so a live upload there would be silently
+        discarded on Save). Hidden until the image_upload controller reveals it on a
+        successful DirectUpload. The signed_id hidden field is what actually rides the POST;
+        the file itself was uploaded in the background. `value: nil` is load-bearing: with
+        no attachment f.hidden_field would otherwise serialize the ActiveStorage::Attached
+        object's to_s, so every no-image submit posts garbage and trips MessageVerifier's
+        InvalidSignature. The alt field is a progressive char-counter — maxlength is the
+        real cap; the ≤200 validation also lives on the model.
+        NOTE: a failed server-side save (render :new) does NOT re-carry the uploaded blob —
+        the user must re-attach. Acceptable for this slice. %>
+    <% if parent.nil? && !edit_mode %>
+      <%= f.hidden_field :image, value: nil, data: {image_upload_target: "signedId"} %>
       <div data-image-upload-target="attached" hidden class="mt-4">
         <div class="relative rounded-2xl overflow-hidden aspect-video bg-card-2">
           <img data-image-upload-target="attachedPreview" alt="" class="w-full h-full object-cover">
@@ -120,7 +126,7 @@
         <div class="mt-2 flex items-start gap-2 bg-card border border-hairline rounded-xl px-3 py-2.5"
              data-controller="char-counter">
           <%= f.text_field :image_alt, placeholder: "Describe the image…", maxlength: 200,
-              data: {"char-counter-target": "input", action: "input->char-counter#update"},
+              data: {"char-counter-target": "input", "image-upload-target": "altInput", action: "input->char-counter#update"},
               class: "flex-1 text-sm leading-snug text-ink bg-transparent border-0 outline-none focus:ring-0 p-0" %>
           <span data-char-counter-target="count" class="flex-none text-xs text-faint font-semibold">0 / 200</span>
         </div>
@@ -191,11 +197,14 @@
 
   <% if parent.nil? %>
     <footer class="flex items-center gap-3.5 px-4 py-3 bg-card backdrop-blur border-t border-hairline">
-      <button type="button" aria-label="Add image" data-action="image-upload#openDialog"
-        data-image-upload-target="triggerButton"
-        class="w-10 h-10 rounded-xl bg-card-2 flex items-center justify-center text-ink-2">
-        <%= lucide_icon("image", class: "w-5 h-5") %>
-      </button>
+      <%# Image attach is a CREATE-only affordance (edit_params can't take :image). %>
+      <% unless edit_mode %>
+        <button type="button" aria-label="Add image" data-action="image-upload#openDialog"
+          data-image-upload-target="triggerButton"
+          class="w-10 h-10 rounded-xl bg-card-2 flex items-center justify-center text-ink-2">
+          <%= lucide_icon("image", class: "w-5 h-5") %>
+        </button>
+      <% end %>
       <label class="flex items-center gap-2 text-[12.5px] font-semibold text-ink-2 cursor-pointer">
         Allow debates
         <span class="relative inline-block w-[38px] h-[22px]">
@@ -208,7 +217,7 @@
     </footer>
 
     <%# The add-image dialog lives inside the form so the image_upload controller (mounted
-        on the form) can reach it as a target. Top-level compose only. %>
-    <%= render "hujahs/add_image_dialog" %>
+        on the form) can reach it as a target. Top-level CREATE only (not edit). %>
+    <%= render "hujahs/add_image_dialog" unless edit_mode %>
   <% end %>
 <% end %>
