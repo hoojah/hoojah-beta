@@ -9,7 +9,7 @@ class TagsController < ApplicationController
     # Moderation: E8 sweep — a removed claim leaves the tag feed and its count (the
     # hashtags.hujahs_count counter-cache still counts it — accepted drift, ordering only).
     base = @tag.hujahs.not_removed.where(parent_id: nil).where(visibility: :visible_public)
-      .joins(:user).where(users: {private: false}).includes(image_attachment: :blob, user: {avatar_attachment: :blob}).order(updated_at: :desc)
+      .joins(:user).where(users: {private: false}).includes(:flags, image_attachment: :blob, user: {avatar_attachment: :blob}).order(updated_at: :desc)
     base = base.where.not(user_id: current_user.hidden_user_ids) if user_signed_in?
     @count = base.count
     @pagy, @hujahs = pagy(:countless, base)

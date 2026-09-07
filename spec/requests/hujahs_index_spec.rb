@@ -135,4 +135,31 @@ RSpec.describe "Hujahs index", type: :request do
     # query per card (which would scale with the number of hujahs on the page).
     expect(debate_selects.size).to eq(1)
   end
+
+  # Slice 3: every feed card renders `_hujah_image`, which reads image_display_state →
+  # image_held?. That must NOT issue a per-card flags/image query. The controller
+  # eager-loads `:flags` and image blobs, and image_held? evaluates the hold in Ruby
+  # off the loaded association — so a page of imaged, image-flagged cards loads flags
+  # in ONE bulk query, not one per card.
+  it "loads flags in a single bulk query when rendering imaged, flagged feed cards" do
+    hujahs = create_list(:hujah, 3, parent_id: nil, body: "an imaged claim worth voting on")
+    hujahs.each do |h|
+      h.image.attach(io: Rails.root.join("spec/fixtures/files/test_image.png").open, filename: "t.png", content_type: "image/png")
+    end
+    # One card carries a pending image flag → renders the :held state.
+    create(:flag, hujah: hujahs.first, subject: :image_graphic)
+
+    flag_selects = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*args|
+      sql = ActiveSupport::Notifications::Event.new(*args).payload[:sql].to_s
+      flag_selects << sql if sql =~ /\ASELECT/i && sql =~ /\bflags\b/i
+    end
+    get "/"
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+
+    expect(response).to have_http_status(:ok)
+    # One `SELECT ... FROM flags WHERE hujah_id IN (...)` for the whole page — never
+    # one EXISTS per card (which would scale with the number of imaged cards).
+    expect(flag_selects.size).to eq(1)
+  end
 end

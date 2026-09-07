@@ -37,8 +37,16 @@ class Hujah < ApplicationRecord
   # Soft-hidden while an image report is pending review. Not stored — derived so it
   # clears automatically when the flag is resolved. Short-circuits on the common
   # imageless card so it never issues the flags EXISTS query.
+  #
+  # When the caller eager-loaded :flags (every feed/tag card path does — see the
+  # controllers' includes), evaluate the hold in Ruby off the loaded set rather than
+  # issuing a per-card EXISTS query, which would be an N+1 across a page of cards.
+  # Unloaded callers (e.g. the single show page) keep the cheap SQL exists? path.
   def image_held?
     return false unless image.attached?
+    if flags.loaded?
+      return flags.any? { |f| f.pending? && IMAGE_FLAG_SUBJECTS.include?(f.subject.to_sym) }
+    end
     flags.pending.where(subject: IMAGE_FLAG_SUBJECTS).exists?
   end
 
