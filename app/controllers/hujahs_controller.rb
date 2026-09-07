@@ -102,14 +102,16 @@ class HujahsController < ApplicationController
       @parent ||= nil
       render :new, status: :unprocessable_content
     end
-  rescue ActiveSupport::MessageVerifier::InvalidSignature, ActiveStorage::FileNotFoundError
-    # A tampered/expired hujah[image] signed_id. ActiveStorage resolves the signed_id to a
-    # blob on assign (during `current_user.hujahs.new`, i.e. BEFORE `authorize` runs) and
-    # raises on a bad or missing one — left unhandled that is a raw 500. Refuse with a client
+  rescue ActiveSupport::MessageVerifier::InvalidSignature
+    # A tampered/garbled hujah[image] signed_id. ActiveStorage verifies the signed_id on
+    # assign (during `current_user.hujahs.new`, i.e. BEFORE `authorize` runs) and raises
+    # InvalidSignature on a bad one — left unhandled that is a raw 500. Refuse with a client
     # error instead (422: the request shape is valid, the blob reference is not). Because the
     # raise pre-empts `authorize`, skip_authorization here satisfies verify_authorized.
-    # Distinct from the spoofed-parent_id case above, which is a genuine RecordNotFound and
-    # intentionally propagates to the branded 404.
+    # NOT rescued: a valid-signature signed_id whose blob was already purged raises
+    # ActiveRecord::RecordNotFound (a DB miss at assign time, not the download-time
+    # ActiveStorage::FileNotFoundError) — that propagates to the app-wide branded 404, the
+    # same as the spoofed-parent_id RecordNotFound above.
     skip_authorization
     head :unprocessable_content
   end

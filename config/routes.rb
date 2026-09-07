@@ -72,6 +72,15 @@ Rails.application.routes.draw do
   # the client at it. See DirectUploadsController and SECURITY-FINDINGS.md (throttle/size cap
   # still deferred).
   post "/uploads/direct", to: "direct_uploads#create", as: :authenticated_direct_uploads
+  # SHADOW the engine's stock unauthenticated direct-upload endpoint. ActiveStorage's
+  # own routes (drawn because `config.active_storage.draw_routes` stays on — the GET
+  # proxy/blob routes ds_hujah_image_url depends on live there) include a NO-AUTH
+  # `POST /rails/active_storage/direct_uploads` that anyone could hit to mint anonymous
+  # orphan blobs, regardless of the composer pointing at /uploads/direct above. App
+  # routes take precedence over engine routes, so re-declaring that exact path here forces
+  # it through the authenticated DirectUploadsController too — closing the anonymous hole
+  # on BOTH paths. See SECURITY-FINDINGS.md IMG1 (throttle + server-side byte cap still open).
+  post "/rails/active_storage/direct_uploads", to: "direct_uploads#create"
   get "/hoojah/:slug", to: "hujahs#show", as: :hujah
   # Delete a hoojah (HTML/Turbo twin of Api::V1::HujahsController#destroy). A WRITE
   # action, so it lives on a MAIN route (CSRF enforced — `button_to method: :delete`

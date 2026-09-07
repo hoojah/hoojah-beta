@@ -117,7 +117,7 @@
         <%# ADDITIVE (Slice 5): two image-specific reasons, shown only when a visible image
             exists. Same row shape/classes as the three frozen rows above; divider-separated
             like them. FROZEN rows/dom_ids/data-*/copy above are untouched. %>
-        <% if hujah.image.attached? && hujah.image_removed_at.nil? %>
+        <% if hujah.image_live? %>
           <%= render "ui/divider" %>
           <button type="submit" name="flag[subject]" value="image_graphic"
                   class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-card cursor-pointer">

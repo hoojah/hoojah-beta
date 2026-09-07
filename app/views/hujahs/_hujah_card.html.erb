@@ -61,7 +61,7 @@
         actually shown/held — the :none case would otherwise leave an empty zero-height
         wrapper on every imageless card (the overwhelming common case). %>
     <% if hujah.image_display_state != :none %>
-      <div class="px-4"><%= render "hujahs/hujah_image", hujah: hujah, context: :card %></div>
+      <div class="px-4"><%= render "hujahs/hujah_image", hujah: hujah %></div>
     <% end %>
 
     <%= render "hujahs/vote_bars",

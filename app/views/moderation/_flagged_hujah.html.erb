@@ -10,7 +10,7 @@
    # ModerationController#index, so the queue stays N+1-free. Only shown when a live image is
    # still present AND at least one pending report targets the image.
    image_reports = pending.count { |f| f.image_graphic? || f.image_not_theirs? }
-   image_actionable = hujah.image.attached? && hujah.image_removed_at.nil? && image_reports.positive? %>
+   image_actionable = hujah.image_live? && image_reports.positive? %>
 <%= render layout: "ui/card", locals: {id: dom_id(hujah, :moderation_item), padded: true, class: "mb-3"} do %>
   <div class="flex items-center gap-2">
     <%= render layout: "ui/user_link", locals: {user: hujah.user, class: "shrink-0"} do %>

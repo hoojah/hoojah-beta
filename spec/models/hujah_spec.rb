@@ -62,6 +62,30 @@ RSpec.describe Hujah, type: :model do
     end
   end
 
+  describe "#image_live?" do
+    it "is false without an attachment" do
+      expect(build(:hujah).image_live?).to be(false)
+    end
+
+    it "is true for an attached, un-removed image" do
+      expect(attach_image(create(:hujah)).image_live?).to be(true)
+    end
+
+    it "is false once the image was moderator-removed" do
+      hujah = attach_image(create(:hujah))
+      hujah.update!(image_removed_at: Time.current)
+      expect(hujah.image_live?).to be(false)
+    end
+
+    it "stays true while the image is soft-held for a pending report" do
+      hujah = attach_image(create(:hujah))
+      hujah.save!
+      create(:flag, hujah: hujah, subject: :image_graphic)
+      expect(hujah.reload.image_live?).to be(true)
+      expect(hujah.image_display_state).to eq(:held)
+    end
+  end
+
   describe "#image_held? with a nil-subject flag" do
     # subject is a nullable column. Slice 5 added a create-time presence validation, so
     # NEW flags can no longer omit it — but LEGACY rows persisted before that validation

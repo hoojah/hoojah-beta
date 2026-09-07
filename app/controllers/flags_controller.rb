@@ -39,7 +39,7 @@ class FlagsController < ApplicationController
     return false unless Flag.subjects.key?(subject)
 
     if Hujah::IMAGE_FLAG_SUBJECTS.map(&:to_s).include?(subject)
-      return @hujah.image.attached? && @hujah.image_removed_at.nil?
+      return @hujah.image_live?
     end
 
     true

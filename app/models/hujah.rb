@@ -29,9 +29,17 @@ class Hujah < ApplicationRecord
   # flag of either soft-holds the image (see #image_held?).
   IMAGE_FLAG_SUBJECTS = %i[image_graphic image_not_theirs].freeze
 
+  # An image is "live" when it is still attached and has not been moderator-removed.
+  # Distinct from `image_display_state == :none` on purpose: a soft-HELD image (pending
+  # report) is still live and therefore still flaggable/actionable — this predicate stays
+  # true for :held, where display_state is not :none but also not :shown.
+  def image_live?
+    image.attached? && image_removed_at.nil?
+  end
+
   # Derived, viewer-independent visual state for the attached image.
   def image_display_state
-    return :none unless image.attached? && image_removed_at.nil?
+    return :none unless image_live?
     image_held? ? :held : :shown
   end
 

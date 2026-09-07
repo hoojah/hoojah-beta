@@ -21,4 +21,23 @@ RSpec.describe "Authenticated direct uploads", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body).to have_key("signed_id")
   end
+
+  # The engine's stock unauthenticated endpoint is SHADOWED in config/routes.rb to the
+  # authenticated DirectUploadsController, so the well-known /rails/active_storage path can
+  # no longer mint anonymous orphan blobs either (SECURITY-FINDINGS.md IMG1).
+  describe "the shadowed stock endpoint POST /rails/active_storage/direct_uploads" do
+    it "rejects an unauthenticated request" do
+      post "/rails/active_storage/direct_uploads", params: blob_params, as: :json
+      expect(response).to have_http_status(:unauthorized)
+        .or have_http_status(:found)
+        .or have_http_status(:redirect)
+    end
+
+    it "mints a direct-upload for a signed-in user" do
+      sign_in create(:user)
+      post "/rails/active_storage/direct_uploads", params: blob_params, as: :json
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to have_key("signed_id")
+    end
+  end
 end
