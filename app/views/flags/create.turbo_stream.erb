@@ -7,6 +7,12 @@
        class="flex items-center gap-1 px-3 py-1 text-sm text-neutral"
        role="status">
     <%= lucide_icon("flag", class: "w-4 h-4") %>
-    <span>Hoojah flagged. Thank you.</span>
+    <%# Image reasons get review-aware copy; every other subject keeps the exact frozen
+        confirmation (spec/system/flag_spec.rb asserts it verbatim on a spam flag). %>
+    <% if @flag&.subject && Hujah::IMAGE_FLAG_SUBJECTS.map(&:to_s).include?(@flag.subject) %>
+      <span>Thanks — image and claim are with review.</span>
+    <% else %>
+      <span>Hoojah flagged. Thank you.</span>
+    <% end %>
   </div>
 <% end %>
