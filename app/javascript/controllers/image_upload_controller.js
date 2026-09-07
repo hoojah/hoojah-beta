@@ -13,28 +13,43 @@ const MAX_BYTES = 5 * 1024 * 1024
 // or failure) we do NOT flip it back to enabled ourselves — we re-dispatch `input` on the
 // composer body so composer#sync() re-derives the correct length-based state. That keeps
 // the two controllers from fighting and never leaves Post stuck.
+//
+// Cancellation is real, not cosmetic. Two mechanisms work together because DirectUpload's
+// completion callback fires regardless of any UI state:
+//   1. a generation token (uploadGen) — startUpload captures the current value; the create
+//      callback bails immediately if the token moved (cancel/remove/supersede bump it), so
+//      a late completion can never re-write signedId, reveal the attached state, or reopen
+//      the gate for an upload the user already abandoned; and
+//   2. XHR abort — the store XHR is captured and .abort()ed on cancel, so the bytes stop
+//      going out and the (swallowed) aborted-error callback returns early on the token.
 export default class extends Controller {
   static targets = [
     "dialog", "title", "chooser", "error", "errorTitle", "errorBody",
     "progress", "progressPreview", "progressName", "progressPct", "progressBar",
     "failed", "failedName", "fileInput", "cameraInput", "signedId",
-    "attached", "attachedPreview", "attachedMeta", "triggerButton"
+    "attached", "attachedPreview", "attachedMeta", "triggerButton", "altInput"
   ]
   static values = { directUrl: String }
 
   connect() {
     this.upload = null
+    this.xhr = null
     this.lastFile = null
     this.previewUrl = null
+    this.uploadGen = 0
+    this.uploading = false
   }
 
   disconnect() { this.revokePreview() }
 
+  // application.js calls c.teardown?.() on turbo:before-cache; a snapshotted-open <dialog>
+  // would restore stuck open, so close it (mirrors dialog_controller).
+  teardown() { if (this.hasDialogTarget && this.dialogTarget.open) this.dialogTarget.close() }
+
   openDialog() { this.resetToChooser(); this.dialogTarget.showModal() }
-  closeDialog() { this.dialogTarget.close() }
-  // Native <dialog> stretches to the viewport; a click whose target IS the dialog element
-  // (not a child) landed on the backdrop.
-  backdropClose(event) { if (event.target === this.dialogTarget) this.dialogTarget.close() }
+  // A backdrop click on a native <dialog> lands on the dialog element itself. Route it
+  // through cancelUpload so an in-flight upload is aborted, not merely hidden.
+  backdropClose(event) { if (event.target === this.dialogTarget) this.cancelUpload() }
 
   pickFile() { this.fileInputTarget.click() }
   pickCamera() { this.cameraInputTarget.click() }
@@ -62,6 +77,8 @@ export default class extends Controller {
   }
 
   startUpload(file) {
+    const gen = ++this.uploadGen // invalidates any previous in-flight callback
+    this.uploading = true
     this.showProgress(file)
     this.revokePreview()
     this.previewUrl = URL.createObjectURL(file)
@@ -69,7 +86,9 @@ export default class extends Controller {
     this.lockPost()
 
     this.upload = new DirectUpload(file, this.directUrlValue, {
+      directUploadWillCreateBlobWithXHR: (xhr) => { this.xhr = xhr },
       directUploadWillStoreFileWithXHR: (xhr) => {
+        this.xhr = xhr
         xhr.upload.addEventListener("progress", (e) => {
           if (!e.lengthComputable) return
           const pct = Math.round((e.loaded / e.total) * 100)
@@ -80,7 +99,10 @@ export default class extends Controller {
     })
 
     this.upload.create((error, blob) => {
+      if (gen !== this.uploadGen) return // cancelled/superseded — ignore this completion
       this.upload = null
+      this.xhr = null
+      this.uploading = false
       if (error) return this.showFailed(file)
       this.signedIdTarget.value = blob.signed_id
       this.showAttached(file)
@@ -89,20 +111,30 @@ export default class extends Controller {
     })
   }
 
+  // Aborts an in-flight upload (bytes stop; token bump swallows its late callback) and
+  // clears the field so nothing half-uploaded rides the POST. With no upload running this
+  // is just a safe close — it must NOT wipe an already-attached image (Esc/backdrop after
+  // a successful attach both land here).
   cancelUpload() {
-    // We can't truly abort an in-flight DirectUpload XHR here, but dropping the reference
-    // and clearing the hidden field means its late success is ignored on submit.
-    this.upload = null
-    this.signedIdTarget.value = ""
-    this.restoreGate()
+    if (this.uploading) {
+      this.uploadGen++
+      if (this.xhr) { try { this.xhr.abort() } catch (_) { /* already settled */ } this.xhr = null }
+      this.upload = null
+      this.uploading = false
+      this.signedIdTarget.value = ""
+      this.restoreGate()
+    }
     this.resetToChooser()
-    this.dialogTarget.close()
+    if (this.dialogTarget.open) this.dialogTarget.close()
   }
 
   retry() { if (this.lastFile) this.startUpload(this.lastFile) }
 
   remove() {
+    this.uploadGen++ // any in-flight completion for a removed image is now ignored
+    this.uploading = false
     this.signedIdTarget.value = ""
+    if (this.hasAltInputTarget) this.altInputTarget.value = "" // don't submit stale alt with no image
     this.attachedTarget.hidden = true
     this.attachedPreviewTarget.removeAttribute("src")
     this.revokePreview()
@@ -136,6 +168,7 @@ export default class extends Controller {
   }
   showFailed(file) {
     this.restoreGate()
+    this.titleTarget.textContent = "Add an image" // leave the "Adding your image" state
     this.progressTarget.hidden = true
     this.failedNameTarget.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB · check your connection`
     this.failedTarget.hidden = false

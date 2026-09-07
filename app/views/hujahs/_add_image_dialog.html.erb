@@ -7,13 +7,17 @@
     dialogTarget.showModal()/.close() directly, so there is no separate `dialog`
     controller here. Native <dialog> already closes on Esc; backdrop clicks route to
     image-upload#backdropClose. %>
+<%# `cancel->image-upload#cancelUpload` — Esc fires the native <dialog> `cancel` event; we
+    route it through cancelUpload so an in-flight upload is aborted (not left running while
+    the dialog closes and a later keystroke re-enables Post mid-flight). cancelUpload is a
+    no-op-safe close when nothing is uploading. %>
 <dialog data-image-upload-target="dialog"
-        data-action="click->image-upload#backdropClose"
+        data-action="click->image-upload#backdropClose cancel->image-upload#cancelUpload"
         aria-labelledby="dialog-title-image"
         class="rounded-lg shadow-lg p-0 w-full max-w-md backdrop:bg-black/40">
   <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
     <h5 id="dialog-title-image" data-image-upload-target="title" class="text-lg font-medium m-0">Add an image</h5>
-    <button type="button" data-action="image-upload#closeDialog" aria-label="Close" class="<%= ds_button_classes(variant: :link, tone: "grey") %>">
+    <button type="button" data-action="image-upload#cancelUpload" aria-label="Close" class="<%= ds_button_classes(variant: :link, tone: "grey") %>">
       <%= lucide_icon("x", class: "w-5 h-5") %>
     </button>
   </div>
@@ -76,7 +80,7 @@
       </div>
     </div>
 
-    <div class="text-right mt-4"><button type="button" data-action="image-upload#closeDialog" class="text-sm text-grey cursor-pointer border-0 bg-transparent">Cancel</button></div>
+    <div class="text-right mt-4"><button type="button" data-action="image-upload#cancelUpload" class="text-sm text-grey cursor-pointer border-0 bg-transparent">Cancel</button></div>
   </div>
 
   <%# hidden file inputs (device + camera) %>
