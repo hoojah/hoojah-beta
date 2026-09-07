@@ -175,16 +175,18 @@ RSpec.describe DesignSystemHelper, type: :helper do
       # example drifting out of sync with the constant, but on its own it would move
       # with any deletion from BASE and stay green — so the tokens the design system
       # actually promises are named too: a centred inline flex row with a gap, no
-      # underline when rendered as a link, `active:scale-95` as the ONLY press feedback
-      # (no ripple, spinner or fade), and the half-opacity disabled state that has to
-      # cancel `cursor-pointer`.
+      # underline when rendered as a link, an eased 150ms `transition` (`duration-150
+      # ease-out`, the house curve) carrying the motion, `active:scale-95` as the ONLY
+      # PRESS feedback (no ripple, spinner or fade — hover lift now lives per-variant in
+      # `ds_button_variant`), and the half-opacity disabled state that has to cancel
+      # `cursor-pointer`.
       it "carries the whole shared base on every variant" do
         base = DesignSystemHelper::BASE.split
 
         expect(base).to include(
           "inline-flex", "items-center", "justify-center", "gap-1",
-          "no-underline", "cursor-pointer", "transition", "active:scale-95",
-          "disabled:opacity-50", "disabled:cursor-default"
+          "no-underline", "cursor-pointer", "transition", "duration-150", "ease-out",
+          "active:scale-95", "disabled:opacity-50", "disabled:cursor-default"
         )
 
         DesignSystemHelper::VARIANTS.each do |variant|

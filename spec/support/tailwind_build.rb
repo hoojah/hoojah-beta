@@ -34,7 +34,14 @@ module TailwindBuild
     # made.
     def emitted?(klass)
       once!
-      bundle.match?(/\.#{Regexp.escape(klass.gsub(":", '\\:'))}(?![\w-])/)
+      # Tailwind escapes BOTH `:` and `.` in the emitted selector — `active:scale-95`
+      # becomes `.active\:scale-95`, and a fractional `hover:-translate-y-0.5` becomes
+      # `.hover\:-translate-y-0\.5`. Rebuild the escaped selector Tailwind actually
+      # writes, then match it literally. (Escaping only `:` here silently
+      # false-negatived every fractional utility — the reason MENU_ITEM_BASE picks an
+      # integer `py` step, and what tripped the button-lift hover added later.)
+      selector = "." + klass.gsub(/[:.]/) { |c| "\\#{c}" }
+      bundle.match?(/#{Regexp.escape(selector)}(?![\w-])/)
     end
 
     # One read per suite run. Safe to memoize because `once!` builds exactly once and

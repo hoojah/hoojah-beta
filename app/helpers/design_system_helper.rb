@@ -29,7 +29,7 @@ module DesignSystemHelper
   # `variant: :link` and card-as-button call sites render an <a>, which a bare
   # `button` selector cannot reach; the two together cover every button idiom.
   BASE = "inline-flex items-center justify-center gap-1 no-underline cursor-pointer select-none " \
-         "transition active:scale-95 disabled:opacity-50 disabled:cursor-default".freeze
+         "transition duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:cursor-default".freeze
 
   # `nil` means "unset" and takes the default: views reach for
   # `ds_button_classes(variant: local_assigns[:variant])`, and a `local_assigns` miss is
@@ -224,7 +224,7 @@ module DesignSystemHelper
   # tighter desktop density from `sm` up. (An integer step, not `py-2.5`: the menu-tone
   # spec's `emitted?` check can't see a fractional class — Tailwind escapes it as
   # `.py-2\.5`, which the helper's regex doesn't match.)
-  MENU_ITEM_BASE = "block w-full text-left px-3 py-3 sm:py-1 text-sm rounded no-underline".freeze
+  MENU_ITEM_BASE = "block w-full text-left px-3 py-3 sm:py-1 text-sm rounded no-underline transition-colors duration-150 ease-out".freeze
 
   # Split out of the base so `tone: "grey"` can drop it. See `ds_menu_item_classes`.
   MENU_ITEM_HOVER = "hover:bg-gray-100".freeze
@@ -317,21 +317,28 @@ module DesignSystemHelper
   # it cannot stop an implicit-receiver call from inside an ERB template, so treat it
   # as the boundary marker it is.
   def ds_button_variant(variant, tone, sizing)
+    # Hover feedback is colour-independent (transform/shadow/opacity only), so it adds no
+    # `@source inline` safelist burden, and v4's scale/translate are separate transform
+    # properties — the hover-lift composes with BASE's `active:scale-95` press instead of
+    # clobbering it. Deliberate trade-off: an `<a>`-rendered button (`:link`, card-as-button)
+    # can't use the `enabled:` modifier, so a disabled `<button>` still lifts on hover — an
+    # acceptable inconsistency because it already reads as disabled via `cursor-default` +
+    # `opacity-50` from BASE.
     case variant
-    when :solid then "#{sizing} rounded-full bg-#{tone} text-white shadow"
-    when :rect then "#{sizing} rounded bg-#{tone} text-white"
+    when :solid then "#{sizing} rounded-full bg-#{tone} text-white shadow hover:-translate-y-0.5 hover:shadow-md"
+    when :rect then "#{sizing} rounded bg-#{tone} text-white hover:-translate-y-0.5"
     # on_primary/on_primary_outline: for the blue profile header ONLY. They are locked
     # to white-on-primary and to the small size — `tone:` and `size:` do not reach them,
     # because there is exactly one surface they may appear on.
-    when :on_primary then "px-4 py-1 text-sm rounded-full bg-white text-primary"
-    when :on_primary_outline then "px-4 py-1 text-sm rounded-full border border-white text-white bg-transparent"
-    when :link then "border-0 bg-transparent p-0 text-#{tone}"
+    when :on_primary then "px-4 py-1 text-sm rounded-full bg-white text-primary hover:-translate-y-0.5"
+    when :on_primary_outline then "px-4 py-1 text-sm rounded-full border border-white text-white bg-transparent hover:-translate-y-0.5"
+    when :link then "border-0 bg-transparent p-0 text-#{tone} hover:opacity-70"
     # The house pill: `bg-card` (theme-aware, Hoojah 2026) not a pinned `bg-white`, so
     # the fill retints in dark mode instead of staying white. The 2px stance border and
     # `text-#{tone}` still carry the identity; `on_primary` above keeps its literal
     # `bg-white` on purpose — it sits on the blue profile header, a colour surface, not a
     # card.
-    else "#{sizing} rounded-full border-2 border-#{tone} text-#{tone} bg-card shadow"
+    else "#{sizing} rounded-full border-2 border-#{tone} text-#{tone} bg-card shadow hover:-translate-y-0.5 hover:shadow-md"
     end
   end
 end

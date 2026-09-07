@@ -43,7 +43,7 @@
     <% end %>
     <span class="text-[15px] font-extrabold text-ink"><%= edit_mode ? "Edit hoojah" : "New hoojah" %></span>
     <%= f.submit(edit_mode ? "Save" : "Post", data: {composer_target: "post"},
-          class: "px-5 py-2 rounded-full border-2 border-primary text-primary bg-card font-bold text-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-default") %>
+          class: "px-5 py-2 rounded-full border-2 border-primary text-primary bg-card font-bold text-sm transition duration-150 ease-out hover:-translate-y-0.5 hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-default") %>
   </header>
 
   <main class="flex-1 w-full max-w-xl mx-auto px-4 py-4 flex flex-col">
@@ -84,15 +84,15 @@
     <div data-controller="format-toolbar">
       <div class="flex items-center gap-1 mt-4">
         <button type="button" data-action="format-toolbar#bold" aria-label="Bold"
-          class="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 bg-card-2 active:scale-95">
+          class="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 bg-card-2 active:scale-95 transition duration-150 ease-out hover:text-ink hover:bg-field">
           <%= lucide_icon("bold", class: "w-4 h-4") %>
         </button>
         <button type="button" data-action="format-toolbar#italic" aria-label="Italic"
-          class="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 bg-card-2 active:scale-95">
+          class="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 bg-card-2 active:scale-95 transition duration-150 ease-out hover:text-ink hover:bg-field">
           <%= lucide_icon("italic", class: "w-4 h-4") %>
         </button>
         <button type="button" data-action="format-toolbar#underline" aria-label="Underline"
-          class="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 bg-card-2 active:scale-95">
+          class="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 bg-card-2 active:scale-95 transition duration-150 ease-out hover:text-ink hover:bg-field">
           <%= lucide_icon("underline", class: "w-4 h-4") %>
         </button>
       </div>
