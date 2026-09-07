@@ -36,4 +36,41 @@ RSpec.describe "Flagging a hoojah", type: :system, js: true do
     expect(flag.user_id).to eq(flagger.id)
     expect(flag.subject).to eq("spam")
   end
+
+  # Slice 5: the two image-specific reasons are additive and conditional — they exist
+  # in the dialog only when the hoojah carries a visible image, and never disturb the
+  # three frozen reasons above.
+  it "offers image reasons only when the hoojah has a visible image" do
+    hujah.image.attach(
+      io: Rails.root.join("spec/fixtures/files/test_image.png").open,
+      filename: "t.png", content_type: "image/png"
+    )
+    login_as_system(flagger)
+    visit "/hoojah/#{hujah.slug}"
+
+    find("summary[aria-label='More actions']").click
+    click_button "Flag this hoojah"
+
+    dialog = find("dialog##{ActionView::RecordIdentifier.dom_id(hujah, :flag_dialog)}", visible: true)
+    within(dialog) do
+      expect(page).to have_button("The image is graphic or explicit")
+      expect(page).to have_button("The image isn't theirs to post")
+      # the three frozen reasons are still present and untouched
+      expect(page).to have_button("It's suspicious or spam")
+    end
+  end
+
+  it "hides the image reasons when the hoojah has no image" do
+    login_as_system(flagger)
+    visit "/hoojah/#{hujah.slug}"
+
+    find("summary[aria-label='More actions']").click
+    click_button "Flag this hoojah"
+
+    dialog = find("dialog##{ActionView::RecordIdentifier.dom_id(hujah, :flag_dialog)}", visible: true)
+    within(dialog) do
+      expect(page).to have_no_button("The image is graphic or explicit")
+      expect(page).to have_no_button("The image isn't theirs to post")
+    end
+  end
 end

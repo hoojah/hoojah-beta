@@ -85,6 +85,17 @@
 
     <%= form_with url: hujah_flags_path(hujah.slug), method: :post, class: "p-4" do %>
       <p class="text-sm text-grey mb-3">Why are you flagging this hoojah?</p>
+      <%# ADDITIVE (Slice 5): when the hoojah carries a visible image, remind the flagger
+          that the claim and its image are reviewed as one — with a thumbnail for context.
+          Guarded so it never appears (and never touches the three frozen rows) otherwise. %>
+      <% if hujah.image.attached? && hujah.image_removed_at.nil? %>
+        <div class="flex items-center gap-2.5 p-2 rounded-lg bg-card-2 mb-3">
+          <div class="w-16 h-9 rounded-md overflow-hidden flex-none bg-field">
+            <img src="<%= ds_hujah_image_url(hujah) %>" alt="" class="w-full h-full object-cover">
+          </div>
+          <div class="min-w-0 text-xs leading-snug text-ink-2">@<%= hujah.user.username %> · the claim and its image are reviewed together.</div>
+        </div>
+      <% end %>
       <div class="flex flex-col">
         <button type="submit" name="flag[subject]" value="spam"
                 class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-card cursor-pointer">
@@ -100,6 +111,21 @@
                 class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-card cursor-pointer">
           It's irrelevant to the parent hoojah
         </button>
+        <%# ADDITIVE (Slice 5): two image-specific reasons, shown only when a visible image
+            exists. Same row shape/classes as the three frozen rows above; divider-separated
+            like them. FROZEN rows/dom_ids/data-*/copy above are untouched. %>
+        <% if hujah.image.attached? && hujah.image_removed_at.nil? %>
+          <%= render "ui/divider" %>
+          <button type="submit" name="flag[subject]" value="image_graphic"
+                  class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-card cursor-pointer">
+            The image is graphic or explicit
+          </button>
+          <%= render "ui/divider" %>
+          <button type="submit" name="flag[subject]" value="image_not_theirs"
+                  class="text-left px-4 py-3 hover:bg-gray-50 border-0 bg-card cursor-pointer">
+            The image isn't theirs to post
+          </button>
+        <% end %>
       </div>
       <div class="text-right mt-4">
         <button type="button" data-action="dialog#close"
