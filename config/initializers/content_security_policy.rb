@@ -1,13 +1,22 @@
 # Be sure to restart your server when you modify this file.
 #
 # Content Security Policy for the Hotwire app. Inline <script> is NOT allowed
-# via 'unsafe-inline' — the single inline script we ship (Drift) carries a
-# per-request nonce instead. Drift (appId fx42y6ieyaff) loads its bundle from
-# js.driftt.com and talks to *.drift.com over https/wss at runtime.
+# via 'unsafe-inline' — the two inline scripts we ship (importmap bootstrap +
+# the Drift snippet) each carry a per-request nonce. Drift (appId fx42y6ieyaff)
+# loads its bundle from js.driftt.com, frames js.driftt.com, and talks to
+# *.drift.com over https/wss at runtime.
 Rails.application.configure do
   config.content_security_policy do |policy|
     policy.default_src :self
-    policy.script_src :self, "https://js.driftt.com", "https://*.drift.com"
+    # :strict_dynamic — the Drift widget, once booted, injects further <script>
+    # elements at runtime that cannot carry our nonce. strict-dynamic propagates
+    # trust from a nonce'd script to the scripts IT injects, which is exactly that
+    # case. Under CSP3 it also makes the host allowlist below advisory (kept as a
+    # fallback for pre-strict-dynamic browsers). Our own JS is safe: importmap's
+    # inline bootstrap is nonce'd and its module imports inherit trust the same way.
+    # (Verified by the full js:true system suite, which loads the real importmap
+    # app under this enforced policy in headless Chrome.)
+    policy.script_src :self, :strict_dynamic, "https://js.driftt.com", "https://*.drift.com"
     policy.style_src :self, :unsafe_inline # Tailwind ships static CSS; inline only for Turbo progress bar
     # blob: — the composer's client-side image preview: image_upload_controller
     # renders the picked file via URL.createObjectURL before/while the upload runs.
@@ -20,7 +29,9 @@ Rails.application.configure do
     # config/storage.yml so the two can never drift.
     policy.connect_src :self, "https://*.drift.com", "wss://*.drift.com",
       ENV.fetch("GARAGE_ENDPOINT", "https://s3-grg.novas.my")
-    policy.frame_src "https://*.drift.com"
+    # Drift frames its widget from js.driftt.com (the double-t asset domain), not
+    # only *.drift.com — allow both so the chat iframe isn't blocked.
+    policy.frame_src "https://*.drift.com", "https://*.driftt.com"
   end
 
   # SecureRandom, not request.session.id: the session id is blank on a
