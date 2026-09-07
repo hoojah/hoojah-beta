@@ -144,6 +144,10 @@
 
     <h1 class="hujah-body mt-4 text-2xl font-semibold leading-snug tracking-tight text-ink"><%= format_body(@hujah.body) %></h1>
 
+    <%# Attached image (16:9, below the claim). Renders nothing when there is no
+        image; held/shown states per Hujah#image_display_state. %>
+    <%= render "hujahs/hujah_image", hujah: @hujah, context: :show %>
+
     <% if @hujah.hashtags.any? %>
       <div class="mt-3 flex gap-2 flex-wrap">
         <% @hujah.hashtags.each_with_index do |tag, i| %>

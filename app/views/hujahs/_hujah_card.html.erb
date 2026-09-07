@@ -56,6 +56,11 @@
       <div class="hujah-body text-ink text-lg leading-snug"><%= format_body(hujah.body) %></div>
     </div>
 
+    <%# Attached image (top-level claims only), 16:9 below the body. Padded to the
+        card's px-4 gutter so it aligns with the claim; the partial self-selects its
+        :none/:held/:shown state and renders nothing when there is no image. %>
+    <div class="px-4"><%= render "hujahs/hujah_image", hujah: hujah, context: :card %></div>
+
     <%= render "hujahs/vote_bars",
           hujah: hujah,
           current_user_vote: hujah.current_user_vote(logged_in: user_signed_in?, current_user_id: current_user&.id) %>
