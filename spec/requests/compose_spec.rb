@@ -86,6 +86,28 @@ RSpec.describe "Compose", type: :request do
     expect(response).to have_http_status(:unprocessable_content)
   end
 
+  # SECURITY IMG2/B9: a signed_id lifted from another record's image URL must not attach the
+  # SAME blob to a second hoojah. Two records sharing one blob means Slice 6's image.purge_later
+  # on either would destroy the victim's file. The model rejects a blob already backing another
+  # attachment, so the lifted post is a 422 and nothing is attached; the victim's file is intact.
+  it "refuses a signed_id whose blob is already attached to another hoojah" do
+    sign_in user
+    victim = create(:hujah, user: create(:user), body: "The original claim carrying an image")
+    victim.image.attach(
+      io: file_fixture("test_image.png").open, filename: "photo.png", content_type: "image/png"
+    )
+    lifted = victim.image.blob.signed_id
+
+    expect {
+      post "/hoojah", params: {hujah: {body: "A claim long enough to pass", image: lifted}}
+    }.not_to change(Hujah, :count)
+    expect(response).to have_http_status(:unprocessable_content)
+
+    expect(victim.reload.image).to be_attached
+    # the blob still backs exactly ONE attachment — the victim's, un-purged.
+    expect(ActiveStorage::Attachment.where(blob_id: victim.image.blob.id).count).to eq(1)
+  end
+
   it "rejects a spoofed missing parent_id" do
     # Task 8: the controller no longer rescues RecordNotFound into a blank
     # head :not_found — it propagates to the branded 404 (config.exceptions_app
