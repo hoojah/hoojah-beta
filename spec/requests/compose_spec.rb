@@ -61,6 +61,31 @@ RSpec.describe "Compose", type: :request do
     expect(hujah.image_alt).to eq("a train")
   end
 
+  # B7: images are top-level-only. compose_params permits :image on every path, so the
+  # model is the real gate — a reply smuggling a signed_id in hujah[image] is rejected.
+  it "refuses an image attached to a reply (top-level only)" do
+    sign_in user
+    parent = create(:hujah, user: create(:user))
+    parent.cast_vote(by: user, choice: 1) # 2026 vote-to-respond gate
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: file_fixture("test_image.png").open, filename: "photo.png", content_type: "image/png"
+    )
+    expect {
+      post "/hoojah", params: {hujah: {body: "a reply carrying an image", parent_id: parent.id, vote: 1, image: blob.signed_id}}
+    }.not_to change(Hujah, :count)
+    expect(response).to have_http_status(:unprocessable_content)
+  end
+
+  # B3: a tampered/expired signed_id must not 500. ActiveStorage raises InvalidSignature /
+  # FileNotFoundError resolving the blob; the controller rescues to a 422.
+  it "refuses a tampered image signed_id without a 500" do
+    sign_in user
+    expect {
+      post "/hoojah", params: {hujah: {body: "A claim long enough to pass", image: "garbage-not-a-real-signed-id"}}
+    }.not_to change(Hujah, :count)
+    expect(response).to have_http_status(:unprocessable_content)
+  end
+
   it "rejects a spoofed missing parent_id" do
     # Task 8: the controller no longer rescues RecordNotFound into a blank
     # head :not_found — it propagates to the branded 404 (config.exceptions_app

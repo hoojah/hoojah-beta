@@ -494,6 +494,13 @@ class Hujah < ApplicationRecord
   # writes without validation by design, so this gates the controller create/update path.
   def image_is_valid_image
     return unless image.attached?
+    # Images are a top-level-only affordance (spec §1: replies stay text-only). compose_params
+    # permits :image on every path, so this is the real server-side gate — a reply that smuggles
+    # a signed_id in hujah[image] is rejected here, not silently attached.
+    if parent_id.present?
+      errors.add(:image, "can only be added to a top-level hoojah, not a reply")
+      return
+    end
     unless ALLOWED_IMAGE_TYPES.include?(image.blob.content_type)
       errors.add(:image, "must be a PNG, JPEG, GIF, or WebP image")
     end
