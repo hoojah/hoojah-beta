@@ -27,7 +27,13 @@ class Notification < ApplicationRecord
     # purged when the author tightened this hoojah's visibility. FK-less hujah_id
     # (like every category here) so it survives the hoojah's later deletion. NOT in
     # EMAILED_CATEGORIES — a purge is not a high-signal per-user email event.
-    hujah_archived: 16
+    hujah_archived: 16,
+    # Slice 6 (image attachments): author-facing. A moderator removed ONLY the attached
+    # image; the claim itself stays active/votable (unlike moderation_removed, which hides
+    # the whole hoojah). Integer 17 is the next free value — APPEND-ONLY, the legacy API
+    # serializes the category as its integer. NOT in EMAILED_CATEGORIES: an image takedown
+    # is lower-signal than a full removal, and the in-app card links to the still-live claim.
+    image_removed: 17
   }
 
   scope :unread, -> { where(read: false) }

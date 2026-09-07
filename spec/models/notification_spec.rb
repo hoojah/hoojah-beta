@@ -6,7 +6,7 @@ RSpec.describe Notification, type: :model do
   describe "the category enum" do
     # `category` is a plain integer column with existing rows, so the integers are
     # the contract — renumbering or reordering these reinterprets history.
-    it "maps all seventeen categories to stable integers" do
+    it "maps all eighteen categories to stable integers" do
       expect(Notification.categories).to eq(
         "admin" => 0,
         "announcement" => 1,
@@ -24,8 +24,20 @@ RSpec.describe Notification, type: :model do
         "follow_accepted" => 13,
         "moderation_removed" => 14,
         "moderation_warning" => 15,
-        "hujah_archived" => 16
+        "hujah_archived" => 16,
+        "image_removed" => 17
       )
+    end
+
+    # Slice 6 (image attachments): the image-only takedown notification. Integer 17 is the
+    # next free value; like every category the integer is the contract, not the symbol.
+    it "supports the image_removed category at integer 17" do
+      expect(Notification.categories.keys).to include("image_removed")
+      expect(Notification.categories["image_removed"]).to eq(17)
+    end
+
+    it "does not email the image_removed category (in-app only)" do
+      expect(Notification::EMAILED_CATEGORIES).not_to include("image_removed")
     end
 
     # Slice 2 (editable-hujah): the purge notification. Integer 16 is the next free
