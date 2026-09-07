@@ -9,8 +9,17 @@ Rails.application.configure do
     policy.default_src :self
     policy.script_src :self, "https://js.driftt.com", "https://*.drift.com"
     policy.style_src :self, :unsafe_inline # Tailwind ships static CSS; inline only for Turbo progress bar
-    policy.img_src :self, :data, "https://res.cloudinary.com", "https://*.drift.com"
-    policy.connect_src :self, "https://*.drift.com", "wss://*.drift.com"
+    # blob: — the composer's client-side image preview: image_upload_controller
+    # renders the picked file via URL.createObjectURL before/while the upload runs.
+    # Attached images themselves are served SAME-ORIGIN through the Active Storage
+    # proxy (ds_hujah_image_url / ds_avatar_url), so the garage host deliberately
+    # does NOT appear here.
+    policy.img_src :self, :data, :blob, "https://res.cloudinary.com", "https://*.drift.com"
+    # The garage host: Active Storage direct uploads PUT straight from the browser
+    # to a presigned URL on the S3/Garage endpoint. Same ENV expression as
+    # config/storage.yml so the two can never drift.
+    policy.connect_src :self, "https://*.drift.com", "wss://*.drift.com",
+      ENV.fetch("GARAGE_ENDPOINT", "https://s3-grg.novas.my")
     policy.frame_src "https://*.drift.com"
   end
 
