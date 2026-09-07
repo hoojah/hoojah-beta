@@ -169,6 +169,10 @@ Rails.application.routes.draw do
   get "/moderation", to: "moderation#index", as: :moderation
   patch "/moderation/:slug/dismiss", to: "moderation#dismiss", as: :dismiss_moderation
   delete "/moderation/:slug/remove", to: "moderation#remove", as: :remove_moderation
+  # Slice 6 (image attachments): the "Remove image only" outcome — takes down just the
+  # attached image while the claim stays active/votable. HTML/Turbo only (CSRF on), a main
+  # route not under Api::V1. `delete` because it destroys the image (not the hoojah).
+  delete "/moderation/:slug/image", to: "moderation#remove_image", as: :remove_image_moderation
   post "/moderation/:slug/warn", to: "moderation#warn", as: :warn_moderation
   # Admin listings (2026). Staff-only via the headless AdminPolicy (can_moderate? — the
   # app's single capability gate); distinct from /moderation (the flag QUEUE) and /dashboard

@@ -1,0 +1,15 @@
+<%# Slice 6 (image attachments): the "Remove image only" outcome. Unlike remove (which
+    always pulls the row), the claim stays active — so the row LEAVES the queue only when
+    the image reports were its ONLY pending flags. If a non-image report is still pending,
+    the row is REPLACED in place (its image button is gone now that image_removed_at is set,
+    but the remaining reports keep it under review). The pending-count chip always refreshes. %>
+<% if @hujah.flags.pending.where.not(subject: Hujah::IMAGE_FLAG_SUBJECTS).exists? %>
+  <%= turbo_stream.replace dom_id(@hujah, :moderation_item) do %>
+    <%= render "moderation/flagged_hujah", hujah: @hujah %>
+  <% end %>
+<% else %>
+  <%= turbo_stream.remove dom_id(@hujah, :moderation_item) %>
+<% end %>
+<%= turbo_stream.replace "moderation-pending-count" do %>
+  <%= render "moderation/pending_count" %>
+<% end %>

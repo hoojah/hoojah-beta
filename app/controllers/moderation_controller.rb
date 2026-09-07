@@ -41,6 +41,15 @@ class ModerationController < ApplicationController
     respond_resolved
   end
 
+  # Slice 6 (image attachments): take down ONLY the attached image; the claim stays
+  # active/votable. Composition (transaction, anonymous notification, idempotency, image
+  # flag resolution) lives on Hujah#remove_image!. Authorization + record load are handled
+  # by the require_moderator! / set_hujah before_actions, exactly as the other three actions.
+  def remove_image
+    @hujah.remove_image!(by: current_user)
+    respond_resolved
+  end
+
   # Content untouched; author notified (anonymously); reports closed as actioned.
   def warn
     @hujah.warn_author!(by: current_user)

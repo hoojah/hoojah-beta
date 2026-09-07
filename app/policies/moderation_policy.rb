@@ -10,5 +10,7 @@ class ModerationPolicy < ApplicationPolicy
 
   def remove? = !!user&.can_moderate?
 
+  def remove_image? = !!user&.can_moderate?
+
   def warn? = !!user&.can_moderate?
 end

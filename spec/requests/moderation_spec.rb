@@ -165,6 +165,80 @@ RSpec.describe "Moderation queue", type: :request do
     end
   end
 
+  # Slice 6 (image attachments): the "Remove image only" outcome. Only the image is taken
+  # down; the claim stays active/votable, and a non-image report keeps the row in the queue.
+  describe "DELETE /moderation/:slug/image" do
+    def imaged_flagged_hujah
+      hujah = create(:hujah, body: "Claim carrying a flagged image")
+      hujah.image.attach(
+        io: file_fixture("test_image.png").open, filename: "photo.png", content_type: "image/png"
+      )
+      create(:flag, hujah: hujah, user: create(:user), subject: :image_graphic)
+      hujah
+    end
+
+    it "denies a plain member and leaves the image in place" do
+      hujah = imaged_flagged_hujah
+      sign_in member
+      delete "/moderation/#{hujah.slug}/image"
+      expect(response).to redirect_to(root_path)
+      expect(hujah.reload.image_removed_at).to be_nil
+    end
+
+    it "removes only the image, keeps the claim active, and notifies the author anonymously" do
+      hujah = imaged_flagged_hujah
+      sign_in moderator
+
+      expect {
+        delete "/moderation/#{hujah.slug}/image"
+      }.to change { Notification.where(category: :image_removed).count }.by(1)
+
+      hujah.reload
+      expect(hujah.image_removed_at).to be_present
+      expect(hujah.moderation_status).to eq("active")
+      expect(hujah.flags.where(subject: Hujah::IMAGE_FLAG_SUBJECTS).map(&:status).uniq).to eq(["actioned"])
+
+      note = Notification.where(category: :image_removed).last
+      expect(note.user_id).to eq(hujah.user_id)
+      expect(note.hujah_id).to eq(hujah.id)
+      expect(note.subject_user_id).to be_nil
+    end
+
+    it "responds with a Turbo Stream that refreshes the count and drops the image-only row" do
+      hujah = imaged_flagged_hujah
+      sign_in moderator
+
+      delete "/moderation/#{hujah.slug}/image",
+        headers: {"Accept" => "text/vnd.turbo-stream.html"}
+
+      expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+      expect(response.body).to include(ActionView::RecordIdentifier.dom_id(hujah, :moderation_item))
+      expect(response.body).to include("moderation-pending-count")
+    end
+
+    it "keeps the row (replace) when a non-image report is still pending" do
+      hujah = imaged_flagged_hujah
+      create(:flag, hujah: hujah, user: create(:user), subject: :spam)
+      sign_in moderator
+
+      delete "/moderation/#{hujah.slug}/image",
+        headers: {"Accept" => "text/vnd.turbo-stream.html"}
+
+      expect(response.body).to include("turbo-stream action=\"replace\"")
+      expect(response.body).to include(ActionView::RecordIdentifier.dom_id(hujah, :moderation_item))
+    end
+
+    it "is idempotent — a second image removal does not re-notify" do
+      hujah = imaged_flagged_hujah
+      sign_in moderator
+
+      delete "/moderation/#{hujah.slug}/image"
+      expect {
+        delete "/moderation/#{hujah.slug}/image"
+      }.not_to change(Notification, :count)
+    end
+  end
+
   describe "POST /moderation/:slug/warn" do
     it "denies a plain member" do
       hujah = create(:hujah)
