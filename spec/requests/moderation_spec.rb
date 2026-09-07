@@ -72,6 +72,29 @@ RSpec.describe "Moderation queue", type: :request do
     end
   end
 
+  # Slice 6 (image attachments): the "Remove image only" button surfaces in the queue row
+  # ONLY when the hujah still has a live image AND a pending image-subject report.
+  describe "the Remove image only affordance in the queue" do
+    it "appears only for a hujah with a pending image flag, not a text-only report" do
+      imaged = create(:hujah, body: "Claim with a flagged image")
+      imaged.image.attach(
+        io: file_fixture("test_image.png").open, filename: "photo.png", content_type: "image/png"
+      )
+      create(:flag, hujah: imaged, subject: :image_graphic)
+
+      text_only = create(:hujah, body: "Claim with only a text report")
+      create(:flag, hujah: text_only, subject: :spam)
+
+      sign_in moderator
+      get "/moderation"
+
+      expect(response.body).to include("Remove image only")
+      expect(response.body).to include(remove_image_moderation_path(imaged.slug))
+      # exactly one row carries the button — the text-only report does not
+      expect(response.body.scan("Remove image only").size).to eq(1)
+    end
+  end
+
   # Two pending flags from different users + one already-dismissed flag. The actions
   # resolve only the pending ones and never re-touch a resolved report.
   def flagged_hujah_with_reports
