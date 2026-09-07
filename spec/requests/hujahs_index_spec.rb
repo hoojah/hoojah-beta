@@ -162,4 +162,16 @@ RSpec.describe "Hujahs index", type: :request do
     # one EXISTS per card (which would scale with the number of imaged cards).
     expect(flag_selects.size).to eq(1)
   end
+
+  # Regression: a pending flag with a NULL subject (reachable — subject is nullable and
+  # has no presence validation) must not crash the feed. The loaded fast path in
+  # Hujah#image_held? evaluates it in Ruby, and nil.to_sym would have raised; the enum
+  # predicates make a nil subject simply non-image (false), so the page still renders.
+  it "renders the feed 200 when an imaged card carries a pending nil-subject flag" do
+    hujah = create(:hujah, parent_id: nil, body: "an imaged claim worth voting on")
+    hujah.image.attach(io: Rails.root.join("spec/fixtures/files/test_image.png").open, filename: "t.png", content_type: "image/png")
+    create(:flag, hujah: hujah, subject: nil)
+    get "/"
+    expect(response).to have_http_status(:ok)
+  end
 end

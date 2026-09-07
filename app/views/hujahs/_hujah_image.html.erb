@@ -21,14 +21,19 @@
          data-lightbox-byline-value="@<%= hujah.user.username %> · <%= hujah.created_at.strftime("%b %-d") %>">
   </div>
 <% when :held %>
+  <%# The held image's src is deliberately UNSET until the viewer opts in via
+      "Show anyway" — image_reveal#show injects it from data-image-reveal-src-value.
+      This keeps held images (often below the fold) from being eagerly fetched by
+      every viewer; lazy loading alone wouldn't help once the src is present. %>
   <div class="mt-3 rounded-2xl aspect-video bg-card-2 border border-hairline flex flex-col items-center justify-center gap-2 text-center px-4 overflow-hidden"
-       data-controller="image-reveal">
+       data-controller="image-reveal"
+       data-image-reveal-src-value="<%= ds_hujah_image_url(hujah) %>">
     <div data-image-reveal-target="veil">
       <div class="text-sm font-semibold text-ink-2">Image hidden while we review a report</div>
       <div class="mt-1 text-xs text-faint">The claim stays votable. Only the image is held.</div>
       <button type="button" data-action="image-reveal#show" class="mt-2 <%= ds_button_classes(tone: "grey", size: :sm) %>">Show anyway</button>
     </div>
-    <img data-image-reveal-target="image" hidden src="<%= ds_hujah_image_url(hujah) %>"
+    <img data-image-reveal-target="image" hidden loading="lazy"
          alt="<%= hujah.image_alt %>" class="w-full h-full object-cover rounded-2xl">
   </div>
 <% end %>

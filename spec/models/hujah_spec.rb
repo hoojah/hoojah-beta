@@ -62,6 +62,30 @@ RSpec.describe Hujah, type: :model do
     end
   end
 
+  describe "#image_held? with a nil-subject flag" do
+    # subject is a nullable column with no presence validation, so a crafted POST that
+    # omits flag[subject] persists a pending nil-subject flag. The loaded fast path must
+    # treat it as a non-image flag (false) and NEVER raise on nil.to_sym — otherwise
+    # every feed/tag card containing that hujah would 500 while the SQL show path stayed
+    # fine. (Closing the nil hole with a presence validation is deferred to Slice 5.)
+    it "returns false without raising when a pending flag has a nil subject (loaded path)" do
+      hujah = attach_image(create(:hujah))
+      hujah.save!
+      create(:flag, hujah: hujah, subject: nil)
+      hujah.flags.load # force flags.loaded? → exercise the Ruby fast path
+      expect(hujah.flags).to be_loaded
+      expect { hujah.image_held? }.not_to raise_error
+      expect(hujah.image_held?).to be(false)
+    end
+
+    it "returns false via the SQL path too (loaded and unloaded agree)" do
+      hujah = attach_image(create(:hujah))
+      hujah.save!
+      create(:flag, hujah: hujah, subject: nil)
+      expect(hujah.reload.image_held?).to be(false) # reload → flags not loaded → SQL exists?
+    end
+  end
+
   describe "new-record defaults" do
     it "defaults to visible_public, allow_debates true, conviction_count 0" do
       h = Hujah.new

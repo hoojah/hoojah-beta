@@ -32,9 +32,10 @@ RSpec.describe "Hujah image display", :js do
     expect(page).to have_text("The claim stays votable. Only the image is held.")
     expect(page).to have_button("Show anyway")
 
-    # Per-viewer reveal: the image starts hidden, "Show anyway" flips it in locally.
-    expect(page).to have_css('[data-image-reveal-target="image"][hidden]', visible: :all)
+    # Per-viewer reveal: the image starts hidden AND unfetched (no src until opt-in),
+    # then "Show anyway" injects the src and flips it in locally.
+    expect(page).to have_css('[data-image-reveal-target="image"][hidden]:not([src])', visible: :all)
     click_button "Show anyway"
-    expect(page).to have_css('[data-image-reveal-target="image"]:not([hidden])')
+    expect(page).to have_css('[data-image-reveal-target="image"]:not([hidden])[src]')
   end
 end
