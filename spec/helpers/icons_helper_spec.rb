@@ -25,4 +25,42 @@ RSpec.describe IconsHelper, type: :helper do
       end
     end
   end
+
+  describe "#visibility_icon" do
+    it "returns nil for a public hoojah — public is the feed default, an icon here means restricted" do
+      expect(helper.visibility_icon(build(:hujah, visibility: :visible_public))).to be_nil
+    end
+
+    it "renders the users glyph for a followers-only hoojah" do
+      svg = helper.visibility_icon(build(:hujah, visibility: :followers_only))
+      expect(svg).to include("<svg")
+      # The lucide `users` glyph — the head circle distinguishes it from `lock`.
+      expect(svg).to include(%(<circle cx="9" cy="7"))
+    end
+
+    it "renders the lock glyph for a private hoojah" do
+      svg = helper.visibility_icon(build(:hujah, visibility: :private_only))
+      expect(svg).to include("<svg")
+      # The lucide `lock` glyph — the shackle rect distinguishes it from `users`.
+      expect(svg).to include(%(<rect width="18" height="11"))
+    end
+  end
+
+  describe "#visibility_title" do
+    let(:author) { build(:user, username: "debat") }
+
+    it "is nil for a public hoojah" do
+      expect(helper.visibility_title(build(:hujah, user: author, visibility: :visible_public))).to be_nil
+    end
+
+    it "names the follower audience for a followers-only hoojah" do
+      expect(helper.visibility_title(build(:hujah, user: author, visibility: :followers_only)))
+        .to eq("Only people following @debat can see this")
+    end
+
+    it "names the author for a private hoojah" do
+      expect(helper.visibility_title(build(:hujah, user: author, visibility: :private_only)))
+        .to eq("Only @debat can see this")
+    end
+  end
 end

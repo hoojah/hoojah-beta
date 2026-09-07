@@ -51,4 +51,18 @@ RSpec.describe "users/_user_hujah", type: :view do
       expect(card(quiet)).to have_content("No votes yet")
     end
   end
+
+  # Per-post visibility badge — restricted (non-public) top-level claims carry a small
+  # icon in the byline; public claims (the feed default) carry none.
+  describe "visibility badge" do
+    it "renders a titled visibility element for a restricted top-level claim" do
+      restricted = create(:hujah, user: author, visibility: :followers_only)
+      expect(card(restricted)).to have_css('[title*="can see this"]')
+    end
+
+    it "renders no visibility element for a public claim" do
+      public_claim = create(:hujah, user: author, visibility: :visible_public)
+      expect(card(public_claim)).to have_no_css('[title*="can see this"]')
+    end
+  end
 end

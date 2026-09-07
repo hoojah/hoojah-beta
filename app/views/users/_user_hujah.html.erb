@@ -44,6 +44,9 @@
           <span class="mr-1 text-primary"><%= hujah.user.full_name %></span>
           <small class="text-sm text-grey">@<%= hujah.user.username %></small>
         <% end %>
+        <% if hujah.parent_id.nil? && !hujah.visibility_visible_public? %>
+          <span class="relative z-10" title="<%= visibility_title(hujah) %>"><%= visibility_icon(hujah, class: "w-3.5 h-3.5 text-ink-2 inline") %></span>
+        <% end %>
       </div>
         <div class="mb-0 text-ink break-words"><%= format_body(hujah.body) %></div>
         <%# Secret ballot (2a/A7): below k=3 total votes the per-stance split is a

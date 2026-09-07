@@ -67,6 +67,10 @@
         <%# `data-local="time-ago"` is local_time's hook — the compact "%b %-d" here is
             the server-rendered fallback the design system specifies, not a placeholder. %>
         <time datetime="<%= hujah.created_at.iso8601 %>" data-local="time-ago"><%= hujah.created_at.strftime("%b %-d") %></time>
+        <% if hujah.parent_id.nil? && !hujah.visibility_visible_public? %>
+          <span class="mx-1">·</span>
+          <span title="<%= visibility_title(hujah) %>"><%= visibility_icon(hujah, class: "w-3.5 h-3.5 text-ink-2 inline") %></span>
+        <% end %>
       </small>
     </div>
   </div>
