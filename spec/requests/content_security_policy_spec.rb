@@ -10,12 +10,18 @@ RSpec.describe "Content Security Policy", type: :request do
       .to include(ENV.fetch("GARAGE_ENDPOINT", "https://s3-grg.novas.my"))
   end
 
-  it "lets Drift boot its widget: strict-dynamic scripts and a driftt.com frame" do
+  it "keeps script-src to self + nonce, with no strict-dynamic or third-party hosts" do
     get root_path
     csp = response.headers["Content-Security-Policy"]
-    # strict-dynamic so Drift's runtime-injected <script>s inherit nonce trust.
-    expect(csp[/script-src[^;]*/]).to include("'strict-dynamic'")
-    # Drift frames js.driftt.com (double-t), not only *.drift.com.
-    expect(csp[/frame-src[^;]*/]).to include("https://*.driftt.com")
+    script = csp[/script-src[^;]*/]
+    expect(script).to include("'self'")
+    expect(script).to match(/'nonce-[^']+'/)
+    expect(script).not_to include("strict-dynamic")
+  end
+
+  it "carries no Drift hosts anywhere now the widget is removed" do
+    get root_path
+    csp = response.headers["Content-Security-Policy"]
+    expect(csp).not_to include("drift")
   end
 end

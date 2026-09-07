@@ -11,8 +11,8 @@
     <%# No-FOUC: re-apply the persisted theme/scheme BEFORE the stylesheet paints,
         so a dark-mode user never flashes light on first load. Reads localStorage
         only and sets attributes — it contains NO Tailwind utility strings, so the
-        source scanner can't mint stray rules from it. Nonce'd for the CSP (same
-        mechanism the Drift snippet uses); no 'unsafe-inline'. %>
+        source scanner can't mint stray rules from it. Nonce'd for the CSP; no
+        'unsafe-inline'. %>
     <script nonce="<%= content_security_policy_nonce %>">
       (function () {
         try {
@@ -30,37 +30,5 @@
   <body>
     <%= render "layouts/flash" %>
     <%= yield %>
-    <%# Drift live chat. Skipped in test: headless Chrome would hang on the external
-        host, surfacing as intermittent Ferrum::PendingConnectionsError. No spec
-        exercises the remote widget, so leaving it out makes the system suite
-        deterministic without changing dev/production behaviour. %>
-    <% unless Rails.env.test? %>
-    <%# Drift live chat (appId fx42y6ieyaff) — inline, allowed by a CSP nonce (no 'unsafe-inline'). %>
-    <script nonce="<%= content_security_policy_nonce %>">
-      "use strict";
-      !function() {
-        var t = window.driftt = window.drift = window.driftt || [];
-        if (!t.init) {
-          if (t.invoked) return void (window.console && console.error && console.error("Drift snippet included twice."));
-          t.invoked = !0, t.methods = [ "identify", "config", "track", "reset", "debug", "show", "ping", "page", "hide", "off", "on" ],
-          t.factory = function(e) {
-            return function() {
-              var n = Array.prototype.slice.call(arguments);
-              return n.unshift(e), t.push(n), t;
-            };
-          }, t.methods.forEach(function(e) {
-            t[e] = t.factory(e);
-          }), t.load = function(t) {
-            var e = 3e5, n = Math.ceil(new Date() / e) * e, o = document.createElement("script");
-            o.type = "text/javascript", o.async = !0, o.crossorigin = "anonymous", o.src = "https://js.driftt.com/include/" + n + "/" + t + ".js";
-            var i = document.getElementsByTagName("script")[0];
-            i.parentNode.insertBefore(o, i);
-          };
-        }
-      }();
-      drift.SNIPPET_VERSION = '0.3.1';
-      drift.load('fx42y6ieyaff');
-    </script>
-    <% end %>
   </body>
 </html>

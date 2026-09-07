@@ -42,8 +42,8 @@ RSpec.describe "Cuprite driver configuration", type: :system, js: true do
   end
 
   it "applies the third-party url_blacklist" do
-    # The Drift and Cloudinary hosts. Without these the shared browser can block on
-    # a third-party connection and bleed a timeout into the next example.
+    # The Cloudinary host. Without it the shared browser can block on a third-party
+    # connection and bleed a timeout into the next example.
     expect(Array(options[:url_blacklist])).to match_array(CUPRITE_URL_BLACKLIST)
   end
 end
