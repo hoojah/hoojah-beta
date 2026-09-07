@@ -64,15 +64,17 @@ RSpec.describe "Profile", type: :system, js: true do
     expect(user.reload.full_name).to eq("Zoe Kingman")
   end
 
-  it "offers a photo file field on the edit form" do
-    # The old client-side Cloudinary upload widget (an "Update photo" button + a
-    # hidden user[photo] field) is gone; photo upload is now a plain multipart
-    # file_field :avatar backed by ActiveStorage.
+  it "offers an inline avatar uploader on the edit form" do
+    # Photo upload is now the inline image_upload widget (chooser -> live preview ->
+    # DirectUpload) reused from the composer: a hidden user[avatar] signed-id field the
+    # background upload fills, a hidden file input, and a "Change photo" chooser button.
     login_as_system(user)
     visit "/u/rudz"
     find("[aria-label='Edit your profile']").click
     within("dialog##{ActionView::RecordIdentifier.dom_id(user, :edit_dialog)}") do
-      expect(page).to have_field("user[avatar]", type: :file)
+      expect(page).to have_field("user[avatar]", type: :hidden)
+      expect(page).to have_css('[data-image-upload-target="fileInput"]', visible: :all)
+      expect(page).to have_button("Change photo")
     end
   end
 end

@@ -29,7 +29,10 @@ export default class extends Controller {
     "failed", "failedName", "fileInput", "cameraInput", "signedId",
     "attached", "attachedPreview", "attachedMeta", "triggerButton", "altInput"
   ]
-  static values = { directUrl: String }
+  // shapeLabel defaults to "16:9 crop" so the composer (which sets no such attribute)
+  // keeps its exact attached-meta text; the avatar mount sets it to "" to suppress the
+  // shape suffix (a circular avatar has no aspect crop to name).
+  static values = { directUrl: String, shapeLabel: { type: String, default: "16:9 crop" } }
 
   connect() {
     this.upload = null
@@ -107,7 +110,8 @@ export default class extends Controller {
       this.signedIdTarget.value = blob.signed_id
       this.showAttached(file)
       this.restoreGate()
-      this.dialogTarget.close()
+      // The avatar mount has no dialog (it renders inline in the profile-edit modal).
+      if (this.hasDialogTarget) this.dialogTarget.close()
     })
   }
 
@@ -138,8 +142,10 @@ export default class extends Controller {
     this.attachedTarget.hidden = true
     this.attachedPreviewTarget.removeAttribute("src")
     this.revokePreview()
-    this.triggerButtonTarget.classList.remove("bg-primary-soft", "text-primary")
-    this.triggerButtonTarget.classList.add("bg-card-2", "text-ink-2")
+    if (this.hasTriggerButtonTarget) {
+      this.triggerButtonTarget.classList.remove("bg-primary-soft", "text-primary")
+      this.triggerButtonTarget.classList.add("bg-card-2", "text-ink-2")
+    }
   }
 
   // --- view state helpers ---
@@ -148,7 +154,7 @@ export default class extends Controller {
     this.progressTarget.hidden = true
     this.failedTarget.hidden = true
     this.chooserTarget.hidden = false
-    this.titleTarget.textContent = "Add an image"
+    if (this.hasTitleTarget) this.titleTarget.textContent = "Add an image"
   }
   showError(title, body) {
     this.resetToChooser()
@@ -160,7 +166,7 @@ export default class extends Controller {
     this.chooserTarget.hidden = true
     this.errorTarget.hidden = true
     this.failedTarget.hidden = true
-    this.titleTarget.textContent = "Adding your image"
+    if (this.hasTitleTarget) this.titleTarget.textContent = "Adding your image"
     this.progressNameTarget.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB`
     this.progressPctTarget.textContent = "0%"
     this.progressBarTarget.style.width = "0%"
@@ -168,17 +174,21 @@ export default class extends Controller {
   }
   showFailed(file) {
     this.restoreGate()
-    this.titleTarget.textContent = "Add an image" // leave the "Adding your image" state
+    if (this.hasTitleTarget) this.titleTarget.textContent = "Add an image" // leave the "Adding your image" state
     this.progressTarget.hidden = true
     this.failedNameTarget.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB · check your connection`
     this.failedTarget.hidden = false
   }
   showAttached(file) {
     this.attachedPreviewTarget.src = this.previewUrl
-    this.attachedMetaTarget.textContent = `${(file.size / 1024 / 1024).toFixed(1)} MB · 16:9 crop`
+    let meta = `${(file.size / 1024 / 1024).toFixed(1)} MB`
+    if (this.shapeLabelValue) meta += " · " + this.shapeLabelValue
+    this.attachedMetaTarget.textContent = meta
     this.attachedTarget.hidden = false
-    this.triggerButtonTarget.classList.remove("bg-card-2", "text-ink-2")
-    this.triggerButtonTarget.classList.add("bg-primary-soft", "text-primary")
+    if (this.hasTriggerButtonTarget) {
+      this.triggerButtonTarget.classList.remove("bg-card-2", "text-ink-2")
+      this.triggerButtonTarget.classList.add("bg-primary-soft", "text-primary")
+    }
   }
 
   // --- Post-button coordination with the composer controller ---

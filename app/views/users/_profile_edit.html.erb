@@ -86,7 +86,18 @@
       </button>
     </div>
 
-    <%= form_with model: user, url: profile_path(user.username), method: :patch, html: { multipart: true }, class: "p-4 overflow-y-auto min-h-0" do |f| %>
+    <%# The avatar uploader reuses the composer's image_upload controller INLINE (no nested
+        <dialog>): chooser → live preview → DirectUpload progress → error/retry, mounted on
+        this form. shape_label_value:"" suppresses the "16:9 crop" meta suffix (the avatar
+        preview is circular, not a 16:9 crop). directUrl points at the same auth'd
+        ActiveStorage endpoint the composer uses; the signed_id rides hujah-style in
+        user[avatar], which user_params already permits as a scalar. %>
+    <%= form_with model: user, url: profile_path(user.username), method: :patch,
+          html: { multipart: true },
+          data: { controller: "image-upload",
+                  image_upload_direct_url_value: authenticated_direct_uploads_path,
+                  image_upload_shape_label_value: "" },
+          class: "p-4 overflow-y-auto min-h-0" do |f| %>
       <% if user.errors.any? %>
         <div class="mb-3 rounded bg-red-50 text-red-700 text-sm px-3 py-2">
           <ul class="list-disc pl-4 m-0">
@@ -96,15 +107,83 @@
       <% end %>
 
       <div class="flex flex-col items-center mb-4">
-        <%# Slice 9, Task 4.4: the same 96px `lg` avatar as the header it edits, via
-            `ui/_avatar`. It went through the partial because `image_tag user.photo`
-            raises on a blank photo, and this dialog renders on every owner's own
-            profile: a user who cleared their photo could not otherwise reach the
-            editor that would let them set a new one. %>
-        <%= render "ui/avatar", user: user, size: :lg, class: "mb-3" %>
-        <%= f.label :avatar, "Photo", class: "block text-xs font-semibold text-faint mb-1" %>
-        <%= f.file_field :avatar, accept: "image/png,image/jpeg,image/gif,image/webp",
-              class: "block text-sm" %>
+        <span class="block text-xs font-semibold text-faint mb-2">Photo</span>
+
+        <%# Hidden signed_id field — this is what actually rides the PATCH (the file itself
+            uploaded in the background). `value: nil` is load-bearing: with no value set,
+            f.hidden_field would serialize the ActiveStorage::Attached object's to_s, so
+            every no-change submit would post garbage and trip MessageVerifier. Same as the
+            composer's hujah[image] field. %>
+        <%= f.hidden_field :avatar, value: nil, data: { image_upload_target: "signedId" } %>
+
+        <%# error banner (hidden by default; controller fills message + reveals) %>
+        <div data-image-upload-target="error" hidden
+             class="w-full flex items-start gap-3 px-3.5 py-3 rounded-lg bg-red-50 mb-3">
+          <span class="text-red-700 flex-none"><%= lucide_icon("circle-alert", class: "w-5 h-5") %></span>
+          <div class="min-w-0">
+            <div data-image-upload-target="errorTitle" class="text-sm font-semibold text-red-700"></div>
+            <div data-image-upload-target="errorBody" class="mt-0.5 text-xs leading-snug text-red-700/85"></div>
+          </div>
+        </div>
+
+        <%# CHOOSER (visible initially): current avatar + Change / Take a photo. No dialog. %>
+        <div data-image-upload-target="chooser" class="flex flex-col items-center">
+          <%# 96px `lg` avatar via `ui/_avatar` — `image_tag user.photo` raises on a blank
+              photo, so the partial's fallback matters (a user who cleared their photo must
+              still reach the editor). %>
+          <%= render "ui/avatar", user: user, size: :lg, class: "mb-3" %>
+          <div class="flex gap-2">
+            <button type="button" data-action="image-upload#pickFile"
+                    class="<%= ds_button_classes(variant: :outline, tone: "primary", size: :sm) %>">Change photo</button>
+            <button type="button" data-action="image-upload#pickCamera"
+                    class="<%= ds_button_classes(variant: :outline, tone: "grey", size: :sm) %>">Take a photo</button>
+          </div>
+        </div>
+
+        <%# PROGRESS (hidden): circular live preview + upload bar. %>
+        <div data-image-upload-target="progress" hidden class="flex flex-col items-center w-full">
+          <div class="relative w-24 h-24 rounded-full overflow-hidden bg-card-2">
+            <img data-image-upload-target="progressPreview" alt="" class="w-full h-full object-cover">
+            <span class="absolute inset-0 bg-white/35 pointer-events-none"></span>
+          </div>
+          <div class="mt-3 w-full max-w-xs">
+            <div class="flex justify-between text-xs font-bold text-ink-2"><span data-image-upload-target="progressName"></span><span data-image-upload-target="progressPct">0%</span></div>
+            <div class="mt-1.5 h-2 rounded-full bg-field overflow-hidden"><div data-image-upload-target="progressBar" class="h-full rounded-full bg-primary" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <%# FAILED (hidden): network error + Retry / Choose another. %>
+        <div data-image-upload-target="failed" hidden class="flex flex-col items-center w-full">
+          <div class="w-24 h-24 rounded-full border border-dashed border-red-700 bg-card flex flex-col items-center justify-center gap-1.5 text-center px-2">
+            <span class="text-red-700"><%= lucide_icon("circle-alert", class: "w-5 h-5") %></span>
+            <span data-image-upload-target="failedName" class="text-[10px] leading-tight text-faint"></span>
+          </div>
+          <div class="flex gap-2 mt-3">
+            <button type="button" data-action="image-upload#retry" class="<%= ds_button_classes(tone: "primary", size: :sm) %>">Retry</button>
+            <button type="button" data-action="image-upload#pickFile" class="<%= ds_button_classes(tone: "grey", size: :sm) %>">Choose another</button>
+          </div>
+        </div>
+
+        <%# ATTACHED (hidden): circular preview of the newly uploaded photo + Change / Remove.
+            No alt-text field (avatars carry none), no triggerButton. %>
+        <div data-image-upload-target="attached" hidden class="flex flex-col items-center w-full">
+          <div class="w-24 h-24 rounded-full overflow-hidden bg-card-2">
+            <img data-image-upload-target="attachedPreview" alt="" class="w-full h-full object-cover">
+          </div>
+          <div data-image-upload-target="attachedMeta" class="mt-2 text-xs text-faint"></div>
+          <div class="flex gap-2 mt-2">
+            <button type="button" data-action="image-upload#pickFile"
+                    class="<%= ds_button_classes(variant: :outline, tone: "primary", size: :sm) %>">Change</button>
+            <button type="button" data-action="image-upload#remove"
+                    class="<%= ds_button_classes(variant: :outline, tone: "grey", size: :sm) %>">Remove</button>
+          </div>
+        </div>
+
+        <%# hidden file inputs (device + camera), wired exactly as _add_image_dialog. %>
+        <input type="file" data-image-upload-target="fileInput" data-action="image-upload#fileChosen"
+               accept="image/png,image/jpeg,image/gif,image/webp" class="hidden">
+        <input type="file" data-image-upload-target="cameraInput" data-action="image-upload#fileChosen"
+               accept="image/png,image/jpeg,image/gif,image/webp" capture="user" class="hidden">
       </div>
 
       <div class="mb-3">
