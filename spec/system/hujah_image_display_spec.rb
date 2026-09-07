@@ -41,6 +41,17 @@ RSpec.describe "Hujah image display", :js do
     expect(page).to have_no_text("Pinch to zoom")
   end
 
+  it "closes the lightbox when the dark area around the image is tapped" do
+    visit hujah_path(hujah)
+    find('img[alt="a train"]').click
+    expect(page).to have_text("Pinch to zoom")
+
+    # Tap the dark chrome (the caption/hint region), NOT the image or a button.
+    find('[data-lightbox-target="root"] [data-role="caption"]').click
+    expect(page).to have_css('[data-lightbox-target="root"]', visible: :hidden, wait: 5)
+    expect(page).to have_no_text("Pinch to zoom")
+  end
+
   it "holds the image behind a veil when a pending image flag exists" do
     create(:flag, hujah: hujah, subject: :image_graphic) # status defaults to pending
     visit hujah_path(hujah)

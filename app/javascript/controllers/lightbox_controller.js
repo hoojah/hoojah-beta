@@ -14,6 +14,10 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static values = { src: String, alt: String, byline: String }
 
+  // NB: `data-lightbox-target="root"` on the built <dialog> is NOT a Stimulus
+  // target (there is no `static targets`, and the dialog lives under <body>,
+  // outside this controller's element). It is only a CSS/test selector hook.
+
   open(event) {
     // preventDefault: the shown image sits inside a card whose body is (today)
     // un-linked, but stopPropagation guards against any future surrounding <a>/
@@ -41,13 +45,16 @@ export default class extends Controller {
         <div class="flex-1 flex items-center justify-center overflow-auto px-4">
           <img src="${this.escape(this.srcValue)}" alt="${this.escape(this.altValue)}" class="max-w-full max-h-full object-contain">
         </div>
-        <div class="px-4 py-3 text-center text-xs text-white/70">
+        <div class="px-4 py-3 text-center text-xs text-white/70" data-role="caption">
           ${this.altValue ? `<div class="mb-1 text-white/90">${this.escape(this.altValue)}</div>` : ""}
           Pinch to zoom · swipe down to close
         </div>
       </div>`
     d.querySelector('[data-role="close"]').addEventListener("click", () => d.close())
-    d.addEventListener("click", (e) => { if (e.target === d) d.close() })
+    // Close on any tap in the dark chrome around the image. The `w-full h-full`
+    // wrap fills the dialog, so `e.target === d` (a bare ::backdrop hit) never
+    // fires — instead close unless the tap landed on the image or a button.
+    d.addEventListener("click", (e) => { if (!e.target.closest("img, button")) d.close() })
     this.bindSwipeDown(d)
     document.body.appendChild(d)
     this.dialog = d
@@ -56,9 +63,16 @@ export default class extends Controller {
   bindSwipeDown(d) {
     let startY = null
     const wrap = d.querySelector('[data-role="wrap"]')
-    wrap.addEventListener("touchstart", (e) => { startY = e.touches[0].clientY }, { passive: true })
+    // Track ONLY single-finger gestures. A two-finger pinch-to-zoom (the very
+    // gesture the hint advertises) would otherwise overwrite startY per finger
+    // and, when the first finger lifts >80px lower, dismiss the lightbox the user
+    // just zoomed. So: arm only on a lone finger, and fire only once every finger
+    // has lifted (touches.length === 0).
+    wrap.addEventListener("touchstart", (e) => {
+      startY = e.touches.length === 1 ? e.touches[0].clientY : null
+    }, { passive: true })
     wrap.addEventListener("touchend", (e) => {
-      if (startY !== null && e.changedTouches[0].clientY - startY > 80) d.close()
+      if (startY !== null && e.touches.length === 0 && e.changedTouches[0].clientY - startY > 80) d.close()
       startY = null
     }, { passive: true })
   }
@@ -74,4 +88,8 @@ export default class extends Controller {
       this.dialog = null
     }
   }
+
+  // If a Turbo Stream removes the source image, the controller disconnects —
+  // tear the orphaned <dialog> out of <body> too rather than leaking it.
+  disconnect() { this.teardown() }
 }

@@ -124,10 +124,12 @@
    rather than trusted to the JS source scan. Positioning is inline style, not utilities. */
 @source inline("fixed z-50 w-72 opacity-0 opacity-100 pointer-events-none transition-opacity duration-150");
 
-/* Lightbox (Slice 4) full-screen <dialog> chrome. Every one of these classes lives
-   ONLY inside the template string in lightbox_controller.js, so the ERB scanner never
-   sees them — they must be safelisted or the viewer renders unstyled. The `backdrop:`
-   variant needs its own entry: the safelist covers the bare utility only. */
+/* Lightbox (Slice 4) full-screen <dialog> chrome, assembled in lightbox_controller.js.
+   Defense-in-depth, NOT load-bearing: Tailwind v4 already scans `.js` files as text
+   (CLAUDE.md gotcha #1), so these classes compile from the controller source today
+   regardless of this block. It is kept as belt-and-braces in case the template string
+   is ever moved out of a scanned file; drop it freely if that never happens. The
+   `backdrop:` variant still needs its own entry — the safelist covers the bare utility. */
 @source inline("w-screen h-screen max-w-none max-h-none bg-black/90 object-contain overflow-auto text-white/70 text-white/90");
 @source inline("backdrop:bg-black/90");
 
