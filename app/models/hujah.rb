@@ -23,6 +23,7 @@ class Hujah < ApplicationRecord
 
   validates :image_alt, length: {maximum: 200}
   validate :image_is_valid_image
+  validate :image_not_reused
 
   # The two Flag#subject reasons that target the image rather than the claim. A pending
   # flag of either soft-holds the image (see #image_held?).
@@ -251,6 +252,24 @@ class Hujah < ApplicationRecord
       update!(moderation_status: :removed)
       flags.pending.find_each { |flag| flag.resolve!(by:, as: :actioned) }
       Notification.create!(user_id:, category: :moderation_removed, hujah_id: id)
+    end
+  end
+
+  # Moderation (2026, Slice 6): the "Remove image only" outcome. Unlike remove!, the
+  # claim STAYS active/votable — only the attached image is taken down. One transaction so
+  # a half-applied takedown (stamped but image still present, or image gone but flags still
+  # pending) can never exist. Resolves ONLY the pending image-subject reports as actioned
+  # (a non-image report on the same hoojah stays pending and keeps the row in the queue);
+  # the notification carries NO subject_user_id, the same secret-ballot anonymity remove!
+  # follows. Idempotent: the image_removed_at early return makes a second call a no-op, so
+  # the author is never re-notified and the already-purged blob is never re-purged.
+  def remove_image!(by:)
+    return if image_removed_at.present?
+    transaction do
+      update!(image_removed_at: Time.current)
+      flags.pending.where(subject: IMAGE_FLAG_SUBJECTS).find_each { |flag| flag.resolve!(by:, as: :actioned) }
+      image.purge_later
+      Notification.create!(user_id:, category: :image_removed, hujah_id: id)
     end
   end
 
@@ -519,6 +538,23 @@ class Hujah < ApplicationRecord
     end
     if image.blob.byte_size > MAX_IMAGE_BYTES
       errors.add(:image, "must be smaller than 5 MB")
+    end
+  end
+
+  # SECURITY IMG2/B9: a signed_id lifted from another record's image URL can be replayed
+  # as hujah[image], attaching the SAME blob to a second record. Two records then share one
+  # blob, and Slice 6's image.purge_later on either would destroy the victim's file. Reject
+  # any blob that already backs a DIFFERENT record's attachment: a legitimate fresh
+  # direct-upload has a brand-new, never-attached blob (zero attachment rows) and passes; a
+  # lifted blob already carries the victim's attachment row and is rejected here — before
+  # save, so nothing is attached. On an existing record, its OWN attachment row is excluded
+  # so a re-validating save (which the model may run) still passes.
+  def image_not_reused
+    return unless image.attached?
+    scope = ActiveStorage::Attachment.where(blob_id: image.blob.id)
+    scope = scope.where.not(record_type: "Hujah", record_id: id) if persisted?
+    if scope.exists?
+      errors.add(:image, "can't be reused from another hoojah")
     end
   end
 

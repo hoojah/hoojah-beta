@@ -93,6 +93,55 @@ RSpec.describe Hujah, type: :model do
     end
   end
 
+  describe "#remove_image!" do
+    let(:moderator) { create(:user, :moderator) }
+
+    def imaged_hujah
+      hujah = attach_image(create(:hujah))
+      hujah.save!
+      hujah
+    end
+
+    it "detaches the image, keeps the claim active, resolves image flags, notifies the author once" do
+      hujah = imaged_hujah
+      create(:flag, hujah: hujah, subject: :image_graphic)
+
+      expect {
+        hujah.remove_image!(by: moderator)
+      }.to change { Notification.where(category: :image_removed).count }.by(1)
+
+      hujah.reload
+      expect(hujah.image_removed_at).to be_present
+      expect(hujah.moderation_status).to eq("active")
+      expect(hujah.image_display_state).to eq(:none)
+      expect(hujah.flags.where(subject: Hujah::IMAGE_FLAG_SUBJECTS).all?(&:actioned?)).to be(true)
+
+      note = Notification.where(category: :image_removed).last
+      expect(note.user_id).to eq(hujah.user_id)
+      expect(note.hujah_id).to eq(hujah.id)
+      expect(note.subject_user_id).to be_nil
+    end
+
+    it "leaves a non-image pending report untouched (claim stays in the queue)" do
+      hujah = imaged_hujah
+      create(:flag, hujah: hujah, user: create(:user), subject: :image_graphic)
+      text_flag = create(:flag, hujah: hujah, user: create(:user), subject: :spam)
+
+      hujah.remove_image!(by: moderator)
+
+      expect(text_flag.reload).to be_pending
+    end
+
+    it "is idempotent — a second call is a no-op and does not re-notify" do
+      hujah = imaged_hujah
+      hujah.remove_image!(by: moderator)
+
+      expect {
+        hujah.remove_image!(by: moderator)
+      }.not_to change(Notification, :count)
+    end
+  end
+
   describe "new-record defaults" do
     it "defaults to visible_public, allow_debates true, conviction_count 0" do
       h = Hujah.new
