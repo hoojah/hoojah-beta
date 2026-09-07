@@ -33,5 +33,14 @@ module Hoojah
 
     # Rate limiting / throttling (login, signup, password reset, votes).
     config.middleware.use Rack::Attack
+
+    # Don't emit the `Link: rel=preload; as=style` HTTP header for stylesheet_link_tag.
+    # Our one stylesheet (tailwind) is a render-blocking <link> already in the <head>,
+    # so the browser discovers it immediately — the preload header is redundant. Worse,
+    # under Turbo Drive the header rides along on every page fetch, and because the head
+    # already carries that stylesheet the freshly-preloaded copy is never used, which is
+    # exactly the console's "preloaded ... but not used" warning. Importmap JS preloads
+    # use <link rel=modulepreload> tags (a different mechanism) and are unaffected.
+    config.action_view.preload_links_header = false
   end
 end
