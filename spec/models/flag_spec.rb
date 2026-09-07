@@ -114,5 +114,32 @@ RSpec.describe Flag, type: :model do
         expect(flag.resolved_at).to eq(Time.current)
       end
     end
+
+    # Regression (Slice 5): the create-time-only presence validation must let a LEGACY
+    # nil-subject flag still be resolved. An unscoped `presence: true` would raise here
+    # (resolve! calls update!), and inside Hujah#remove!'s transaction that would roll
+    # back the whole removal — one poisoned legacy row would make a hujah unremovable.
+    it "resolves a legacy nil-subject flag without raising" do
+      flag = build(:flag, subject: nil)
+      flag.save!(validate: false)
+
+      expect { flag.resolve!(by: moderator, as: :actioned) }.not_to raise_error
+      expect(flag.reload).to be_actioned
+    end
+  end
+
+  describe "the subject presence validation" do
+    it "rejects a new flag with no subject" do
+      flag = build(:flag, subject: nil)
+      expect(flag).not_to be_valid
+      expect(flag.errors[:subject]).to be_present
+    end
+
+    it "does not re-run on update, so a persisted nil-subject row stays updateable" do
+      flag = build(:flag, subject: nil)
+      flag.save!(validate: false)
+
+      expect { flag.update!(status: :dismissed) }.not_to raise_error
+    end
   end
 end

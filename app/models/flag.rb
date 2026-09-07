@@ -24,7 +24,14 @@ class Flag < ApplicationRecord
   # is a real crash vector downstream (the serializer + moderation copy dereference it).
   # The frozen flag dialog always submits a subject, so this only rejects malformed
   # direct POSTs — it never breaks the real form.
-  validates :subject, presence: true
+  #
+  # ON :create ONLY, deliberately. Legacy nil-subject rows can predate this validation
+  # (subject is a nullable column with no DB constraint), and they must stay UPDATEABLE:
+  # `resolve!`/`remove!` transition such rows via `update!`, and an unscoped presence
+  # check would raise inside `Hujah#remove!`'s transaction and roll back the whole
+  # removal — one poisoned legacy flag would make a hujah unremovable. Blocking new nil
+  # subjects at create (belt) plus the controller's 422 guard (braces) is enough.
+  validates :subject, presence: true, on: :create
 
   # One write: lifecycle transition + audit fields together, so a flag can never
   # be resolved without recording who and when.

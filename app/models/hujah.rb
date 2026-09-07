@@ -45,10 +45,11 @@ class Hujah < ApplicationRecord
   def image_held?
     return false unless image.attached?
     if flags.loaded?
-      # Use the enum predicates, not `subject.to_sym` — `subject` is a nullable column
-      # with no presence validation (a crafted POST can persist a pending nil-subject
-      # flag), and `nil.to_sym` would raise. Both predicates are false for a nil subject,
-      # so this stays EXACTLY equivalent to the SQL path below (which excludes NULLs).
+      # Use the enum predicates, not `subject.to_sym` — `subject` is a nullable column,
+      # so a LEGACY row predating Slice 5's create-time presence validation may still
+      # carry a nil subject, and `nil.to_sym` would raise. Both predicates are false for
+      # a nil subject, so this stays EXACTLY equivalent to the SQL path below (which
+      # excludes NULLs).
       return flags.any? { |f| f.pending? && (f.image_graphic? || f.image_not_theirs?) }
     end
     flags.pending.where(subject: IMAGE_FLAG_SUBJECTS).exists?

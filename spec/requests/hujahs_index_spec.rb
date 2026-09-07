@@ -163,14 +163,15 @@ RSpec.describe "Hujahs index", type: :request do
     expect(flag_selects.size).to eq(1)
   end
 
-  # Regression: a pending flag with a NULL subject (reachable — subject is nullable and
-  # has no presence validation) must not crash the feed. The loaded fast path in
-  # Hujah#image_held? evaluates it in Ruby, and nil.to_sym would have raised; the enum
-  # predicates make a nil subject simply non-image (false), so the page still renders.
+  # Regression: a LEGACY pending flag with a NULL subject (subject is nullable; such rows
+  # can predate Slice 5's create-time presence validation) must not crash the feed. The
+  # loaded fast path in Hujah#image_held? evaluates it in Ruby, and nil.to_sym would have
+  # raised; the enum predicates make a nil subject simply non-image (false), so the page
+  # still renders. Forge the legacy row via save!(validate: false).
   it "renders the feed 200 when an imaged card carries a pending nil-subject flag" do
     hujah = create(:hujah, parent_id: nil, body: "an imaged claim worth voting on")
     hujah.image.attach(io: Rails.root.join("spec/fixtures/files/test_image.png").open, filename: "t.png", content_type: "image/png")
-    create(:flag, hujah: hujah, subject: nil)
+    build(:flag, hujah: hujah, subject: nil).save!(validate: false)
     get "/"
     expect(response).to have_http_status(:ok)
   end

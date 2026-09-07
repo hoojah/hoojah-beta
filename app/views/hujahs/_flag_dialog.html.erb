@@ -85,10 +85,13 @@
 
     <%= form_with url: hujah_flags_path(hujah.slug), method: :post, class: "p-4" do %>
       <p class="text-sm text-grey mb-3">Why are you flagging this hoojah?</p>
-      <%# ADDITIVE (Slice 5): when the hoojah carries a visible image, remind the flagger
+      <%# ADDITIVE (Slice 5): when the hoojah carries a SHOWN image, remind the flagger
           that the claim and its image are reviewed as one — with a thumbnail for context.
-          Guarded so it never appears (and never touches the three frozen rows) otherwise. %>
-      <% if hujah.image.attached? && hujah.image_removed_at.nil? %>
+          Gated on :shown (not just attached) so it does NOT re-expose the raw thumbnail
+          while the image is soft-held for a graphic-content report — the card hides it
+          for that reason, and this dialog must not leak it back. Reason rows below stay
+          on the broader attached-and-not-removed guard so a held image is still reportable. %>
+      <% if hujah.image_display_state == :shown %>
         <div class="flex items-center gap-2.5 p-2 rounded-lg bg-card-2 mb-3">
           <div class="w-16 h-9 rounded-md overflow-hidden flex-none bg-field">
             <img src="<%= ds_hujah_image_url(hujah) %>" alt="" class="w-full h-full object-cover">
