@@ -27,15 +27,18 @@ All above are production/tooling only; test+dev suite stays green (24/0/2).
 
 ## ⚠️ OPEN — the whole of it
 
-**Two items open.** `2a`, the four Slice-11 low follow-ups (`vote?-block`, `notif-param-500`,
+**Open items below.** `2a`, the four Slice-11 low follow-ups (`vote?-block`, `notif-param-500`,
 `A7 counts`, `username-uniq-index`), and `verdict-k` are all **closed** (2026-08-26) — see the two
-"Closed" passes below. The remaining open items are the deploy-gated master-key item and the
-passkey challenge-throttle gap below. Read this table and stop.
+"Closed" passes below. The remaining open items are the deploy-gated master-key item, the passkey
+challenge-throttle gap, and the two Slice-2 image-upload items (`IMG1` throttle/size-cap deferred,
+`IMG2` cross-record blob reuse — fix in Slice 3/6). Read this table and stop.
 
 | ID | Severity | Issue | Where it lands | State |
 |----|----------|-------|----------------|-------|
 | L4 | Low | `config.require_master_key` commented out in `production.rb:19` | Deploy track, **not a slice** | Open by design. Gated on the deploy providing `RAILS_MASTER_KEY`, not on any code change here. Enabling it before the key exists turns a boot into a crash. |
 | L5 | Low | Unauthenticated challenge minting is unthrottled — `POST /login/passkey/options` (and the authenticated `/settings/passkeys/options`) can be called repeatedly to mint WebAuthn challenges / grow session state | `passkey-webauthn-login` branch, not merged | Open by design. Rate-limiting was explicitly deferred in the design spec (`docs/superpowers/specs/2026-09-03-passkey-webauthn-login-design.md`). Follow-up: a Rack::Attack throttle on both endpoints. |
+| IMG1 | Low | Direct image uploads have **no throttle and no server-side byte cap**. `POST /uploads/direct` now requires a signed-in user (`DirectUploadsController < ActiveStorage::DirectUploadsController` with `authenticate_user!`), closing the anonymous-orphan-blob hole, but an authenticated user can still mint many/large orphan blobs; the composer's 5 MB check is client-side only. | `image-attachments` branch (Slice 2) | Open by design. Deferred: a Rack::Attack throttle on `/uploads/direct` and a per-blob size cap enforced at `create` (the stock direct-upload endpoint does not validate `blob_args[:byte_size]`). No throttle exists for these routes today. |
+| IMG2 | Medium | **Cross-record blob reuse via a lifted signed_id.** `hujah[image]` accepts any valid blob `signed_id`; a signed_id copied from another user's image URL could be submitted to attach the *same* blob to the attacker's hoojah. Two records then share one blob, and Slice 6's `image.purge_later` on either would destroy the victim's file. | `image-attachments` branch — **fix in Slice 3/6** | Open, LOG ONLY (not fixed in Slice 2). Resolution: reject an already-attached blob on assign, or dup the blob on attach, so no two records share storage. |
 
 **Passkey hardening nice-to-haves (not scheduled).** Two further defense-in-depth items from the
 same design spec, neither blocking: (1) an optional `userHandle` cross-check inside

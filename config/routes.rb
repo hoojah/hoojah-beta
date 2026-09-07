@@ -66,6 +66,12 @@ Rails.application.routes.draw do
   get "/hoojah/new", to: "hujahs#new", as: :new_hujah
   get "/hoojah/:slug/respond", to: "hujahs#new", as: :respond_hujah
   post "/hoojah", to: "hujahs#create"
+  # Slice 2 (image attachments): the composer's background DirectUpload posts here, an
+  # AUTHENTICATED subclass of ActiveStorage::DirectUploadsController — the stock
+  # /rails/active_storage/direct_uploads endpoint has no auth or throttle, so we never point
+  # the client at it. See DirectUploadsController and SECURITY-FINDINGS.md (throttle/size cap
+  # still deferred).
+  post "/uploads/direct", to: "direct_uploads#create", as: :authenticated_direct_uploads
   get "/hoojah/:slug", to: "hujahs#show", as: :hujah
   # Delete a hoojah (HTML/Turbo twin of Api::V1::HujahsController#destroy). A WRITE
   # action, so it lives on a MAIN route (CSRF enforced — `button_to method: :delete`
