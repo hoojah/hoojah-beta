@@ -14,7 +14,7 @@
 <dialog data-image-upload-target="dialog"
         data-action="click->image-upload#backdropClose cancel->image-upload#cancelUpload"
         aria-labelledby="dialog-title-image"
-        class="rounded-lg shadow-lg p-0 w-full max-w-md backdrop:bg-black/40">
+        class="rounded-lg shadow-lg p-0 w-full max-w-md max-h-[90dvh] overflow-y-auto backdrop:bg-black/40">
   <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
     <h5 id="dialog-title-image" data-image-upload-target="title" class="text-lg font-medium m-0">Add an image</h5>
     <button type="button" data-action="image-upload#cancelUpload" aria-label="Close" class="<%= ds_button_classes(variant: :link, tone: "grey") %>">

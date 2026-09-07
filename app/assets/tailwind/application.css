@@ -448,6 +448,21 @@
   .debate-turn-enter { animation: hfade 200ms ease; }
 }
 
+/* Center every modal <dialog>. Tailwind v4 preflight resets `* { margin: 0 }` in the
+   AUTHOR origin, which overrides the UA stylesheet's `dialog:modal { margin: auto }`
+   (author styles beat user-agent styles regardless of specificity) — so every
+   showModal() dialog lost its centering and pinned to the top-left. Restore the
+   centered top-layer geometry explicitly. `:modal` matches only showModal() dialogs,
+   so the flag, add-image and profile-edit cards all center; the full-screen image
+   lightbox is also `:modal` but sized w-screen/h-screen, so margin:auto resolves to 0
+   and it still fills the viewport. Anchored dropdowns/hovercards are not <dialog> and
+   never match. */
+dialog:modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+}
+
 /* Modal entrance AND exit. All native <dialog>s in the app share `data-dialog-target="dialog"`
    (flag, challenge, profile-edit), so this one rule covers every modal with no markup change.
    showModal() flips display none→block and sets [open]; close() reverses it. @starting-style
