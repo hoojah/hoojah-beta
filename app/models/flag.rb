@@ -20,6 +20,12 @@ class Flag < ApplicationRecord
   # One report per user per hoojah — backed by the unique [user_id, hujah_id] index.
   validates :user_id, uniqueness: {scope: :hujah_id}
 
+  # Defense-in-depth (Slice 5): a subject-less flag is meaningless and a nil subject
+  # is a real crash vector downstream (the serializer + moderation copy dereference it).
+  # The frozen flag dialog always submits a subject, so this only rejects malformed
+  # direct POSTs — it never breaks the real form.
+  validates :subject, presence: true
+
   # One write: lifecycle transition + audit fields together, so a flag can never
   # be resolved without recording who and when.
   def resolve!(by:, as:)

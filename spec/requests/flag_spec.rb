@@ -46,4 +46,80 @@ RSpec.describe "Flag (HTML)", type: :request do
     flag = user.flags.find_by(hujah: hujah)
     expect(flag.abusive?).to eq(true)
   end
+
+  # Slice 5: the subject guard. An image subject only makes sense against a visible
+  # image; a missing/garbage subject must never persist a nil/unknown-subject flag.
+  describe "subject validation guard" do
+    def attach_image(h)
+      h.image.attach(
+        io: Rails.root.join("spec/fixtures/files/test_image.png").open,
+        filename: "t.png", content_type: "image/png"
+      )
+      h
+    end
+
+    it "rejects an image subject when the hoojah has no image" do
+      sign_in user
+
+      expect {
+        post "/hoojah/#{hujah.slug}/flags", params: {flag: {subject: "image_graphic"}}
+      }.not_to change(Flag, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(hujah.flags).to be_empty
+    end
+
+    it "rejects a flag whose subject is omitted (nil-subject hole)" do
+      sign_in user
+
+      expect {
+        post "/hoojah/#{hujah.slug}/flags", params: {flag: {ignored: "1"}}
+      }.not_to change(Flag, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "rejects a garbage subject outside the enum" do
+      sign_in user
+
+      expect {
+        post "/hoojah/#{hujah.slug}/flags", params: {flag: {subject: "libellous"}}
+      }.not_to change(Flag, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "still accepts a valid non-image subject on any hoojah (regression)" do
+      sign_in user
+
+      expect {
+        post "/hoojah/#{hujah.slug}/flags", params: {flag: {subject: "spam"}}
+      }.to change(Flag, :count).by(1)
+
+      expect(Flag.last.spam?).to eq(true)
+    end
+
+    it "accepts an image subject when the hoojah has a visible image" do
+      sign_in user
+      attach_image(hujah)
+
+      expect {
+        post "/hoojah/#{hujah.slug}/flags", params: {flag: {subject: "image_graphic"}}
+      }.to change(Flag, :count).by(1)
+
+      expect(Flag.last.image_graphic?).to eq(true)
+    end
+
+    it "rejects an image subject once the image has been moderator-removed" do
+      sign_in user
+      attach_image(hujah)
+      hujah.update!(image_removed_at: Time.current)
+
+      expect {
+        post "/hoojah/#{hujah.slug}/flags", params: {flag: {subject: "image_not_theirs"}}
+      }.not_to change(Flag, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+  end
 end
