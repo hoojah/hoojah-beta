@@ -12,6 +12,11 @@
 namespace :garage do
   desc "Apply the direct-upload CORS policy to the Garage bucket (CORS_ORIGINS to override)"
   task cors: :environment do
+    # aws-sdk-s3 is bundled (Active Storage's `garage` service uses it) but only
+    # required lazily when that service is first touched — which this task doesn't
+    # do — so load it explicitly or `Aws` is undefined at boot.
+    require "aws-sdk-s3"
+
     bucket = ENV.fetch("GARAGE_BUCKET")
     origins = ENV.fetch("CORS_ORIGINS", "https://hoojah.rudzainy.com").split(",").map(&:strip)
 
