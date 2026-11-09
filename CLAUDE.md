@@ -122,8 +122,8 @@ de-anonymize voters through the serializer.
 ### Real-time
 
 `DebateChannel < Turbo::StreamsChannel` re-checks `DebatePolicy#show?` at subscribe time, so the
-Cable gate mirrors the HTTP gate: an active debate streams to participants only, a concluded one to
-anyone who may read the transcript. Fails closed on a deleted record.
+Cable gate mirrors the HTTP gate: participants always, and any other viewer who can see both debaters
+and the claim may watch an active debate live or read a concluded one. Fails closed on a deleted record.
 
 ### Views and the design system
 

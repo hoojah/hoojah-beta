@@ -1,6 +1,11 @@
 # Hoojah — Session Handover
 
-_Last updated: 2026-08-24. Read this first when resuming._
+_Last updated: 2026-11-09. Read this first when resuming._
+
+> **Status correction (2026-11-09):** every branch below that is marked "not merged" (Slice 9,
+> Slice 11, both 2026 redesigns, passkeys, editable hujah) has since landed on `master` and is live
+> on https://hoojah.rudzainy.com (verified by code presence at `c55209c`). The markers below now read
+> "merged"; the per-section history is otherwise unchanged.
 
 ## TL;DR
 
@@ -17,7 +22,7 @@ Pundit, social, Debate MVP + increments, privacy + analytics, badges + trending,
 accounts). The **"land everything" roadmap is done** — see "Slice 8 … 🏁 PROGRAM COMPLETE" below.
 
 **Slice 9 (design-system adoption + structured debate phases) is also DONE** on branch
-`slice-9-design-system`, **not merged** — suite **513 / 0 / 2**. Read its section at the bottom of
+`slice-9-design-system`, **merged** — suite **513 / 0 / 2**. Read its section at the bottom of
 this file before touching views or Tailwind: it corrects CLAUDE.md's gotcha #1 (Ruby `#` comments are
 NOT scanned; ERB `<%# %>` comments ARE) and records nine CSS rules that ship with no view asking for
 them.
@@ -25,7 +30,7 @@ them.
 Next up: **Project 3 (Hotwire Native)** — not started. (Slice 11, below, closed the last
 `Api::V1` security items that were meant to be frozen before native clients consume the API.)
 
-## Passkey / WebAuthn login — DONE ✅ (branch `passkey-webauthn-login`, not merged)
+## Passkey / WebAuthn login — DONE ✅ (branch `passkey-webauthn-login`, merged)
 
 _2026-09-03. Passwordless login via WebAuthn/FIDO2 passkeys (Face ID / fingerprint / security key),
 usernameless (discoverable) sign-in alongside the existing password login — password login always
@@ -57,7 +62,7 @@ plan: `docs/superpowers/plans/2026-09-03-passkey-webauthn-login.md`._
   consider a prod fail-fast.
 - **Not pushed.** Branch `passkey-webauthn-login` off `master`. Merge when ready.
 
-## Editable Hujah — DONE ✅ (branch `editable-hujah`, not merged)
+## Editable Hujah — DONE ✅ (branch `editable-hujah`, merged)
 
 _2026-09-03. Three independent slices letting an author edit their hujah. Spec:
 `docs/superpowers/specs/2026-09-02-editable-hujah-design.md`; plans:
@@ -141,7 +146,7 @@ NOT cascaded — they survive a hoojah's deletion and render nil-safe (Slice 11 
   parent row. Fully closing it needs an `ON DELETE RESTRICT` FK on `hujahs.parent_id` — a
   `strong_migrations` job against a populated table, not for this merge.
 
-## Slice 11 — Api::V1 Hardening — DONE ✅ (branch `slice-11-api-hardening`, not merged)
+## Slice 11 — Api::V1 Hardening — DONE ✅ (branch `slice-11-api-hardening`, merged)
 
 _2026-08-25. Closes the SECURITY-FINDINGS OPEN items **A1** (the only one with live-traffic
 exposure), **A2**, and **M1/A4** — the JSON-API authorization/visibility parity that Slices 11–13
@@ -184,7 +189,7 @@ had (post-authorize, not the security class); `UserSerializer#vote_count` + rema
 columns stay unfiltered (A7 class, track with 2a). Carried forward unchanged: **A3/2a** (Slice 13),
 **A6** (votes unique index / first-vote race), **L4** (deploy), **Project 3 (Hotwire Native)**.
 
-## Hoojah 2026 FULL-APP redesign — DONE ✅ (branch `hoojah-2026-full-redesign`, not merged)
+## Hoojah 2026 FULL-APP redesign — DONE ✅ (branch `hoojah-2026-full-redesign`, merged)
 
 _2026-08-25. Extends the earlier 2-surface redesign to the **whole app**. `bin/ci` green:
 **864 examples / 0 failures**, brakeman 0, standardrb + bundler-audit clean, prosopite 179
@@ -249,7 +254,7 @@ order-dependent feed/trending **request-spec isolation** (`trending:v1` memory-s
 full `bin/ci` order — see the [[hoojah-ci-shared-db-gotchas]] memory). Pre-existing count-vs-visible
 aggregate leaks (tab badges, hashtag `hujahs_count`) unchanged (same class as the Slice-5 2a item).
 
-## Hoojah 2026 redesign — DONE ✅ (branch `hoojah-2026-redesign`, not merged)
+## Hoojah 2026 redesign — DONE ✅ (branch `hoojah-2026-redesign`, merged)
 
 A deliberate **rebrand** of the new-post composer and the single-hujah "argument" view, imported from
 a Claude Design project (`Hoojah 2026.dc.html`). Spec: `docs/superpowers/specs/2026-08-24-hoojah-2026-redesign-design.md`;
@@ -969,7 +974,7 @@ Then **Project 3 — Hotwire Native**: Rails-side path-config + native auth, the
 
 ## Slice 9 (Design System + Debate Phases) — DONE ✅
 
-_Branch `slice-9-design-system`, **not merged**. Suite **513 examples / 0 failures / 2 pending**
+_Branch `slice-9-design-system`, **merged**. Suite **513 examples / 0 failures / 2 pending**
 (was 273 on `master`). `spec/system` is 30 examples and was run twice back-to-back with zero
 flakes. brakeman **0**; `standardrb` clean; `bundler-audit` clean (1232 advisories, DB at `677ced9`).
 Built bundle: 23,767 bytes, 365 rules._

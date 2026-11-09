@@ -10,9 +10,12 @@ the [README](../README.md); for full project status / history and the deferred b
 - **Compose / respond** — `/hoojah/new` and `/hoojah/:slug/respond` (stance-tagged replies;
   a reply notifies the parent owner).
 - **Profile** — public view + owner edit at `/u/:username`, a native `<dialog>` edit modal
-  with a Cloudinary photo widget (host-validated URLs).
+  with a direct photo upload (multipart `file_field :avatar`, Active Storage on the Cloudinary
+  service; PNG / JPEG / GIF / WebP under 5 MB). The old client-side Cloudinary widget is gone.
 - **Notifications** — `/notifications`, mark-read + Turbo-Stream delete.
-- **Flag** — a `<dialog>` reason picker on the single-hujah page (spam / abusive / irrelevant).
+- **Flag** — a `<dialog>` reason picker on the single-hujah page (spam / abusive / irrelevant, plus
+  image-graphic / image-not-theirs when the hoojah has an image; an image flag veils the image
+  until a moderator reviews it, with a "Show anyway" escape).
 - **Share** — server-rendered social intent links (WhatsApp / X / Telegram / Reddit /
   Facebook / Email) with a progressively-enhanced Web Share button.
 - **Follow** — follow / unfollow any public profile from `/u/:username`; the button and
@@ -25,27 +28,30 @@ the [README](../README.md); for full project status / history and the deferred b
   `/u/:handle` (tokenized before `simple_format`/`auto_link` so an `@` inside an email or
   URL is never linkified) and notifies each mentioned user once on create.
 - **Debate** — a one-on-one, turn-based debate escalated from an argument. Challenge the
-  argument's author (native `<dialog>` stance picker) → they accept/decline → alternating
-  turns (each notifies the other) → either party concludes → a public, read-only transcript
+  argument's author on a standalone page (`/hoojah/:slug/debates/new`: stance, 2 / 3 / 5 rounds,
+  a 500-character opening that becomes turn 1) → they accept/decline → alternating
+  turns (each notifies the other) → either party may extend by one round at the closing round (up to 10)
+  → the final turn, or either party, concludes → a public, read-only transcript
   at `/debates/:slug`. Debates surface in a **Debates** lens on the hoojah page. Turn
   authorization is turn-scoped (`DebateTurnPolicy` — only the current-turn user may post);
-  active debates are participants-only, concluded ones public. **Real-time** turns broadcast
+  participants always see their debate; any other viewer who can see both debaters and the
+  claim may watch an active debate live or read a concluded one (`DebatePolicy#show?`). **Real-time** turns broadcast
   live over an **authorized `DebateChannel`** (the app's first Action Cable use — the socket
   re-checks `DebatePolicy#show?` at subscribe time, not just the page). A concluded debate gets
   a **spectator verdict** ("who argued better?" — challenger / opponent / draw; one immutable
-  vote per visible spectator, compute-on-read tally). An idle active debate (no turn for 7 days)
+  vote per visible spectator, compute-on-read tally, sealed until 3 verdict votes). An idle active debate (no turn for 7 days)
   is **auto-concluded** by a daily `ConcludeStaleDebatesJob` (Solid Queue recurring). rack-attack
   throttled.
 - **Dashboard** — an owner-only `/dashboard` showing the signed-in user's own aggregate
-  stats (votes received, arguments received) and a per-hoojah vote distribution, computed
+  stats (Total votes received, Followers) and a per-hoojah vote distribution, computed
   on read from the denormalized `hujahs` counters with **zero new tables**. Owner-only by
   construction (always `current_user`, no username in the URL, no `AnalyticsPolicy`); the
-  query never joins `votes`→`users`, and a per-hoojah split below 5 votes is suppressed
-  ("fewer than 5 votes"). See the **Privacy** note below.
+  query never joins `votes`→`users`, and a per-hoojah split below `UserAnalytics::K` (3) votes
+  is suppressed ("fewer than 3 votes"). See the **Privacy** note below.
 - **Trending** — a cached, public `/trending` (`Hujah.trending`, HN-decayed activity) rendered
   both as a standalone page and as a lazy `lg` sidebar frame on the feed.
-- **Badges** — 4 event-driven achievements (`first_hoojah`, `first_argument`, `first_follower`,
-  `first_debate`) — a code registry (`Badge::REGISTRY`) + a `user_badges` awards table, awarded
+- **Badges** — 5 event-driven achievements (`first_hoojah`, `first_argument`,
+  `first_custom_hoojah`, `first_follower`, `first_debate`) — a code registry (`Badge::REGISTRY`) + a `user_badges` awards table, awarded
   idempotently off after-commit callbacks, surfaced as a `badge_earned` notification and public
   profile chips.
 
@@ -85,7 +91,8 @@ Modals use native `<dialog>` plus a custom `close_dialog` Turbo Stream action.
 The `new_vote` notification carries **no voter identity** (Slice 5): `Hujah#cast_vote` does not
 record `subject_user_id`, so the API notifications serializer never hands a hoojah owner the
 username of who voted (choice was already secret). A one-off backfill nulled the id on existing
-rows. Known follow-up: per-hoojah counts are still public on hoojah cards at any N (tracked).
+rows. Hoojah cards apply the same threshold: below `Hujah::VOTE_BREAKDOWN_MIN` (= `UserAnalytics::K`,
+3) a card shows only the total ("2 votes"), never the per-stance split.
 
 ## Project status & roadmap
 
