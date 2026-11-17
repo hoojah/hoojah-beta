@@ -47,6 +47,13 @@
 <%# Coerce ONCE here (absent-or-nil on the create-stream / missing-local path → 0),
     so the guard and the pluralize below read the same integer. %>
 <% reply_count = local_assigns[:reply_count].to_i %>
+<%# Favourites (2026). `can_favourite` (parent author viewing their own thread) and
+    `favourite_counts` ({vote => starred count}) come from `_response_filter`; both are
+    absent on the create-stream path, which then renders no star control. A FULL stance
+    hides the "add" star on its unstarred replies — the model still enforces the cap. %>
+<% favourited = child.favourited? %>
+<% show_star_toggle = local_assigns[:can_favourite] && Hujah::STANCES.key?(child.vote) &&
+     (favourited || local_assigns[:favourite_counts].to_h.fetch(child.vote, 0) < Hujah::FAVOURITES_PER_STANCE) %>
 <div class="relative block mb-2.5"
      data-response-filter-target="item" data-response-filter-vote="<%= stance %>">
   <%= link_to hujah_path(child.slug), class: "absolute inset-0 z-0",
@@ -70,6 +77,24 @@
             <time datetime="<%= child.created_at.iso8601 %>" data-local="time-ago"><%= child.created_at.strftime("%b %-d") %></time>
           </div>
         </div>
+        <%# The star sits above the stretched-link overlay (`relative z-10`) so it is
+            its own target. The parent author gets a toggle; everyone else sees a
+            read-only marker on a starred reply. `form: {class: "contents"}` keeps the
+            button_to wrapper out of the flex layout. %>
+        <% if show_star_toggle %>
+          <%= button_to hujah_favourite_path(child.slug),
+                method: (favourited ? :delete : :post),
+                form: {class: "contents"},
+                class: "relative z-10 ml-auto shrink-0 p-1 rounded-full cursor-pointer active:scale-95 #{favourited ? "text-primary" : "text-faint"}",
+                title: (favourited ? "Unfavourite" : "Favourite"),
+                aria: {label: (favourited ? "Unfavourite response" : "Favourite response"), pressed: favourited} do %>
+            <%= lucide_icon("star", class: "w-5 h-5 #{"fill-current" if favourited}") %>
+          <% end %>
+        <% elsif favourited %>
+          <span data-testid="favourite-marker" class="relative z-10 ml-auto shrink-0 inline-flex items-center gap-1 text-xs font-bold text-primary" title="Favourited by @<%= hujah.user.username %>">
+            <%= lucide_icon("star", class: "w-4 h-4 fill-current") %> Author's pick
+          </span>
+        <% end %>
       </div>
       <div class="mt-2 text-sm leading-relaxed text-ink break-words"><%= format_body(child.body) %></div>
       <%# Secret ballot (2a/A7): the per-stance tally is a de-anonymization vector below

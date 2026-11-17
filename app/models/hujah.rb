@@ -420,7 +420,46 @@ class Hujah < ApplicationRecord
   # with no redirect at all. (Do NOT set slug: nil — FriendlyId :history would just
   # regenerate the byte-identical slug from the unchanged body anyway.)
   def promote!
-    update!(parent_id: nil, vote: nil)
+    # favourited_at is cleared too: a favourite is the PARENT author's pick among replies
+    # to their claim, so it means nothing once this is no longer a reply.
+    update!(parent_id: nil, vote: nil, favourited_at: nil)
+  end
+
+  # Favourites (2026): the parent claim's author may star up to FAVOURITES_PER_STANCE
+  # replies in EACH stance (agree / neutral / disagree), so they can surface the best
+  # argument on every side rather than only the side they agree with. A favourite is a
+  # timestamp on the reply itself — a reply has exactly one parent and one parent author,
+  # so a join table would only ever hold one row per reply.
+  FAVOURITES_PER_STANCE = 5
+
+  class FavouriteLimitReached < StandardError; end
+
+  scope :favourited, -> { where.not(favourited_at: nil) }
+
+  def favourited? = favourited_at.present?
+
+  # Takes the PARENT's row lock so two concurrent stars in the same stance cannot both
+  # read "4 used" and land a sixth. Moderator-removed replies are not counted: they
+  # vanish from the thread, and a slot the author can neither see nor unstar must not
+  # stay occupied. Idempotent for an already-starred reply.
+  def favourite!
+    raise ArgumentError, "only a reply with a stance can be favourited" unless parent_id && STANCES.key?(vote)
+    return true if favourited?
+
+    parent.with_lock do
+      used = parent.children.not_removed.favourited.where(vote: vote).count
+      raise FavouriteLimitReached if used >= FAVOURITES_PER_STANCE
+      update_columns(favourited_at: Time.current)
+    end
+    true
+  end
+
+  # update_columns, not update!: starring is the parent author's metadata on someone
+  # else's reply — it must not bump updated_at (the thread's sort key) or run the
+  # reply's own callbacks.
+  def unfavourite!
+    update_columns(favourited_at: nil) if favourited?
+    true
   end
 
   # The closed vote domain, in one place. `votes.vote` stores these integers;

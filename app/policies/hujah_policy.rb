@@ -61,4 +61,16 @@ class HujahPolicy < ApplicationPolicy
   def promote? =
     user.present? && record.user_id == user.id &&
       record.parent_id.present? && !record.moderation_removed?
+
+  # Favourites (2026): only the PARENT claim's author may star/unstar a reply to it, and
+  # only a live reply that carries a stance (the cap is per stance) and that they can
+  # actually see. A removed parent cannot curate its thread. The per-stance cap is a
+  # model rule (Hujah#favourite!), not a policy one: hitting it is a normal user error
+  # with its own message, not a permission failure.
+  def favourite?
+    parent = record.parent
+    user.present? && parent.present? && parent.user_id == user.id &&
+      Hujah::STANCES.key?(record.vote) && !record.moderation_removed? &&
+      !parent.moderation_removed? && record.visible_to?(user)
+  end
 end

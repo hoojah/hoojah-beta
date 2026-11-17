@@ -96,6 +96,12 @@ Rails.application.routes.draw do
   # (subtree travels); slug is unchanged — same record, same URL (the body, which the slug
   # derives from, is untouched).
   post "/hoojah/:slug/promote", to: "hujahs#promote", as: :promote_hujah
+  # Favourite a reply (2026). The PARENT claim's author stars up to
+  # Hujah::FAVOURITES_PER_STANCE replies per stance; the slug is the REPLY's. A write →
+  # MAIN route (CSRF on; button_to carries the token), never Api::V1. POST stars, DELETE
+  # unstars — one path, two verbs, so the helper resolves both.
+  post "/hoojah/:slug/favourite", to: "favourites#create", as: :hujah_favourite
+  delete "/hoojah/:slug/favourite", to: "favourites#destroy"
   # Change a top-level hoojah's visibility (Slice 2). GET renders the change form; when
   # `?to=` names a TIGHTER audience it doubles as the confirmation screen (exact counts +
   # entanglement blockers + typed-confirm). PATCH applies it. WRITE → MAIN routes (CSRF

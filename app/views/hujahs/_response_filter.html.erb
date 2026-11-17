@@ -27,6 +27,11 @@
     visible_children_for's gate, so it matches what the viewer would see after
     clicking through. %>
 <% reply_counts = Hujah.visible_reply_counts_for(children.map(&:id), current_user) %>
+<%# Favourites (2026): the parent author may star up to Hujah::FAVOURITES_PER_STANCE
+    replies per stance. Counted from the already-loaded rows (no query) and threaded to
+    each card so a FULL stance shows no "add" star — the model still enforces the cap. %>
+<% can_favourite = user_signed_in? && hujah.user_id == current_user.id && !hujah.moderation_removed? %>
+<% favourite_counts = children.select(&:favourited?).group_by(&:vote).transform_values(&:size) %>
 <div data-controller="response-filter" data-response-filter-active-value="all">
   <div class="flex items-center justify-between mt-6 mb-2 px-1">
     <span class="text-base font-extrabold text-ink">
@@ -81,7 +86,8 @@
   <div id="<%= dom_id(hujah, :responses) %>" class="mt-3 flex flex-col">
     <% if children.any? %>
       <% children.each do |child| %>
-        <%= render "hujahs/child_card", child: child, hujah: hujah, live_debate_keys: live_debate_keys, reply_count: reply_counts[child.id] %>
+        <%= render "hujahs/child_card", child: child, hujah: hujah, live_debate_keys: live_debate_keys, reply_count: reply_counts[child.id],
+              can_favourite: can_favourite, favourite_counts: favourite_counts %>
       <% end %>
       <div data-response-filter-target="empty" hidden>
         <%= render "ui/empty_state", message: "No responses match this filter yet", class: "px-1" %>
