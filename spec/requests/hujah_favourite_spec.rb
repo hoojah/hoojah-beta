@@ -88,6 +88,52 @@ RSpec.describe "Favourite a response", type: :request do
     expect(response.body).to include("Author&#39;s pick").or include("Author's pick")
   end
 
+  describe "notifying the reply's author" do
+    def favourited_notes(u) = Notification.where(user_id: u.id, category: :response_favourited)
+
+    it "notifies the reply author, naming the parent author and pointing at the reply" do
+      r = reply(vote: 1)
+      sign_in_fresh owner
+      expect { post "/hoojah/#{r.slug}/favourite" }.to change { favourited_notes(other).count }.by(1)
+
+      note = favourited_notes(other).last
+      expect(note.hujah_id).to eq(r.id)
+      expect(note.subject_user_id).to eq(owner.id)
+    end
+
+    it "notifies only once even if the reply is unstarred and starred again" do
+      r = reply(vote: 1)
+      sign_in_fresh owner
+      post "/hoojah/#{r.slug}/favourite"
+      delete "/hoojah/#{r.slug}/favourite"
+      expect { post "/hoojah/#{r.slug}/favourite" }.not_to change { favourited_notes(other).count }
+    end
+
+    it "does not notify the parent author for their own reply" do
+      r = reply(vote: 1, user: owner)
+      sign_in_fresh owner
+      expect { post "/hoojah/#{r.slug}/favourite" }.not_to change { Notification.where(category: :response_favourited).count }
+    end
+
+    it "does not notify when the star is refused at the cap" do
+      Array.new(5) { reply(vote: 1) }.each { |r| r.update_columns(favourited_at: Time.current) }
+      extra = reply(vote: 1)
+      sign_in_fresh owner
+      expect { post "/hoojah/#{extra.slug}/favourite" }.not_to change { favourited_notes(other).count }
+    end
+
+    it "renders the notification for the reply author" do
+      r = reply(vote: 1)
+      sign_in_fresh owner
+      post "/hoojah/#{r.slug}/favourite"
+
+      sign_in_fresh other
+      get "/notifications"
+      expect(response.body).to include("picked your argument as a favourite")
+      expect(response.body).to include(owner.username)
+    end
+  end
+
   it "clears the favourite when the reply is promoted" do
     r = reply(vote: 1, user: owner)
     r.update_columns(favourited_at: Time.current)

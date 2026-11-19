@@ -33,7 +33,13 @@ class Notification < ApplicationRecord
     # the whole hoojah). Integer 17 is the next free value — APPEND-ONLY, the legacy API
     # serializes the category as its integer. NOT in EMAILED_CATEGORIES: an image takedown
     # is lower-signal than a full removal, and the in-app card links to the still-live claim.
-    image_removed: 17
+    image_removed: 17,
+    # Favourites (2026): sent to a reply's author when the parent claim's author stars it.
+    # `hujah_id` is the REPLY (the card links to the starred argument) and subject_user_id
+    # is the parent author — not a secret-ballot leak: the star is already shown publicly
+    # on the reply as "Author's pick". Integer 18 is the next free value — APPEND-ONLY.
+    # NOT in EMAILED_CATEGORIES: a nice-to-know, not a call to action.
+    response_favourited: 18
   }
 
   scope :unread, -> { where(read: false) }

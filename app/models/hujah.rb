@@ -450,6 +450,7 @@ class Hujah < ApplicationRecord
       used = parent.children.not_removed.favourited.where(vote: vote).count
       raise FavouriteLimitReached if used >= FAVOURITES_PER_STANCE
       update_columns(favourited_at: Time.current)
+      notify_favourited
     end
     true
   end
@@ -650,6 +651,19 @@ class Hujah < ApplicationRecord
     self.agree_label = nil
     self.neutral_label = nil
     self.disagree_label = nil
+  end
+
+  # Favourites (2026): tell the reply's author their argument was starred. Never for a
+  # parent author starring their own reply. Once per reply, ever: unstar → re-star must
+  # not let the parent author ping the same person repeatedly, so an existing row
+  # (read or not) suppresses a new one. Runs inside favourite!'s lock; Notification's
+  # after_create_commit means nothing is enqueued if that transaction rolls back.
+  def notify_favourited
+    return if user_id == parent.user_id
+    return if Notification.exists?(user_id: user_id, category: :response_favourited, hujah_id: id)
+
+    Notification.create!(user_id: user_id, category: :response_favourited,
+      hujah_id: id, subject_user_id: parent.user_id)
   end
 
   def notify_parent_owner
