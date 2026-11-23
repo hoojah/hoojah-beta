@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_06_232125) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -180,6 +180,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_232125) do
     t.datetime "created_at", null: false
     t.integer "disagree_count", default: 0
     t.string "disagree_label"
+    t.datetime "favourited_at"
     t.string "image_alt"
     t.datetime "image_removed_at"
     t.integer "moderation_status", default: 0, null: false

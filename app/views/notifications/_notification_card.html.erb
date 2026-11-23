@@ -76,6 +76,7 @@
    when "moderation_removed" then ["x-circle", "disagree"]
    when "moderation_warning" then ["alert-triangle", "neutral"]
    when "image_removed" then ["image-off", "neutral"]
+   when "response_favourited" then ["star", "primary"]
    else ["bell", "primary"]
    end %>
 <% actor_tile = notification.new_hoojah_response? && notification.subject_user %>
@@ -137,6 +138,10 @@
               The claim itself stays active, so the branch below still links to the live
               hoojah for the author to review. %>
           A moderator removed the image from your hoojah
+        <% when "response_favourited" %>
+          <%# hujah is the starred REPLY, so the body branch below previews the reader's own
+              argument; subject_user is the parent claim's author. %>
+          <%= render "notifications/actor_handle", user: notification.subject_user %> picked your argument as a favourite
         <% else %>
           You have a new notification
         <% end %>

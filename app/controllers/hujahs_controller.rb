@@ -55,7 +55,13 @@ class HujahsController < ApplicationController
     # Slice 11: the Slice-7/7b reply-visibility predicate now lives on the model
     # (Hujah#visible_children_for) so the HTML thread and the JSON API serializer
     # share ONE gate and cannot drift. Same query, same order, no N+1.
+    #
+    # Favourites (2026): the parent author's starred replies lead the thread (oldest star
+    # first, so a newly starred reply doesn't reshuffle the earlier picks), then the rest
+    # in the usual updated_at order. Reordered HERE rather than in visible_children_for so
+    # the API serializer's ordering stays exactly as native clients know it.
     @children = @hujah.visible_children_for(current_user)
+      .reorder(Arel.sql("hujahs.favourited_at IS NULL"), "hujahs.favourited_at ASC", "hujahs.updated_at DESC")
     # Debates lens (Slice 4). policy_scope hides others' active/pending/declined
     # debates but shows concluded ones publicly. This is NOT a separate route —
     # it renders inline on the hoojah page. policy_scope does not count toward

@@ -6,7 +6,7 @@ RSpec.describe Notification, type: :model do
   describe "the category enum" do
     # `category` is a plain integer column with existing rows, so the integers are
     # the contract — renumbering or reordering these reinterprets history.
-    it "maps all eighteen categories to stable integers" do
+    it "maps all nineteen categories to stable integers" do
       expect(Notification.categories).to eq(
         "admin" => 0,
         "announcement" => 1,
@@ -25,7 +25,8 @@ RSpec.describe Notification, type: :model do
         "moderation_removed" => 14,
         "moderation_warning" => 15,
         "hujah_archived" => 16,
-        "image_removed" => 17
+        "image_removed" => 17,
+        "response_favourited" => 18
       )
     end
 
@@ -34,6 +35,10 @@ RSpec.describe Notification, type: :model do
     it "supports the image_removed category at integer 17" do
       expect(Notification.categories.keys).to include("image_removed")
       expect(Notification.categories["image_removed"]).to eq(17)
+    end
+
+    it "does not email the response_favourited category (in-app only)" do
+      expect(Notification::EMAILED_CATEGORIES).not_to include("response_favourited")
     end
 
     it "does not email the image_removed category (in-app only)" do
