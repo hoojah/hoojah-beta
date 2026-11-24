@@ -264,4 +264,12 @@ Rails.application.routes.draw do
   patch "/notifications/read_all", to: "notifications#read_all", as: :read_all_notifications
   patch "/notifications/:id", to: "notifications#update", as: :notification
   delete "/notifications/:id", to: "notifications#destroy"
+
+  # One-click email unsubscribe (RFC 8058). Public: the signed, non-expiring token IS
+  # the credential, so no login is needed from an inbox. GET shows a confirm page;
+  # POST flips email_notifications off (mail providers POST here directly, with no
+  # CSRF token — see EmailUnsubscribesController). Main routes, not Api::V1, so the
+  # HTML form keeps CSRF; only `create` opts out. Addressed by token, not a slug.
+  get "/unsubscribe/:token", to: "email_unsubscribes#show", as: :email_unsubscribe
+  post "/unsubscribe/:token", to: "email_unsubscribes#create"
 end

@@ -103,9 +103,28 @@ Rails.application.configure do
   # like host authorization above, defaulting to the canonical domain.
   config.action_mailer.default_url_options = {host: ENV.fetch("APP_HOST", "hoojah.rudzainy.com"), protocol: "https"}
 
-  # Ignore bad email addresses and do not raise email delivery errors.
-  # Set this to true and configure the email server for immediate delivery to raise delivery errors.
-  # config.action_mailer.raise_delivery_errors = false
+  # Outbound mail is configured entirely from env vars (Coolify), provider-agnostic SMTP.
+  # With SMTP_ADDRESS set we deliver over SMTP and raise on failure, so a real outage
+  # shows up as a failed Solid Queue job instead of vanishing. Vars: SMTP_ADDRESS,
+  # SMTP_PORT (587), SMTP_USERNAME, SMTP_PASSWORD, SMTP_DOMAIN (APP_HOST); the From
+  # address is MAILER_FROM (config.x.mailer_from).
+  # With SMTP_ADDRESS absent, perform_deliveries is off so mail jobs no-op quietly
+  # instead of failing against the default localhost:25 on every notification.
+  if ENV["SMTP_ADDRESS"].present?
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.raise_delivery_errors = true
+    config.action_mailer.smtp_settings = {
+      address: ENV["SMTP_ADDRESS"],
+      port: ENV.fetch("SMTP_PORT", 587).to_i,
+      user_name: ENV["SMTP_USERNAME"],
+      password: ENV["SMTP_PASSWORD"],
+      domain: ENV.fetch("SMTP_DOMAIN", ENV.fetch("APP_HOST", "hoojah.rudzainy.com")),
+      authentication: :plain,
+      enable_starttls_auto: true
+    }
+  else
+    config.action_mailer.perform_deliveries = false
+  end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).

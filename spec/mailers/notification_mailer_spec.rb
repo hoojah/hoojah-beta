@@ -89,5 +89,19 @@ RSpec.describe NotificationMailer, type: :mailer do
 
       expect(mail.to).to be_blank
     end
+
+    it "sets RFC 8058 one-click unsubscribe headers matching the body link" do
+      recipient = create(:user)
+      notification = create(:notification, category: :mention, user: recipient, hujah: create(:hujah))
+
+      mail = NotificationMailer.with(notification: notification).notification_email
+
+      url = mail["List-Unsubscribe"].to_s[/\A<(.+)>\z/, 1]
+      expect(url).to include("/unsubscribe/")
+      expect(mail["List-Unsubscribe-Post"].to_s).to eq("List-Unsubscribe=One-Click")
+      expect(mail.html_part.decoded).to include(url)
+      expect(mail.text_part.decoded).to include(url)
+      expect(User.find_by_token_for(:email_unsubscribe, url.split("/").last)).to eq(recipient)
+    end
   end
 end

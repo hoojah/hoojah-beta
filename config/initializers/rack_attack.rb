@@ -53,6 +53,7 @@ class Rack::Attack
   VERDICTS_PATH = throttled_path("debates", ANY_SEGMENT, "verdicts")
   EXTEND_PATH = throttled_path("debates", ANY_SEGMENT, "extend")
   SEARCH_PATH = throttled_path("search")
+  UNSUBSCRIBE_PATH = throttled_path("unsubscribe", ANY_SEGMENT)
 
   # --- Throttles -------------------------------------------------------------
 
@@ -115,5 +116,10 @@ class Rack::Attack
   # per-user throttle would leave an anonymous scraper entirely uncapped.
   throttle("search/ip", limit: 30, period: 1.minute) do |req|
     req.ip if req.get? && req.path.match?(SEARCH_PATH)
+  end
+  # Unsubscribe is public (the token is the credential), so key on IP. Each hit does a
+  # signed-token verify plus a user lookup; this bounds guessing and hammering.
+  throttle("unsubscribe/ip", limit: 20, period: 1.minute) do |req|
+    req.ip if (req.get? || req.post?) && req.path.match?(UNSUBSCRIBE_PATH)
   end
 end

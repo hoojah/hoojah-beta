@@ -1,4 +1,12 @@
 class User < ApplicationRecord
+  # Credential for the one-click email unsubscribe link (EmailUnsubscribesController).
+  # No expiry on purpose: notification emails sit in inboxes for months and an expired
+  # unsubscribe link is a compliance problem. Embedding the email means changing the
+  # address invalidates every previously sent link.
+  generates_token_for :email_unsubscribe do
+    email
+  end
+
   has_many :hujahs, dependent: :destroy
   has_many :votes, dependent: :destroy
   has_many :notifications, dependent: :destroy

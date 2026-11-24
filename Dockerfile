@@ -10,6 +10,9 @@
 #
 # Build:  docker build --platform linux/amd64 -t hoojah .
 # Run:    docker run -p 3000:3000 -e RAILS_MASTER_KEY=... -e DATABASE_URL=... -e APP_HOST=... hoojah
+# Mail (optional): SMTP_ADDRESS (+ SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_DOMAIN)
+# enables SMTP delivery; without SMTP_ADDRESS mail is silently skipped. MAILER_FROM sets
+# the From address.
 #
 # PLATFORM: build for linux/amd64. Gemfile.lock's PLATFORMS section lists
 # `arm64-darwin-25`, `ruby` and `x86_64-linux` — there is no `aarch64-linux`, so a

@@ -1,0 +1,11 @@
+<div class="max-w-md mx-auto px-4 py-8">
+  <%= render layout: "ui/card", locals: {padded: true} do %>
+    <% if @user.email_notifications? %>
+      <h1 class="text-xl font-bold mb-4">Stop email notifications for @<%= @user.username %>?</h1>
+      <%= button_to "Unsubscribe", email_unsubscribe_path(params[:token]), method: :post, class: ds_button_classes %>
+    <% else %>
+      <h1 class="text-xl font-bold mb-2">Email notifications are off</h1>
+      <p>You won't get email notifications any more. You can turn them back on in your profile settings.</p>
+    <% end %>
+  <% end %>
+</div>

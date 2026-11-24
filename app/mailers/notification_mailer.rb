@@ -33,6 +33,12 @@ class NotificationMailer < ApplicationMailer
     @link = deep_link
     @heading = subject_line
 
+    # One-click unsubscribe (RFC 8058): providers show their own "Unsubscribe" button and
+    # POST to this URL. The same URL is the body link, so the two cannot drift.
+    @unsubscribe_url = email_unsubscribe_url(recipient.generate_token_for(:email_unsubscribe))
+    headers["List-Unsubscribe"] = "<#{@unsubscribe_url}>"
+    headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+
     mail(to: recipient.email, subject: @heading)
   end
 

@@ -13,6 +13,7 @@ the [README](../README.md); for full project status / history and the deferred b
   with a direct photo upload (multipart `file_field :avatar`, Active Storage on the Cloudinary
   service; PNG / JPEG / GIF / WebP under 5 MB). The old client-side Cloudinary widget is gone.
 - **Notifications** — `/notifications`, mark-read + Turbo-Stream delete.
+  Notification emails carry a signed, non-expiring one-click unsubscribe link (`/unsubscribe/:token`, RFC 8058 `List-Unsubscribe` headers); re-enable in profile settings.
 - **Flag** — a `<dialog>` reason picker on the single-hujah page (spam / abusive / irrelevant, plus
   image-graphic / image-not-theirs when the hoojah has an image; an image flag veils the image
   until a moderator reviews it, with a "Show anyway" escape).
