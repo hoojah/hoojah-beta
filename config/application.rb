@@ -42,5 +42,10 @@ module Hoojah
     # exactly the console's "preloaded ... but not used" warning. Importmap JS preloads
     # use <link rel=modulepreload> tags (a different mechanism) and are unaffected.
     config.action_view.preload_links_header = false
+
+    # Single source of truth for the From address, read by ApplicationMailer AND
+    # Devise (config/initializers/devise.rb) so password-reset mail and notification
+    # mail cannot silently drift apart.
+    config.x.mailer_from = ENV.fetch("MAILER_FROM", "Hoojah <no-reply@hoojah.rudzainy.com>")
   end
 end

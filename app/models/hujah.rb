@@ -694,9 +694,15 @@ class Hujah < ApplicationRecord
   # Shared writer: skip empty; skip self + hidden (blocked/blocked-by) users; the
   # exists? guard makes it "at most once per (hoojah, mentioner, mentioned)".
   # Slice 7: never notify a hidden (blocked/blocked-by) user of a mention.
+  # Also skip anyone who cannot see this hoojah (private / followers-only author, or a
+  # reply under one): otherwise they would get a notification + email naming the author
+  # with a link they cannot open. visible_to? covers the parent chain, author privacy,
+  # the visibility enum and moderation removal; handles are capped at 10, so the
+  # per-user check is cheap.
   def notify_mention_handles(handles)
     return if handles.empty? # skip the lookup (and hidden_user_ids) for the common no-mention case
     User.where(username: handles).where.not(id: user_id).where.not(id: user.hidden_user_ids).each do |u|
+      next unless visible_to?(u)
       next if Notification.exists?(user: u, hujah_id: id, category: :mention, subject_user_id: user_id)
       Notification.create!(user: u, category: :mention, hujah_id: id, subject_user_id: user_id)
     end

@@ -14,7 +14,7 @@ RSpec.describe NotificationMailer, type: :mailer do
       mail = NotificationMailer.with(notification: notification).notification_email
 
       expect(mail.to).to eq([recipient.email])
-      expect(mail.subject).to include("Aisha Rahman")
+      expect(mail.subject).to eq("@#{mentioner.username} mentioned you on Hoojah")
       expect(mail.body.encoded).to include(hujah.slug)
     end
 
@@ -38,13 +38,44 @@ RSpec.describe NotificationMailer, type: :mailer do
     it "deep-links to the debate for debate_your_turn" do
       recipient = create(:user)
       debate = create(:debate)
+      # Real Debate#notify rows carry BOTH the debated claim and the debate.
       notification = create(:notification, category: :debate_your_turn,
-        user: recipient, subject_user: nil, hujah: nil, debate: debate)
+        user: recipient, subject_user: nil, hujah: debate.hujah, debate: debate)
 
       mail = NotificationMailer.with(notification: notification).notification_email
 
-      expect(mail.body.encoded).to include(debate.slug)
-      expect(mail.body.encoded).to include("/debates/")
+      expect(mail.body.encoded).to include("/debates/#{debate.slug}")
+      expect(mail.body.encoded).not_to include("/hoojah/#{debate.hujah.slug}")
+    end
+
+    it "links a row produced by the debate model to the debate, not the claim" do
+      debate = create(:debate)
+      notification = Notification.where(category: :debate_challenge, debate_id: debate.id).last
+
+      mail = NotificationMailer.with(notification: notification).notification_email
+
+      expect(mail.body.encoded).to include("/debates/#{debate.slug}")
+      expect(mail.body.encoded).not_to include("/hoojah/#{debate.hujah.slug}")
+    end
+
+    it "never puts a free-text full_name in the subject" do
+      mentioner = create(:user, full_name: "Hoojah Support")
+      notification = create(:notification, category: :mention,
+        user: create(:user), subject_user: mentioner, hujah: create(:hujah))
+
+      mail = NotificationMailer.with(notification: notification).notification_email
+
+      expect(mail.subject).not_to include("Hoojah Support")
+    end
+
+    it "sends nothing when the recipient switched email off before the job ran" do
+      recipient = create(:user)
+      notification = create(:notification, category: :mention, user: recipient)
+      recipient.update_columns(email_notifications: false)
+
+      mail = NotificationMailer.with(notification: notification.reload).notification_email
+
+      expect(mail.to).to be_blank
     end
 
     # Guard: a recipient without an email address yields a no-op (nil) message body

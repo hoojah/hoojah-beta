@@ -25,6 +25,9 @@ class NotificationMailer < ApplicationMailer
     @notification = params[:notification]
     recipient = @notification.user
     return if recipient.email.blank?
+    # Re-check the preference at send time: Notification#deliver_email_later checks it
+    # at enqueue time, but the job can run later, after the user switched email off.
+    return unless recipient.email_notifications?
 
     @name = subject_user_name
     @link = deep_link
@@ -36,12 +39,14 @@ class NotificationMailer < ApplicationMailer
   private
 
   # Only categories with a subject_user (mention, debate_challenge, follow_request)
-  # interpolate a name; the rest ignore the %{name} slot. Falls back to the @handle
-  # when a display name is missing, never to nil.
+  # interpolate a name; the rest ignore the %{name} slot. Always the @handle, never
+  # full_name: full_name is free text, so using it in a subject would let anyone put
+  # "Hoojah Support: verify your account" into another user's inbox. A username is
+  # constrained and unique, so it cannot impersonate us.
   def subject_user_name
     su = @notification.subject_user
     return nil unless su
-    su.full_name.presence || su.username
+    "@#{su.username}"
   end
 
   def subject_line
@@ -50,12 +55,15 @@ class NotificationMailer < ApplicationMailer
   end
 
   # Deep-link to the surface the notification is about, falling back to the
-  # notifications index when the row carries neither a hoojah nor a debate.
+  # notifications index when the row carries neither a debate nor a hoojah.
+  # Debate comes first: every Debate#notify row carries BOTH hujah_id (the debated
+  # claim) and debate_id, so checking the hoojah first sent every debate email to
+  # the claim instead of the debate.
   def deep_link
-    if @notification.hujah
-      hujah_url(@notification.hujah.slug)
-    elsif @notification.debate
+    if @notification.debate
       debate_url(@notification.debate.slug)
+    elsif @notification.hujah
+      hujah_url(@notification.hujah.slug)
     else
       notifications_url
     end
