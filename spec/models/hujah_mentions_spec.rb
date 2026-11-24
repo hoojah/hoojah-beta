@@ -21,6 +21,13 @@ RSpec.describe "Hujah mentions", type: :model do
       }.not_to change { Notification.where(user: outsider, category: "mention").count }
     end
 
+    it "does not notify a non-follower mentioned by a private author" do
+      author.update!(private: true)
+      expect {
+        author.hujahs.create!(body: "hi @outsider")
+      }.not_to change { Notification.where(user: outsider, category: "mention").count }
+    end
+
     it "still notifies an accepted follower mentioned in a followers-only hoojah" do
       create(:follow, follower: outsider, followed: author, status: :accepted)
       expect {

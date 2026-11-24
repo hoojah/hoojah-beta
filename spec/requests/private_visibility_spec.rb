@@ -175,9 +175,13 @@ RSpec.describe "Private-account visibility gates", type: :request do
 
   # ── Gate 9: notification body of a private hoojah not rendered ────────────────
   describe "Gate 9 — notification body (HTML card + serializer)" do
-    # A private user may still mention a stranger (being addressed isn't gated),
-    # but the notification must NOT render the private hoojah's body.
-    let!(:mention_hoojah) { create(:hujah, user: owner, body: "@stranger SECRETMENTIONBODY") }
+    # Hujah#notify_mention_handles no longer creates a mention row for someone who
+    # can't see the hoojah, so the row is built directly: rows that predate that rule
+    # (or outlive a lost follow) must still never render a body the recipient can't see.
+    let!(:mention_hoojah) { create(:hujah, user: owner, body: "SECRETMENTIONBODY") }
+    let!(:mention_row) do
+      create(:notification, category: :mention, user: stranger, subject_user: owner, hujah: mention_hoojah)
+    end
 
     it "does not render the private hoojah's body in the notifications card" do
       sign_in_fresh stranger
