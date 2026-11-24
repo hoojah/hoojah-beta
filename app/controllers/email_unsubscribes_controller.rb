@@ -16,16 +16,23 @@ class EmailUnsubscribesController < ApplicationController
     skip_authorization
   end
 
-  # Idempotent. The provider's one-click POST (body `List-Unsubscribe=One-Click`, or any
-  # non-HTML request) gets a bare 200. The browser form POST redirects back to the
-  # show page, which reports "off" — a redirect because Turbo rejects a 200 form response.
+  # Idempotent. The provider's one-click POST (body `List-Unsubscribe=One-Click`) gets a
+  # bare 200. Every other POST is the browser form and redirects back to the show page,
+  # which reports "off" — a redirect because Turbo rejects a 200 form response.
+  # The branch is on the param ALONE, never on request.format: Turbo's button_to sends
+  # Accept "text/vnd.turbo-stream.html, text/html, ..." (no */*), which Rails resolves to
+  # turbo_stream, so a format check would hand Turbo a 200 and the page would never update.
   def create
     skip_authorization
-    @user.update!(email_notifications: false) if @user.email_notifications?
-    if request.format.html? && params["List-Unsubscribe"] != "One-Click"
-      redirect_to email_unsubscribe_path(params[:token]), status: :see_other
-    else
+    # update_attribute, not update!: it skips validations (callbacks still run). A
+    # legacy/OAuth user with stale data (blank full_name, bad link, avatar) would
+    # otherwise 500 here — including on the provider's one-click POST — and an
+    # unsubscribe must never fail because of unrelated profile validity.
+    @user.update_attribute(:email_notifications, false) if @user.email_notifications?
+    if params["List-Unsubscribe"] == "One-Click"
       head :ok
+    else
+      redirect_to email_unsubscribe_path(params[:token]), status: :see_other
     end
   end
 
@@ -39,6 +46,9 @@ class EmailUnsubscribesController < ApplicationController
     skip_authorization
     respond_to do |format|
       format.html { render :invalid, status: :not_found }
+      # Turbo form submits ask for turbo_stream; without this branch they would fall to
+      # format.any and the user would see nothing. Render the same HTML page for them.
+      format.turbo_stream { render :invalid, formats: [:html], status: :not_found }
       format.any { head :not_found }
     end
   end

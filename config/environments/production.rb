@@ -106,7 +106,7 @@ Rails.application.configure do
   # Outbound mail is configured entirely from env vars (Coolify), provider-agnostic SMTP.
   # With SMTP_ADDRESS set we deliver over SMTP and raise on failure, so a real outage
   # shows up as a failed Solid Queue job instead of vanishing. Vars: SMTP_ADDRESS,
-  # SMTP_PORT (587), SMTP_USERNAME, SMTP_PASSWORD, SMTP_DOMAIN (APP_HOST); the From
+  # SMTP_PORT (587; 465 switches to implicit TLS), SMTP_USERNAME, SMTP_PASSWORD, SMTP_DOMAIN (APP_HOST); the From
   # address is MAILER_FROM (config.x.mailer_from).
   # With SMTP_ADDRESS absent, perform_deliveries is off so mail jobs no-op quietly
   # instead of failing against the default localhost:25 on every notification.
@@ -120,7 +120,10 @@ Rails.application.configure do
       password: ENV["SMTP_PASSWORD"],
       domain: ENV.fetch("SMTP_DOMAIN", ENV.fetch("APP_HOST", "hoojah.rudzainy.com")),
       authentication: :plain,
-      enable_starttls_auto: true
+      # Port 465 speaks TLS from the first byte (SMTPS); STARTTLS upgrade never happens
+      # there, so it needs implicit tls. Every other port keeps opportunistic STARTTLS.
+      tls: ENV["SMTP_PORT"].to_s == "465",
+      enable_starttls_auto: ENV["SMTP_PORT"].to_s != "465"
     }
   else
     config.action_mailer.perform_deliveries = false

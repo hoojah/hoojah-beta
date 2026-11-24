@@ -2,9 +2,13 @@ class User < ApplicationRecord
   # Credential for the one-click email unsubscribe link (EmailUnsubscribesController).
   # No expiry on purpose: notification emails sit in inboxes for months and an expired
   # unsubscribe link is a compliance problem. Embedding the email means changing the
-  # address invalidates every previously sent link.
+  # address invalidates every previously sent link — but via a digest, not the raw
+  # address: the token payload is signed, NOT encrypted (base64-decodable), and the token
+  # sits in the URL path that request logs record, so the raw email would leak there.
+  # The block's return value is part of the signed payload: do not change it once links
+  # are in inboxes, or every one of them stops working.
   generates_token_for :email_unsubscribe do
-    email
+    Digest::SHA256.hexdigest(email.to_s)
   end
 
   has_many :hujahs, dependent: :destroy

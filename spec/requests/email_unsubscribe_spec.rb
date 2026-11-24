@@ -37,6 +37,38 @@ RSpec.describe "Email unsubscribe", type: :request do
       expect(user.reload.email_notifications).to be(false)
     end
 
+    # Turbo's button_to Accept has no */*, so Rails resolves the format to turbo_stream.
+    # A 200 here is rejected by Turbo and the page never updates; it must be a 303.
+    it "redirects a Turbo form submit (turbo_stream Accept) instead of returning 200" do
+      post "/unsubscribe/#{token}",
+        headers: {"Accept" => "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"}
+
+      expect(response).to have_http_status(:see_other)
+      expect(response).to redirect_to("/unsubscribe/#{token}")
+      expect(user.reload.email_notifications).to be(false)
+    end
+
+    it "renders the invalid-link page for a bad token on a Turbo form submit" do
+      post "/unsubscribe/bogus",
+        headers: {"Accept" => "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"}
+
+      expect(response).to have_http_status(:not_found)
+      expect(response.body).to include("invalid or has expired")
+    end
+
+    # update! would run every User validation; unrelated stale profile data must not
+    # turn an unsubscribe into a 500.
+    it "unsubscribes a user who fails validation (legacy data)" do
+      token
+      user.update_columns(full_name: "")
+      expect(user.reload).not_to be_valid
+
+      post "/unsubscribe/#{token}", params: {"List-Unsubscribe" => "One-Click"}
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.email_notifications).to be(false)
+    end
+
     it "is idempotent" do
       2.times { post "/unsubscribe/#{token}" }
 
@@ -73,6 +105,13 @@ RSpec.describe "Email unsubscribe", type: :request do
       expect(response).to have_http_status(:not_found)
       expect(response.body).to include("invalid or has expired")
     end
+  end
+
+  # The token is signed, not encrypted, and lands in logged URL paths: no raw email.
+  it "does not embed the email address in the token" do
+    expect(token).not_to include(user.email)
+    expect(token).not_to include(Base64.strict_encode64(user.email))
+    expect(token).not_to include(Base64.urlsafe_encode64(user.email, padding: false))
   end
 
   it "invalidates the link when the email address changes" do
